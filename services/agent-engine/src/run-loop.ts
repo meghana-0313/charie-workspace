@@ -13,6 +13,7 @@ import { runDirName } from "./run-id.js";
 import { GOAL, runJourney } from "./explorer.js";
 import { writeReport } from "./reporter.js";
 import { verify } from "./verifier.js";
+import { loadSecrets } from "./secrets.js";
 
 function arg(flag: string, fallback = ""): string {
   const i = process.argv.indexOf(flag);
@@ -35,6 +36,9 @@ const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const dirName = runDirName(stamp, verifyMode);
 const outDir = resolve(process.cwd(), "reports", dirName);
 await mkdir(outDir, { recursive: true });
+
+const { loaded } = await loadSecrets();
+if (loaded.length > 0) console.log(`[ghostqa] GCP secrets loaded: ${loaded.join(", ")}`);
 
 console.log(`[ghostqa] goal: ${goal}`);
 console.log(`[ghostqa] target: ${target} → ${outDir}`);

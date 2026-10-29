@@ -64,9 +64,11 @@ npm run agent:run
 # → ./reports/<timestamp>/report.md + screenshots + findings.json
 ```
 
-With Meta Model API access (hackathon credits), add `META_API_KEY` to
-`services/agent-engine/.env` (see `.env.example`) and the same command upgrades from
-heuristic analysis to Muse Spark-powered diagnosis + Muse Image redesigns.
+With Meta Model API access (hackathon credits), store the keys in GCP Secret
+Manager (secret IDs in [docs/META_STACK.md](docs/META_STACK.md)), set
+`GCP_PROJECT_ID`, and authenticate once via `gcloud auth application-default
+login` — the same command then upgrades from heuristic analysis to Muse
+Spark-powered diagnosis + Muse Image redesigns. No `.env` file involved.
 
 ```bash
 # 3. Or drive the whole loop from the portal (tickets → rooms → evidence)

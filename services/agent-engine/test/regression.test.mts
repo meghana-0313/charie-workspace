@@ -1,10 +1,13 @@
 // Committed regression tests (offline, no browser/server). Run: npm run test.
 // Covers: run-dir naming contract (portal/engine must agree verbatim),
-// analyst finding coverage incl. surface checks, triage + redesign basics.
+// analyst finding coverage incl. surface checks, triage + redesign basics,
+// secrets resolution (env fast path, GCP fail-soft, confirmed model IDs).
 import { strict as assert } from "node:assert";
 import { analyze } from "../src/analyst.js";
+import { hasMetaKey, modelId } from "../src/meta-client.js";
 import { briefFor } from "../src/redesign.js";
 import { runDirName } from "../src/run-id.js";
+import { _clearSecretCache, loadSecrets, secret } from "../src/secrets.js";
 import { checkHeaders } from "../src/surface.js";
 import { extractGoal, preGrade } from "../src/triage.js";
 import type { JourneyTrace } from "../src/types.js";
@@ -78,5 +81,31 @@ const uf = (await analyze(trace)).find((f) => f.category === "usability")!;
 ok(briefFor(uf)!.directions.length === 2, "usability brief has 2 directions");
 const ff = (await analyze(trace)).find((f) => f.category === "functional")!;
 ok(briefFor(ff) === null, "no brief for functional findings");
+
+// 6. Secrets resolution (offline: GCP project cleared so no network happens).
+const savedEnv: Record<string, string | undefined> = {};
+for (const k of ["META_API_KEY", "META_SPARK_MODEL", "META_TEXT_MODEL", "META_WONDER_MODEL", "META_IMAGE_MODEL", "META_VOICE_MODEL", "META_SAM_MODEL", "GCP_PROJECT_ID", "GOOGLE_CLOUD_PROJECT"]) {
+  savedEnv[k] = process.env[k];
+  delete process.env[k];
+}
+_clearSecretCache();
+process.env.META_API_KEY = "test-key";
+ok(secret("META_API_KEY") === "test-key", "secret() env fast path");
+ok(hasMetaKey() === true, "hasMetaKey true from env");
+delete process.env.META_API_KEY;
+ok(secret("META_API_KEY") === undefined, "secret() undefined when unset");
+ok(hasMetaKey() === false, "hasMetaKey false when unset");
+const loadRes = await loadSecrets(["META_API_KEY", "META_SPARK_MODEL"]);
+ok(loadRes.loaded.length === 0 && loadRes.missing.length === 2, "loadSecrets fails soft with no project");
+for (const [kind, want] of [["spark", "muse-spark-1.3"], ["wonder", "muse-wonder-1.0"], ["image", "muse-image-1.0"], ["voice", "muse-voice-transcribe-1.0"], ["sam", "sam-3-1"]] as const) {
+  ok(modelId(kind) === want, `confirmed default model id: ${kind}`);
+}
+process.env.META_WONDER_MODEL = "override-id";
+ok(modelId("wonder") === "override-id", "model id env override wins");
+for (const [k, v] of Object.entries(savedEnv)) {
+  if (v === undefined) delete process.env[k];
+  else process.env[k] = v;
+}
+_clearSecretCache();
 
 console.log(`REGRESSION PASS: ${n}/${n} assertions`);

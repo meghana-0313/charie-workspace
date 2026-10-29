@@ -1,6 +1,9 @@
 // Minimal client for the Meta Model API (OpenAI-compatible chat surface).
-// All endpoints/model IDs come from env — confirm against the official hackathon
-// starter docs. When no key is present the engine falls back to heuristics.
+// Key, base URL and model IDs resolve via secrets.ts (env first, GCP Secret
+// Manager second — no .env file). Model IDs verified against dev.meta.ai docs.
+// When no key is present the engine falls back to heuristics.
+
+import { secret } from "./secrets.js";
 
 export interface ChatMessage {
   role: "system" | "user";
@@ -8,21 +11,21 @@ export interface ChatMessage {
 }
 
 export function hasMetaKey(): boolean {
-  return Boolean(process.env.META_API_KEY);
+  return Boolean(secret("META_API_KEY"));
 }
 
 export function modelId(kind: "spark" | "wonder" | "image" | "voice" | "sam"): string {
-  if (kind === "wonder") return process.env.META_WONDER_MODEL ?? "muse-wonder";
-  if (kind === "image") return process.env.META_IMAGE_MODEL ?? "muse-image";
-  if (kind === "voice") return process.env.META_VOICE_MODEL ?? "muse-voice-transcribe";
-  if (kind === "sam") return process.env.META_SAM_MODEL ?? "sam-3-1";
-  return process.env.META_SPARK_MODEL ?? process.env.META_TEXT_MODEL ?? "muse-spark";
+  if (kind === "wonder") return secret("META_WONDER_MODEL") ?? "muse-wonder-1.0";
+  if (kind === "image") return secret("META_IMAGE_MODEL") ?? "muse-image-1.0";
+  if (kind === "voice") return secret("META_VOICE_MODEL") ?? "muse-voice-transcribe-1.0";
+  if (kind === "sam") return secret("META_SAM_MODEL") ?? "sam-3-1";
+  return secret("META_SPARK_MODEL") ?? secret("META_TEXT_MODEL") ?? "muse-spark-1.3";
 }
 
 export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
-  const key = process.env.META_API_KEY;
+  const key = secret("META_API_KEY");
   if (!key) throw new Error("META_API_KEY not set");
-  const base = (process.env.META_API_BASE_URL ?? "https://api.meta.ai/v1").replace(/\/$/, "");
+  const base = (secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1").replace(/\/$/, "");
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${key}` },

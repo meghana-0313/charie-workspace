@@ -32,22 +32,33 @@ never from a stub.** Judges can trace each one to a file.
 
 ## Configuration
 
-`services/agent-engine/.env` (see `.env.example`). Secrets only ever come from env:
+No `.env` file: at startup the engine pulls secrets from Google Cloud Secret
+Manager (`versions/latest`, secret IDs below verbatim) into memory, using
+Application Default Credentials — the attached service account on GCP, or
+`gcloud auth application-default login` locally. `GCP_PROJECT_ID` selects the
+project (`GOOGLE_CLOUD_PROJECT` also works). Anything already set in the
+environment wins (tests, Cloud Run-mounted secrets); anything missing just
+leaves that model in heuristic mode.
+
+Secret IDs in Secret Manager (values from the dev.meta.ai and Baseten dashboards):
 
 ```bash
-META_API_KEY=...                 # hackathon Model API credits (hosted five)
-META_API_BASE_URL=...            # from dev.meta.ai docs / hackathon starter
-META_SPARK_MODEL=...             # exact Muse Spark series id from docs
-META_WONDER_MODEL=...            # exact Muse Wonder id from docs
-META_IMAGE_MODEL=...             # exact Muse Image id from docs
-META_VOICE_MODEL=...             # exact Muse Voice Transcribe id from docs
-META_SAM_MODEL=...               # exact SAM 3.1 id from docs
-SPARK_OPEN_MODEL_ID=meta-models/muse-spark-open-1026
-SPARK_OPEN_ENDPOINT=...          # Baseten/hosted open-weight endpoint
-GLIMMER_ENDPOINT=...             # Baseten/Modal endpoint for Muse Glimmer
-BASETEN_API_KEY=...              # Baseten credits (open weights)
-MODAL_CREDENTIALS=...            # Modal compute credits (open weights)
+META_API_KEY                 # Model API key (unlocks all five hosted models)
+META_API_BASE_URL            # https://api.meta.ai/v1
+META_SPARK_MODEL             # muse-spark-1.3
+META_WONDER_MODEL            # muse-wonder-1.0
+META_IMAGE_MODEL             # muse-image-1.0
+META_VOICE_MODEL             # muse-voice-transcribe-1.0
+META_SAM_MODEL               # sam-3-1
+SPARK_OPEN_MODEL_ID          # meta-models/muse-spark-open-1026
+SPARK_OPEN_ENDPOINT          # https://inference.baseten.co/v1
+GLIMMER_ENDPOINT             # (M6; Ollama-local default, hosted endpoint optional)
+BASETEN_API_KEY              # Baseten Model API key (open weights)
+MODAL_CREDENTIALS            # (backup for open weights)
 ```
+
+Local access needs the Secret Manager Secret Accessor role
+(`roles/secretmanager.secretAccessor`) on the calling identity.
 
 ## Milestones (vertical slice first, then incremental)
 
