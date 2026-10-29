@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShopFast — Checkout</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header>
+  <a href="/">ShopFast</a>
+  <nav><a href="/cart">Cart (<span id="cart-count">0</span>)</a><a href="/checkout">Checkout</a></nav>
+</header>
+<main>
+  <h1>Checkout</h1>
+  <div class="steps">
+    <div class="step active" id="step1-tab">1. Details</div>
+    <div class="step" id="step2-tab">2. Pay</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="card" id="step1">
+    <h2>Your details</h2>
+    <!-- SEEDED A11Y: inputs have no associated <label> (placeholders only) -->
+    <input id="email" type="email" placeholder="Email address" />
+    <input id="name" type="text" placeholder="Full name" style="margin-top:8px" />
+    <div class="row">
+      <!-- SEEDED UX-1a: first of two identical "Continue" buttons -->
+      <button class="btn" id="continue-1">Continue</button>
+    </div>
+  </section>
+
+  <!-- STEP 2 (hidden until step 1 continues) -->
+  <section class="card" id="step2" style="display:none">
+    <h2>Payment</h2>
+    <div id="order-summary" class="muted">Loading summary…</div>
+    <input id="card" type="text" placeholder="Card number" style="margin-top:8px" />
+    <div class="row">
+      <!-- SEEDED UX-1b: second identical "Continue" — goes BACK, not forward -->
+      <button class="btn secondary" id="continue-2">Continue</button>
+      <!-- SEEDED A11Y-1: place-order is a div: no keyboard focus, no role -->
+      <div class="place-order-div" id="place-order">Place order</div>
+    </div>
+    <div class="spinner" id="spinner">Placing your order…</div>
+    <div class="toast" id="toast"></div>
+  </section>
+</main>
+
+<footer class="promo">
+  <div class="card">
+    <strong>Going somewhere?</strong>
+    <p class="muted">Join the newsletter for fare alerts.</p>
+    <div class="row"><button class="btn secondary" id="promo-btn">Continue</button></div>
+  </div>
+</footer>
+
+<script type="module">
+import { loadProducts, getCart, setCart } from "/app.js";
+const FIXED = window.__BUILD === "fixed";
+
+const step1 = document.getElementById("step1");
+const step2 = document.getElementById("step2");
+const toast = document.getElementById("toast");
+const spinner = document.getElementById("spinner");
+
+function showToast(kind, msg) {
+  toast.className = `toast ${kind}`;
+  toast.textContent = msg;
+}
+
+// Step 1 -> 2. Requires a valid-looking email; error shown only in FIXED build.
+document.getElementById("continue-1").addEventListener("click", () => {
+  const email = document.getElementById("email").value;
+  if (!email.includes("@")) {
+    if (FIXED) showToast("error", "Enter a valid email to continue.");
+    return; // BUGGY: silently does nothing on invalid email
+  }
+  step1.style.display = "none";
+  step2.style.display = "block";
+  document.getElementById("step1-tab").classList.remove("active");
+  document.getElementById("step2-tab").classList.add("active");
+  renderSummary();
+});
+
+// SEEDED UX-1b: looks like "continue forward", actually goes back to step 1.
+document.getElementById("continue-2").addEventListener("click", () => {
+  step2.style.display = "none";
+  step1.style.display = "block";
+  document.getElementById("step2-tab").classList.remove("active");
+  document.getElementById("step1-tab").classList.add("active");
+});
+
+// Newsletter promo button: scrolls to top, also labeled "Continue" (UX noise).
+document.getElementById("promo-btn").addEventListener("click", () => window.scrollTo(0, 0));
+
+async function renderSummary() {
+  const products = Object.fromEntries((await loadProducts()).map((p) => [p.id, p]));
+  const cart = getCart();
+  const total = cart.reduce((n, l) => n + products[l.id].price * l.qty, 0);
+  document.getElementById("order-summary").textContent =
+    `${cart.reduce((n, l) => n + l.qty, 0)} items — total $${total.toFixed(2)}`;
+}
+
+// SEEDED BUG-1 (client half): failed checkout is swallowed in the buggy build.
+document.getElementById("place-order").addEventListener("click", async () => {
+  spinner.style.display = "block";
+  toast.className = "toast";
+  try {
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: getCart() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? "checkout failed");
+    setCart([]);
+    location.href = `/success?order=${data.orderId}`;
+  } catch (e) {
+    spinner.style.display = "none";
+    if (FIXED) showToast("error", `Order failed: ${e.message}. Please try again.`);
+    // BUGGY: spinner hides, nothing else happens. User has no idea it failed.
+  }
+});
+</script>
+</body>
+</html>

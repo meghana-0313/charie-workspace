@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShopFast — Order confirmed</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header>
+  <a href="/">ShopFast</a>
+  <nav><a href="/cart">Cart (<span id="cart-count">0</span>)</a><a href="/checkout">Checkout</a></nav>
+</header>
+<main>
+  <div class="card">
+    <h1>Order confirmed 🎉</h1>
+    <p>Your order <strong id="order">…</strong> is booked. A receipt was sent to your email.</p>
+    <div class="row"><a class="btn" href="/">Book more travel</a></div>
+  </div>
+</main>
+<script type="module">
+import "/app.js";
+document.getElementById("order").textContent =
+  new URLSearchParams(location.search).get("order") ?? "unknown";
+</script>
+</body>
+</html>

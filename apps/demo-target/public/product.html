@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShopFast — Product</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header>
+  <a href="/">ShopFast</a>
+  <nav><a href="/cart">Cart (<span id="cart-count">0</span>)</a><a href="/checkout">Checkout</a></nav>
+</header>
+<main>
+  <div class="card" id="detail"><p class="muted">Loading…</p></div>
+  <div class="row"><a class="btn secondary" href="/">Back to passes</a></div>
+</main>
+<script type="module">
+import { loadProducts, addToCart } from "/app.js";
+const id = new URLSearchParams(location.search).get("id");
+const p = (await loadProducts()).find((x) => x.id === id);
+const el = document.getElementById("detail");
+if (!p) { el.innerHTML = "<p>Product not found.</p>"; }
+else {
+  el.innerHTML = `<h2>${p.name}</h2><p class="muted">${p.blurb}</p>
+    <div class="price">$${p.price.toFixed(2)}</div>
+    <button class="btn" id="add">Add to cart</button>`;
+  document.getElementById("add").addEventListener("click", () => {
+    addToCart(p.id);
+    location.href = "/cart";
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "@circle-back/agent-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GhostQA autonomous loop: explore, simulate user, analyze, report, verify.",
+  "scripts": {
+    "run": "tsx src/run-loop.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.7.0"
+  }
+}
