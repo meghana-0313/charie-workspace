@@ -1,0 +1,10 @@
+node_modules/
+dist/
+reports/
+.env
+*.log
+.muse/
+.browsers/
+.npm-cache/
+.tmp/
+.selftest/
