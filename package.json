@@ -12,7 +12,9 @@
   "scripts": {
     "demo:target": "npm run dev --workspace apps/demo-target",
     "agent:run": "npm run run --workspace services/agent-engine",
-    "agent:build": "npm run build --workspace services/agent-engine"
+    "agent:build": "npm run build --workspace services/agent-engine",
+    "portal:dev": "npm run dev --workspace apps/portal",
+    "portal:build": "npm run build --workspace apps/portal"
   },
   "engines": {
     "node": ">=20"

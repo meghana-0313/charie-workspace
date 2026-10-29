@@ -19,6 +19,7 @@ function arg(flag: string, fallback = ""): string {
 }
 
 const target = arg("--target", process.env.TARGET_URL ?? "http://localhost:3101");
+const goal = arg("--goal", GOAL);
 const verifyMode = process.argv.includes("--verify");
 const baselineDir = arg("--baseline");
 
@@ -31,10 +32,10 @@ const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const outDir = resolve(process.cwd(), "reports", verifyMode ? `${stamp}-verify` : stamp);
 await mkdir(outDir, { recursive: true });
 
-console.log(`[ghostqa] goal: ${GOAL}`);
+console.log(`[ghostqa] goal: ${goal}`);
 console.log(`[ghostqa] target: ${target} → ${outDir}`);
 
-const trace = await runJourney(target, outDir);
+const trace = await runJourney(target, outDir, goal);
 console.log(`[ghostqa] journey done: goal ${trace.success ? "REACHED ✅" : "NOT reached ❌"} (${trace.actions.length} actions)`);
 
 const findings = await analyze(trace);

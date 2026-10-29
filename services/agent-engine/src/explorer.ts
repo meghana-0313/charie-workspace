@@ -9,7 +9,7 @@ import type { ConfusionSignal, JourneyTrace, TraceAction, TraceEvent } from "./t
 
 export const GOAL = "Buy 3 different travel passes and complete checkout without assistance";
 
-export async function runJourney(targetUrl: string, outDir: string): Promise<JourneyTrace> {
+export async function runJourney(targetUrl: string, outDir: string, goal: string = GOAL): Promise<JourneyTrace> {
   await mkdir(outDir, { recursive: true });
   const t0 = Date.now();
   const actions: TraceAction[] = [];
@@ -157,7 +157,7 @@ export async function runJourney(targetUrl: string, outDir: string): Promise<Jou
   await browser.close();
 
   const trace: JourneyTrace = {
-    goal: GOAL,
+    goal,
     targetUrl,
     build,
     startedAt: new Date(t0).toISOString(),
