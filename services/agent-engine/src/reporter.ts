@@ -3,6 +3,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { briefFor } from "./redesign.js";
 import type { Finding, JourneyTrace } from "./types.js";
 
 export function mcpPacket(f: Finding, trace: JourneyTrace): string {
@@ -69,6 +70,16 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
       `- MCP packet: \`mcp-packets/${f.id}.md\``,
       ``,
     );
+  }
+  const briefs = findings.map(briefFor).filter((b) => b !== null);
+  if (briefs.length > 0) {
+    await writeFile(join(outDir, "briefs.json"), JSON.stringify(briefs, null, 2));
+    lines.push(`## Redesign briefs (${briefs.length})`, ``, `> Written briefs (heuristic v0). Muse Image visual alternatives attach here in M2.`, ``);
+    for (const b of briefs) {
+      lines.push(`### ${b.findingId}`, ``);
+      for (const d of b.directions) lines.push(`- **${d.name}:** ${d.change}`, `  Trade-off: ${d.tradeoff}`);
+      lines.push(`- Component plan: ${b.componentPlan}`, ``);
+    }
   }
   lines.push(
     `## Action trace (${trace.actions.length} actions, ${trace.events.length} events)`,
