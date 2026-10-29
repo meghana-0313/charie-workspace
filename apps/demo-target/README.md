@@ -1,8 +1,8 @@
 # ShopFast demo-target — seeded defect catalog (GROUND TRUTH)
 
-This app is intentionally broken. The agent-engine's self-test passes only if a run
-against the **buggy** build reports all four seeds, and a run against the **fixed**
-build (`npm run dev:fixed`) reports none of them.
+This app is intentionally broken. The agent-engine's regression test passes only if a run
+against the **buggy** build reports all six seeds, and a run against the **fixed**
+build (`npm run dev:fixed`) verifies BUG-1 and UX-2 as fixed with the goal reached, while UX-1, A11Y-1, A11Y-2 and SEC-1 stay open (their fixes come through the coding-agent flow).
 
 ## Seeds
 
@@ -12,6 +12,8 @@ build (`npm run dev:fixed`) reports none of them.
 | UX-1 | usability | major | Three controls labeled "Continue" with three different behaviors (forward / back-to-step-1 / scroll-to-top). First-time users backtrack. | `public/checkout.html` |
 | UX-2 | usability | minor | Invalid email on step 1 silently does nothing in buggy build (no error message) | `public/checkout.html` |
 | A11Y-1 | accessibility | major | "Place order" is a `<div>` with a click handler: not keyboard-focusable, no role; inputs lack real `<label>`s | `public/checkout.html` |
+| A11Y-2 | accessibility | minor | 3 checkout inputs have placeholder-only names (no `<label>`/aria); caught by the DOM scan | `public/checkout.html` |
+| SEC-1 | security | minor | No hardening headers (CSP, X-Frame-Options, XCTO, Referrer-Policy); caught by passive surface check (not a pentest) | `server.js` |
 
 ## Fixed build behavior
 

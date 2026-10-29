@@ -124,6 +124,55 @@ export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
     });
   }
 
+  // SEC-1: passive surface signals (headers / cookies). Labeled honestly.
+  const surface = trace.events.filter((e) => e.kind === "signal" && e.detail.startsWith("surface:"));
+  if (surface.length > 0) {
+    findings.push({
+      id: "security-headers-surface",
+      category: "security",
+      severity: "minor",
+      title: "Missing security headers/cookie flags (surface check — not a pentest)",
+      goal: trace.goal,
+      reproSteps: [
+        "Open the app in a browser",
+        "Inspect the document response headers",
+        `Observe: ${surface.map((s) => s.detail.replace(/^surface: /, "")).join("; ")}`,
+      ],
+      evidence: { screenshots: allShots(trace).slice(0, 1), trace: "trace.json", logs: surface.map((s) => s.detail) },
+      suspectedCause: "Server does not set standard hardening headers / cookie flags.",
+      confidence: "high",
+      suggestedFix:
+        "Set Content-Security-Policy, X-Frame-Options (or CSP frame-ancestors), X-Content-Type-Options, Referrer-Policy (and HSTS on HTTPS); add SameSite (+Secure on HTTPS) to cookies. Use your framework's helper (e.g. helmet for Express).",
+      regressionCheck: "Document response carries all listed headers; cookies carry the flags.",
+      status: "open",
+      analysisSource: "heuristic",
+    });
+  }
+
+  // A11Y-2: unlabeled inputs / missing alt text from the DOM scan.
+  const domA11y = trace.events.filter((e) => e.kind === "signal" && e.detail.startsWith("a11y:"));
+  if (domA11y.length > 0) {
+    findings.push({
+      id: "accessibility-missing-labels",
+      category: "accessibility",
+      severity: "minor",
+      title: "Form controls and images missing accessible names",
+      goal: trace.goal,
+      reproSteps: [
+        "Reach the checkout form",
+        "Run a label/alt audit over inputs and images",
+        `Observe: ${domA11y.map((s) => s.detail.replace(/^a11y: /, "")).join("; ")}`,
+      ],
+      evidence: { screenshots: shots(trace, "checkout"), trace: "trace.json", logs: domA11y.map((s) => s.detail) },
+      suspectedCause: "Placeholder-only inputs with no <label>/aria-label; decorative or bare <img> without alt.",
+      confidence: "high",
+      suggestedFix: "Associate every input with a <label> (or aria-label); give informative images alt text and decorative ones alt=\"\".",
+      regressionCheck: "Label/alt audit reports zero unnamed controls.",
+      status: "open",
+      analysisSource: "heuristic",
+    });
+  }
+
   // Optional Muse Spark enrichment (cause/fix prose only — IDs and verdicts stay deterministic).
   if (hasMetaKey() && findings.length > 0) {
     console.log("[analyst] META_API_KEY found — enriching with Muse Spark…");

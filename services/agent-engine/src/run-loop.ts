@@ -9,6 +9,7 @@
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { analyze } from "./analyst.js";
+import { runDirName } from "./run-id.js";
 import { GOAL, runJourney } from "./explorer.js";
 import { writeReport } from "./reporter.js";
 import { verify } from "./verifier.js";
@@ -29,7 +30,10 @@ if (verifyMode && !baselineDir) {
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-const outDir = resolve(process.cwd(), "reports", verifyMode ? `${stamp}-verify` : stamp);
+// The portal pre-assigns the run dir via GHOSTQA_RUN_ID so it can poll status;
+// CLI runs without it keep generating their own stamp.
+const dirName = runDirName(stamp, verifyMode);
+const outDir = resolve(process.cwd(), "reports", dirName);
 await mkdir(outDir, { recursive: true });
 
 console.log(`[ghostqa] goal: ${goal}`);
