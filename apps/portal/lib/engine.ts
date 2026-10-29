@@ -60,10 +60,10 @@ export function runStatus(runId: string): "running" | "done" | "failed" {
 }
 
 /** Start an engine run in the background. Resolves fast with the run dir name. */
-export function spawnEngineRun(opts: { targetUrl: string; verify?: boolean; baseline?: string }): string {
+export function spawnEngineRun(opts: { targetUrl: string; goal: string; verify?: boolean; baseline?: string }): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const runId = opts.verify ? `${stamp}-verify` : stamp;
-  const args = ["run", "run", "--workspace", "services/agent-engine", "--", "--target", opts.targetUrl];
+  const args = ["run", "run", "--workspace", "services/agent-engine", "--", "--target", opts.targetUrl, "--goal", opts.goal];
   if (opts.verify && opts.baseline) args.push("--verify", "--baseline", join(REPORTS_DIR, opts.baseline));
   const child = spawn("npm", args, {
     cwd: REPO_ROOT,

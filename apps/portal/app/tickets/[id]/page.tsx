@@ -41,7 +41,7 @@ function RoomView({ ticketId }: { ticketId: string }) {
         <p className="small muted">Target: <code>{ticket.targetUrl}</code>
           {ticket.voiceNotePath && <> · Voice note stored (<code>{ticket.voiceNotePath}</code>, transcription pending M4)</>}
         </p>
-        <RunButtons ticketId={ticket.id} roomId={room.id} targetUrl={ticket.targetUrl} baselineRunId={baseline?.runId} />
+        <RunButtons ticketId={ticket.id} roomId={room.id} targetUrl={ticket.targetUrl} goal={ticket.goal} baselineRunId={baseline?.runId} />
       </div>
 
       {runViews.length === 0 && (

@@ -9,17 +9,17 @@ never from a stub.** Judges can trace each one to a file.
 | Meta model | Real job in the product | Code | Status |
 |---|---|---|---|
 | **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; later, journey planner | `services/agent-engine/src/analyst.ts` via `meta-client.ts` | Wired, needs `META_API_KEY` |
-| **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Planned (M5) |
-| **Muse Image** | Evidence-linked UI redesigns: 2–3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` | Planned (M2) |
-| **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` | Planned (M4) |
-| **SAM 3.1** | Screenshot grounding: segments cited UI controls → bounding boxes on failure screenshots, before/after diff regions | `services/agent-engine/src/grounding.ts` | Planned (M3) |
+| **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Interface + selector live; model call pending (M5) |
+| **Muse Image** | Evidence-linked UI redesigns: 2–3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Written-brief fallback live; images pending (M2) |
+| **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` | Upload + storage live; transcription pending (M4) |
+| **SAM 3.1** | Screenshot grounding: segments cited UI controls → bounding boxes on failure screenshots, before/after diff regions | `services/agent-engine/src/grounding.ts` | Interface live, whole-shot fallback; model pending (M3) |
 
 ## Open weights (spend: Baseten / Modal credits — NOT interchangeable with Model API credits)
 
 | Meta model | Real job in the product | Runtime | Status |
 |---|---|---|---|
 | **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Second-opinion analyst: independently re-grades Spark findings; disagreement lowers confidence | Hosted open-weight endpoint (e.g. Baseten) | Planned (M7) |
-| **Muse Glimmer** | Lightweight triage: ticket → goal extraction, severity pre-grade, finding dedup | Baseten or Modal; local only if laptop VRAM checks out | Planned (M6) |
+| **Muse Glimmer** | Lightweight triage: ticket → goal extraction, severity pre-grade, finding dedup | Baseten or Modal; local only if laptop VRAM checks out | Heuristic live (`triage.ts`, wired to portal); model pending (M6) |
 
 > No giant weight downloads on the Windows laptop without a hardware check first.
 > Open-weight integrations are provider-endpoint-first.

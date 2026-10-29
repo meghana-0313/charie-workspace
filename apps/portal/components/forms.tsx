@@ -35,8 +35,8 @@ export function NewTicketForm() {
       <input id="subject" name="subject" required placeholder="Checkout button does nothing" />
       <label htmlFor="body">Customer description</label>
       <textarea id="body" name="body" required placeholder="Customer tried 3 times, gave up. Order lost." />
-      <label htmlFor="goal">User task to verify (goal)</label>
-      <input id="goal" name="goal" required defaultValue="Buy 3 different travel passes and complete checkout without assistance" />
+      <label htmlFor="goal">User task to verify (goal — blank auto-extracts from above)</label>
+      <input id="goal" name="goal" placeholder="Buy 3 different travel passes and complete checkout without assistance" />
       <label htmlFor="targetUrl">App URL to test</label>
       <input id="targetUrl" name="targetUrl" required defaultValue="http://localhost:3101" />
       <label htmlFor="voice">Voice note (optional, stored for M4 transcription)</label>
@@ -49,11 +49,11 @@ export function NewTicketForm() {
   );
 }
 
-export function RunButtons({ ticketId, roomId, targetUrl, baselineRunId }: { ticketId: string; roomId: string; targetUrl: string; baselineRunId?: string }) {
+export function RunButtons({ ticketId, roomId, targetUrl, goal, baselineRunId }: { ticketId: string; roomId: string; targetUrl: string; goal: string; baselineRunId?: string }) {
   const [busy, setBusy] = useState(false);
   async function start(kind: "investigate" | "verify") {
     setBusy(true);
-    const r = await post("/api/runs", { ticketId, roomId, kind, targetUrl, baselineRunId });
+    const r = await post("/api/runs", { ticketId, roomId, kind, targetUrl, goal, baselineRunId });
     setBusy(false);
     if (!r.ok) {
       alert(`Run failed: ${String(r.error ?? "unknown")}`);

@@ -3,11 +3,11 @@ import { store } from "@/lib/store";
 import { runStatus, spawnEngineRun } from "@/lib/engine";
 
 export async function POST(req: Request) {
-  const { ticketId, roomId, kind, targetUrl, baselineRunId } = (await req.json().catch(() => ({}))) as {
-    ticketId?: string; roomId?: string; kind?: string; targetUrl?: string; baselineRunId?: string;
+  const { ticketId, roomId, kind, targetUrl, goal, baselineRunId } = (await req.json().catch(() => ({}))) as {
+    ticketId?: string; roomId?: string; kind?: string; targetUrl?: string; goal?: string; baselineRunId?: string;
   };
-  if (!ticketId || !roomId || (kind !== "investigate" && kind !== "verify") || !targetUrl) {
-    return NextResponse.json({ error: "ticketId, roomId, kind=investigate|verify, targetUrl required" }, { status: 400 });
+  if (!ticketId || !roomId || (kind !== "investigate" && kind !== "verify") || !targetUrl || !goal) {
+    return NextResponse.json({ error: "ticketId, roomId, kind=investigate|verify, targetUrl, goal required" }, { status: 400 });
   }
   if (!store.getTicket(ticketId) || !store.getRoom(roomId)) {
     return NextResponse.json({ error: "unknown ticket or room" }, { status: 404 });
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (kind === "verify" && !baselineRunId) {
     return NextResponse.json({ error: "verify needs baselineRunId" }, { status: 400 });
   }
-  const runId = spawnEngineRun({ targetUrl, verify: kind === "verify", baseline: baselineRunId });
+  const runId = spawnEngineRun({ targetUrl, goal, verify: kind === "verify", baseline: baselineRunId });
   store.createRun({ id: runId, ticketId, roomId, kind, targetUrl, baselineRunId });
   store.addRunToRoom(roomId, runId);
   store.setTicketStatus(ticketId, "investigating");

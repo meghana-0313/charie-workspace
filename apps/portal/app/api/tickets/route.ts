@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { store, uid } from "@/lib/store";
+import { extractGoal } from "@/lib/triage";
 
 export async function GET() {
   return NextResponse.json(store.listTickets());
@@ -13,11 +14,12 @@ export async function POST(req: Request) {
   const fd = await req.formData();
   const subject = String(fd.get("subject") ?? "").trim();
   const body = String(fd.get("body") ?? "").trim();
-  const goal = String(fd.get("goal") ?? "").trim();
+  const goalInput = String(fd.get("goal") ?? "").trim();
   const targetUrl = String(fd.get("targetUrl") ?? "").trim();
-  if (!subject || !body || !goal || !targetUrl) {
-    return NextResponse.json({ error: "subject, body, goal, targetUrl required" }, { status: 400 });
+  if (!subject || !body || !targetUrl) {
+    return NextResponse.json({ error: "subject, body, targetUrl required" }, { status: 400 });
   }
+  const goal = goalInput || extractGoal(subject, body);
   try {
     new URL(targetUrl);
   } catch {

@@ -10,3 +10,4 @@ reports/
 .selftest/
 .data/
 .next/
+*.tsbuildinfo
