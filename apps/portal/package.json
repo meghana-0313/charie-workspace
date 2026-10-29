@@ -1,0 +1,23 @@
+{
+  "name": "@circle-back/portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GhostQA portal: tickets, issue rooms, runs, evidence viewer.",
+  "scripts": {
+    "dev": "next dev -p 3102",
+    "build": "next build",
+    "start": "next start -p 3102",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.7.0"
+  }
+}

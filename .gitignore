@@ -8,3 +8,5 @@ reports/
 .npm-cache/
 .tmp/
 .selftest/
+.data/
+.next/
