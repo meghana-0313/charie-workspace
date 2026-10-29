@@ -1,0 +1,50 @@
+[
+  {
+    "id": "functional-checkout-3-items",
+    "category": "functional",
+    "severity": "blocker",
+    "title": "Place order silently fails with 3+ items in cart",
+    "goal": "Buy 3 different travel passes and complete checkout without assistance",
+    "reproSteps": [
+      "Add 3 different travel passes to the cart",
+      "Open checkout, enter a valid email and name, click Continue",
+      "Enter card details and click Place order (twice)",
+      "Observe: no confirmation, no error message; 500 POST /api/checkout"
+    ],
+    "evidence": {
+      "screenshots": ["step-05-order-failed.png"],
+      "trace": "trace.json",
+      "logs": ["[response-error] 500 POST http://localhost:3101/api/checkout"]
+    },
+    "suspectedCause": "Checkout API returns 500 for 3+ items and the client swallows the failure.",
+    "confidence": "high",
+    "suggestedFix": "Server: make POST /api/checkout handle multi-item carts. Client: show an error toast on non-OK responses.",
+    "regressionCheck": "Re-run this journey: order must reach /success and no 500 on /api/checkout.",
+    "status": "open",
+    "analysisSource": "heuristic"
+  },
+  {
+    "id": "usability-continue-confusion",
+    "category": "usability",
+    "severity": "major",
+    "title": "Multiple \"Continue\" controls do different things; users backtrack",
+    "goal": "Buy 3 different travel passes and complete checkout without assistance",
+    "reproSteps": [
+      "Reach checkout step 2 (payment)",
+      "Observe 3 visible controls labeled \"Continue\"",
+      "Click \"Continue\" on the payment step",
+      "Observe: user is sent BACK to step 1 instead of forward"
+    ],
+    "evidence": {
+      "screenshots": ["step-04-checkout-step2.png"],
+      "trace": "trace.json",
+      "logs": ["backtrack via #continue-2"]
+    },
+    "suspectedCause": "Three controls share the label 'Continue' with different behaviors.",
+    "confidence": "high",
+    "suggestedFix": "Relabel by intent: 'Continue to payment' / 'Back to details' / 'Subscribe'.",
+    "regressionCheck": "No two primary controls share a label; clicking Back never advances.",
+    "status": "open",
+    "analysisSource": "heuristic"
+  }
+]

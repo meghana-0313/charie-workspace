@@ -1,5 +1,7 @@
 # GhostQA — the AI that circles back with proof
 
+[![Built with Muse Code](https://img.shields.io/badge/Built%20with-Muse%20Code-0668E1?logo=meta)](https://dev.meta.ai/lp/muse-code)
+
 **One agent. Three perspectives. A closed loop from customer problem to verified fix.**
 
 GhostQA (repo: `circle-back`) is an autonomous product-quality engineer built for the
@@ -80,3 +82,12 @@ heuristic analysis to Muse Spark-powered diagnosis + Muse Image redesigns.
 The hackathon build covers **web apps only**, one demo target, simulated (not live)
 support ingestion, and safe, authorized checks only. No remote control, no "certified
 secure" claims, no custom video service. Full rationale in `docs/ROADMAP.md`.
+
+## Built with Meta
+
+Every line of this repo was written with [Muse Code by Meta](https://dev.meta.ai/lp/muse-code),
+the AI coding agent powered by Meta Muse Spark — look for the `Built-with` trailer in
+the commit history. The product itself runs on eight Meta technologies: Muse Spark,
+Muse Wonder, Muse Image, Muse Voice Transcribe and SAM 3.1 via the Meta Model API,
+open-weight Muse Glimmer and Muse Spark Open, with Muse Code as the coding agent that
+consumes our MCP fix packets. Full mapping in [docs/META_STACK.md](docs/META_STACK.md).
