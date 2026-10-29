@@ -6,7 +6,8 @@
   "description": "GhostQA autonomous loop: explore, simulate user, analyze, report, verify.",
   "scripts": {
     "run": "tsx src/run-loop.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx test/regression.test.mts"
   },
   "dependencies": {
     "playwright": "^1.49.0",

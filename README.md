@@ -45,8 +45,8 @@ then proves the fix worked by re-running the same journey.
 |---|---|
 | `apps/demo-target/` | ShopFast: intentionally buggy demo store (seeded bug + confusing journey). The thing we test. Run it first. |
 | `services/agent-engine/` | The autonomous loop: explore → simulate user → analyze → report → verify. TypeScript + Playwright + Meta Model API. |
-| `services/mcp-server/` | MCP adapter: lets any coding agent pull findings + push fixes back for verification. (Scaffold next.) |
-| `apps/portal/` | Issue rooms UI: evidence, discussion, approvals. (Scaffold next.) |
+| `services/mcp-server/` | MCP adapter: lets any coding agent pull findings + push fixes back for verification. |
+| `apps/portal/` | Issue rooms UI: tickets, evidence, discussion, approvals, run/verify triggers. |
 | `docs/` | Architecture, demo script, Meta stack mapping, Firestore schema, roadmap. |
 
 ## Quickstart (5 minutes, no API keys)
@@ -67,6 +67,13 @@ npm run agent:run
 With Meta Model API access (hackathon credits), add `META_API_KEY` to
 `services/agent-engine/.env` (see `.env.example`) and the same command upgrades from
 heuristic analysis to Muse Spark-powered diagnosis + Muse Image redesigns.
+
+```bash
+# 3. Or drive the whole loop from the portal (tickets → rooms → evidence)
+npm install --workspace apps/portal
+npm run portal:dev
+# → http://localhost:3102 (needs the demo-target from step 1 running too)
+```
 
 ## Docs
 

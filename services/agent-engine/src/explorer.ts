@@ -5,6 +5,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
+import { checkHeaders, scanDom } from "./surface.js";
 import type { ConfusionSignal, JourneyTrace, TraceAction, TraceEvent } from "./types.js";
 
 export const GOAL = "Buy 3 different travel passes and complete checkout without assistance";
@@ -26,7 +27,15 @@ export async function runJourney(targetUrl: string, outDir: string, goal: string
   page.on("requestfailed", (r) =>
     events.push({ t: since(), kind: "request-failed", detail: `${r.method()} ${r.url()}` }),
   );
+  let navHeaders: Record<string, string> = {};
   page.on("response", (r) => {
+    void (async () => {
+      if (r.request().isNavigationRequest() && r.url().startsWith(targetUrl)) {
+        try {
+          navHeaders = await r.allHeaders();
+        } catch { /* ignore */ }
+      }
+    })();
     if (r.status() >= 400)
       events.push({ t: since(), kind: "response-error", detail: `${r.status()} ${r.request().method()} ${r.url()}` });
   });
@@ -153,6 +162,23 @@ export async function runJourney(targetUrl: string, outDir: string, goal: string
     });
   }
   act("place order", success ? "order confirmed" : "FAILED: no confirmation", success, await snap(success ? "success" : "order-failed"));
+
+  // 8. Passive surface checks (headers + DOM a11y signals).
+  const { missing, weakCookies } = checkHeaders(navHeaders, targetUrl.startsWith("https:"));
+  if (missing.length > 0) {
+    events.push({ t: since(), kind: "signal", detail: `surface: missing security headers: ${missing.join(", ")}` });
+  }
+  for (const c of weakCookies) {
+    events.push({ t: since(), kind: "signal", detail: `surface: weak cookie flags: ${c}` });
+  }
+  const dom = await scanDom(page);
+  if (dom.unlabeledInputs > 0) {
+    events.push({ t: since(), kind: "signal", detail: `a11y: ${dom.unlabeledInputs} form inputs without accessible labels` });
+  }
+  if (dom.imagesMissingAlt > 0) {
+    events.push({ t: since(), kind: "signal", detail: `a11y: ${dom.imagesMissingAlt} images without alt text` });
+  }
+  act("surface checks", `${missing.length} missing headers, ${dom.unlabeledInputs} unlabeled inputs`, true);
 
   await browser.close();
 

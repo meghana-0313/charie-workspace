@@ -34,6 +34,8 @@ Open `report.md`:
 - **Finding #2 (usability, major):** "Two identical 'Continue' buttons; user sim
   clicked the wrong one twice" — action trace + hesitation signals.
 - **Finding #3 (accessibility, major):** "Place-order control not keyboard reachable."
+- **Finding #4 (accessibility, minor):** "3 inputs lack accessible labels" — DOM scan.
+- **Finding #5 (security, minor):** "Missing security headers" — passive surface check, honestly labeled.
 
 Say: *"Three perspectives, one trace. And note the label: AI simulation, not a claim
 about real humans — human validation is a separate step."*
@@ -51,7 +53,7 @@ Flip the demo-target to the fixed build (`FIXED_BUILD=1 npm run demo:target`), r
 npm run agent:run -- --verify-against http://localhost:3101
 ```
 
-Show `verification.json`: finding #1 gone, journey completes, no regressions.
+Show `verification.json`: BUG-1 + UX-2 fixed, journey completes, no regressions.
 Ticket state: `verified`.
 
 **Closer:** *"Ticket to proof-of-fix, one loop. That's GhostQA: it circles back."*
