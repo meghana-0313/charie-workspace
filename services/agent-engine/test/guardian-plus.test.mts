@@ -102,7 +102,7 @@ function canned(url: string, init?: { method?: string; headers?: Record<string, 
     body = "<html></html>";
   } else if (u.hostname === "portal.test" && u.pathname === "/api/tickets") {
     body = "[]";
-  } else if (u.hostname === "portal.test" && u.pathname === "/api/login") {
+  } else if (u.hostname === "portal.test" && u.pathname === "/api/session") {
     status = 401;
     body = '{"error":"no"}';
   } else {
