@@ -62,6 +62,18 @@ MODAL_CREDENTIALS            # (backup for open weights)
 Local access needs the Secret Manager Secret Accessor role
 (`roles/secretmanager.secretAccessor`) on the calling identity.
 
+## Runtime Guardian (post-deploy, simulated environment)
+
+| Meta model | Guardian job |
+|---|---|
+| Muse Spark | Main incident investigation: verdict, timeline, response plan |
+| Muse Spark Open | Adversarial challenge of the verdict; disagreement flags human review |
+| Muse Glimmer | Pre-filters noise signals before investigation (fail-open) |
+| Muse Wonder | Deep response planning for blocker incidents |
+
+Detectors are deterministic rules over event windows (stuffing, takeover, API
+abuse, exfiltration); models interpret and explain, never gate detection alone.
+
 ## Milestones (vertical slice first, then incremental)
 
 - **M0 DONE:** buggy demo-target + explore→analyze→report→verify loop, heuristic mode.

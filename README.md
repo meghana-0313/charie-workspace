@@ -36,6 +36,7 @@ Live prod: https://ghostqa-portal-ehfuotlisq-uc.a.run.app (ask the team for the 
 | Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. Exposes an HTTP service in prod, same runs as the CLI. |
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app GhostQA tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
+| Runtime Guardian | `apps/portal/app/guardian/` + `services/agent-engine/src/guardian.ts` | Post-deploy threat monitoring: seeded or webhook events, deterministic detectors, AI investigation, simulated response + verification. |
 | Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. |
 
 Typical flow: file a ticket in the portal, press Run investigation, watch the engine
@@ -112,7 +113,9 @@ Then click through the loop (about 3 minutes):
    `npm run dev:fixed --workspace apps/demo-target` (same URL, fixed build),
    then press **Verify fix** on the ticket page. Expect the before/after diff
    showing findings fixed.
-5. Prefer the CLI? `npm run agent:run -- --target http://localhost:3101`
+5. For Runtime Guardian: open `/guardian`, press **Simulate attack**, then **Analyze now**,
+   approve a response on the incident page, and **Verify containment**.
+6. Prefer the CLI? `npm run agent:run -- --target http://localhost:3101`
    writes the same report to `services/agent-engine/reports/<timestamp>/`.
 
 Tests: `npm test` (engine regression + server + MCP smoke), plus
