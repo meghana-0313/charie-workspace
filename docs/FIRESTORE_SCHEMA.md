@@ -68,6 +68,17 @@ meet_rooms/{roomId}/signals/{seq}   # WebRTC signaling, polled, pruned to 200
   seq, roomId, from, to ("*" = broadcast),
   kind: "join"|"leave"|"offer"|"answer"|"candidate",
   payload (SDP/ICE JSON, "" for join/leave), createdAt
+
+team_seats/{seatId}            # Named teammate logins
+  name, nameLower, role: "admin"|"member",
+  salt, passHash (scrypt), createdAt, lastLoginAt?
+
+api_keys/{keyId}               # Prod app ingest keys (hashes only)
+  prefix, name, salt, hash (scrypt of secret part),
+  createdAt, lastUsedAt?, revoked: bool
+
+settings/{key}                 # Workspace settings
+  value, updatedAt             # prodProjectId for log watch
 ```
 
 ## Storage layout (Firebase Storage)

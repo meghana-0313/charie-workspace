@@ -44,7 +44,8 @@ Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (ask the team for the d
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
 | Charie Guard | `apps/portal/app/guardian/` + engine `guardian.ts`, `workorders.ts`, `nightshift.ts`, `signals.ts`, `pentest.ts`, `sweep.ts` | Post-deploy suite: threats, fix tasks, night shift, live signals, security tests, continuous sweeps, push alerts. |
-| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Zoom bot via Recall.ai stays as the external fallback. |
+| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Guest invite links with support-ticket check-in, never recorded. Zoom bot via Recall.ai stays as the external fallback. |
+| Production monitoring | Threats page + engine `logwatch.ts` + `/api/guardian/events` + `public/charie.js` | Log watch reads your GCP project's errors itself; prod web apps report via the drop-in SDK; mobile apps follow `docs/MOBILE_SDK.md`. App keys on the Team page. |
 | UX, accessibility, first run | `apps/portal/app/ux|a11y|firstrun/` + engine `redesign.ts`, `a11y.ts`, `firstrun.ts` | UI analysis with generated screen redesigns, 8 accessibility checks with grades, 6 first-time-user checks with scores. |
 | Connected repos | `apps/portal/app/repos/` + `lib/repos.ts`, `lib/github.ts`, `lib/gcp.ts` | GitHub native integration: connect a repo, Cloud Build compiles it, Cloud Run hosts it, a ticket files itself, investigation runs, commit status posts back. |
 | Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs, meet rooms, signals. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. |
@@ -177,10 +178,14 @@ diagnosis. In prod, keys come from Secret Manager instead; see
 
 ## Scope honesty
 
-The hackathon build covers **web apps only**, one demo target, simulated (not live)
-support ingestion, and safe, authorized checks only. Meet rooms use mesh P2P with
-STUN (same-team calls; no TURN relay yet). No remote control, no "certified
-secure" claims. Full rationale in `docs/ROADMAP.md`.
+The build monitors **your real production**: log watch reads your GCP project's
+live errors, prod web apps report through the drop-in SDK, and mobile apps plug
+into the same pipeline via the documented contract (`docs/MOBILE_SDK.md`, native
+wrappers next). Investigation runs drive real web apps (the demo target for
+judges; any URL you file). Meet rooms use mesh P2P with STUN (no TURN relay
+yet). All security checks are safe and authorized: no destructive payloads, no
+third-party targets. No remote control, no "certified secure" claims. Full
+rationale in `docs/ROADMAP.md`.
 
 ## Built with Meta
 

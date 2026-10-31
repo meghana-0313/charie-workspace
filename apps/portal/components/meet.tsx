@@ -62,8 +62,10 @@ interface Peer {
   stream: MediaStream | null;
 }
 
-export function MeetRoom({ roomId, roomTitle }: { roomId: string; roomTitle: string }) {
-  const [name, setName] = useState("");
+export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { roomId: string; roomTitle: string; token?: string; initialName?: string }) {
+  const [name, setName] = useState(initialName);
+  const qp = token ? `?token=${encodeURIComponent(token)}` : "";
+  const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
   const [joined, setJoined] = useState(false);
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [error, setError] = useState("");
@@ -79,7 +81,7 @@ export function MeetRoom({ roomId, roomTitle }: { roomId: string; roomTitle: str
   const stopPoll = useRef(false);
 
   const send = async (to: string, kind: MeetSignal["kind"], payload = "") => {
-    await fetch(`/api/meet/rooms/${roomId}/signal`, {
+    await fetch(`/api/meet/rooms/${roomId}/signal${qp}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ from: me.current, to, kind, payload }),
@@ -150,7 +152,7 @@ export function MeetRoom({ roomId, roomTitle }: { roomId: string; roomTitle: str
     let timer: ReturnType<typeof setInterval>;
     const poll = async () => {
       try {
-        const res = await fetch(`/api/meet/rooms/${roomId}/signal?since=${since.current}`, { cache: "no-store" });
+        const res = await fetch(`/api/meet/rooms/${roomId}/signal${sq(since.current)}`, { cache: "no-store" });
         if (!res.ok) return;
         const j = (await res.json()) as { signals: MeetSignal[] };
         for (const s of j.signals) {
@@ -282,5 +284,46 @@ function PeerTile({ peer }: { peer: Peer }) {
       {peer.stream ? <video ref={ref} autoPlay playsInline /> : <div className="meet-wait">Connecting…</div>}
       <span className="meet-name">{peer.name}</span>
     </div>
+  );
+}
+
+export function InviteButton({ roomId }: { roomId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState("");
+  const [copied, setCopied] = useState(false);
+  if (link) {
+    return (
+      <span className="row">
+        <code className="small">{link.slice(0, 60)}…</code>
+        <button
+          className="secondary"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(link);
+              setCopied(true);
+            } catch {
+              /* clipboard blocked */
+            }
+          }}
+        >
+          {copied ? "Copied" : "Copy invite"}
+        </button>
+      </span>
+    );
+  }
+  return (
+    <button
+      className="secondary"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        const res = await fetch(`/api/meet/rooms/${roomId}/invite`, { method: "POST" });
+        const j = (await res.json().catch(() => ({}))) as { url?: string };
+        setBusy(false);
+        if (j.url) setLink(j.url);
+      }}
+    >
+      {busy ? "…" : "Invite guest"}
+    </button>
   );
 }

@@ -61,6 +61,45 @@
 
   /* Elevation */
   --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* Theme dependent paint */
+  --topbar-bg: rgba(11, 12, 15, 0.88);
+  --row-hover: rgba(255, 255, 255, 0.03);
+  --scrollbar: #2c313c;
+}
+
+/* Light theme: same tokens, paper surfaces. Toggled via data-theme on <html>. */
+[data-theme="light"] {
+  --bg: #f2f3f7;
+  --bg-sunken: #e9ebf1;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --line: #e0e3ec;
+  --line-strong: #c9cfdd;
+
+  --ink: #151824;
+  --ink-muted: #4d5568;
+  --ink-faint: #8a93a9;
+
+  --accent: #6a5ae0;
+  --accent-hover: #5a4cd2;
+  --accent-dim: rgba(106, 90, 224, 0.12);
+  --accent-ink: #4a3fb8;
+
+  --ok: #0f9d6c;
+  --ok-dim: rgba(15, 157, 108, 0.12);
+  --warn: #b97a0f;
+  --warn-dim: rgba(185, 122, 15, 0.14);
+  --danger: #d33f3f;
+  --danger-dim: rgba(211, 63, 63, 0.1);
+  --info: #1f7ad1;
+  --info-dim: rgba(31, 122, 209, 0.12);
+
+  --shadow-pop: 0 12px 32px rgba(21, 24, 36, 0.16);
+  --topbar-bg: rgba(242, 243, 247, 0.9);
+  --row-hover: rgba(21, 24, 36, 0.035);
+  --scrollbar: #c3c9d8;
 }
 
 * { box-sizing: border-box; }
@@ -87,7 +126,7 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-sm);
 }
 
-/* Scrollbars stay quiet and dark. */
+/* Scrollbars stay quiet. */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb { background: #2c313c; border-radius: 8px; border: 2px solid var(--bg); }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; border: 2px solid var(--bg); }
 *::-webkit-scrollbar-track { background: transparent; }

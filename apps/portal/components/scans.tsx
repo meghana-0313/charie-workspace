@@ -54,6 +54,59 @@ function UrlRow({ url, setUrl, busy, label }: { url: string; setUrl: (v: string)
   );
 }
 
+export function UxReviewButton() {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function run(e: React.FormEvent) {
+    e.preventDefault();
+    const target = url.trim();
+    if (!target || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      let host = target;
+      try {
+        host = new URL(target).host;
+      } catch {
+        /* keep raw */
+      }
+      const fd = new FormData();
+      fd.set("subject", `UX review of ${host}`);
+      fd.set("body", `Review the user experience of ${target}: clarity, flow, and friction.`);
+      fd.set("goal", `Walk the core journey of ${target} as a new user and flag every usability issue with evidence.`);
+      fd.set("targetUrl", target);
+      const created = await fetch("/api/tickets", { method: "POST", body: fd });
+      if (!created.ok) throw new Error("ticket failed");
+      const tkt = (await created.json()) as { id: string; roomId: string; targetUrl: string; goal: string };
+      await post("/api/runs", { ticketId: tkt.id, roomId: tkt.roomId, kind: "investigate", targetUrl: tkt.targetUrl, goal: tkt.goal });
+      location.href = `/tickets/${tkt.id}`;
+    } catch {
+      setBusy(false);
+      setError("Could not start the review. Check the URL and retry.");
+    }
+  }
+  return (
+    <div>
+      <form onSubmit={run}>
+        <div className="row">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://your-app.example.com"
+            aria-label="Target URL"
+            style={{ flex: 1, minWidth: 220 }}
+          />
+          <button type="submit" disabled={busy}>{busy ? "Starting…" : "Start UX review"}</button>
+        </div>
+      </form>
+      {busy && <p className="muted small">Filing the ticket and driving the app…</p>}
+      {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
+      <p className="muted small">One click files the ticket, runs the investigation, and the briefs land below.</p>
+    </div>
+  );
+}
+
 export function A11yRunForm() {
   const { url, setUrl, busy, error, report, run } = useScan<A11yView>("/api/guardian/a11y");
   return (

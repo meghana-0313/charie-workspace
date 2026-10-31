@@ -76,11 +76,18 @@ function canned(url: string, init?: { method?: string; headers?: Record<string, 
   let status = 200;
   let body = "{}";
   const H = (k: string, v: string) => headers.set(k.toLowerCase(), v);
-  if (u.hostname === "engine.test" && u.pathname === "/health") {
+  const method = init?.method ?? "GET";
+  if (method === "TRACE") {
+    status = 405;
+    body = '{"error":"method not allowed"}';
+  } else if (u.hostname === "engine.test" && u.pathname === "/health") {
     body = '{"ok":true}';
   } else if (u.protocol === "http:" && u.hostname === "portal.test") {
     status = 301;
     H("location", url.replace("http:", "https:"));
+  } else if (u.hostname === "engine.test" && u.pathname === "/a11y/run") {
+    status = init?.headers?.["x-engine-token"] ? 400 : 401;
+    body = '{"error":"target blocked"}';
   } else if (u.hostname === "engine.test" && (u.pathname === "/runs" || u.pathname.startsWith("/runs/"))) {
     const token = init?.headers?.["x-engine-token"];
     if (!token) {
@@ -89,19 +96,33 @@ function canned(url: string, init?: { method?: string; headers?: Record<string, 
     } else if (u.pathname.includes("artifacts")) {
       status = 404;
       body = '{"error":"not found"}';
-    } else if (init?.method === "POST") {
+    } else if (method !== "GET" && method !== "POST") {
+      status = 405;
+      body = '{"error":"method not allowed"}';
+    } else if (method === "POST") {
       status = 400;
       body = init.body === "{not json" ? '{"error":"invalid JSON body"}' : '{"error":"target blocked"}';
     }
-  } else if (u.hostname === "portal.test" && (u.pathname === "/" || u.pathname === "/login")) {
+  } else if (u.hostname === "portal.test" && (u.pathname === "/" || u.pathname === "/login") && !init?.headers?.cookie?.includes("forged")) {
     H("content-security-policy", "default-src 'self'");
     H("x-frame-options", "DENY");
     H("x-content-type-options", "nosniff");
     H("referrer-policy", "no-referrer");
     H("strict-transport-security", "max-age=31536000");
     body = "<html></html>";
+  } else if (u.hostname === "portal.test" && init?.headers?.cookie?.includes("forged")) {
+    status = 302;
+    H("location", "/login");
+  } else if (u.hostname === "portal.test" && u.pathname === "/api/tickets" && method === "OPTIONS") {
+    status = 204;
   } else if (u.hostname === "portal.test" && u.pathname === "/api/tickets") {
     body = "[]";
+  } else if (u.hostname === "portal.test" && u.pathname === "/api/session" && method === "DELETE") {
+    H("set-cookie", "charie_session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax");
+    body = '{"ok":true}';
+  } else if (u.hostname === "portal.test" && u.pathname === "/api/session" && method === "GET") {
+    status = 405;
+    body = '{"error":"method not allowed"}';
   } else if (u.hostname === "portal.test" && u.pathname === "/api/session") {
     status = 401;
     body = '{"error":"no"}';
@@ -136,7 +157,8 @@ const report = await runPentest(
   fetchImpl,
   tlsStub,
 );
-ok(report.checks.length === 11, `11 appendix B checks, got ${report.checks.length}`);
+ok(report.checks.length === 35, `35 bug-bounty checks, got ${report.checks.length}`);
+ok(report.recon?.endpoints.length === 9, "recon maps 9 endpoints");
 ok(report.failed === 0 && report.grade === "A", `hardened target grades A, got ${report.grade}: ${report.checks.filter((c) => !c.pass).map((c) => c.id).join(",")}`);
 const tlsWeak: TlsConnect = () => ({
   once(ev: string, cb: () => void) {

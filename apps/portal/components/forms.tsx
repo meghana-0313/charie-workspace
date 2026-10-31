@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { VoiceRecorder } from "./suite";
 
 async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: string } & Record<string, unknown>> {
@@ -17,31 +17,67 @@ export function NewTicketForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [recFile, setRecFile] = useState<File | null>(null);
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const [kind, setKind] = useState("bug");
+  const [target, setTarget] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    try {
+      setTarget(localStorage.getItem("charie-target") ?? "");
+    } catch {
+      /* private mode */
+    }
+  }, []);
+  const placeholders: Record<string, [string, string]> = {
+    bug: ["Checkout button does nothing", "Customer tried 3 times, gave up. Order lost."],
+    ux: ["Checkout flow feels confusing", "Users hesitate at the payment step and drop off. Review the journey."],
+    a11y: ["Screen reader stuck on the menu", "NVDA reads the nav twice and never reaches the content."],
+    security: ["API returns other users data", "Changing the account id in the URL shows someone else's orders."],
+  };
+  async function submit(runAfter: boolean) {
+    const form = formRef.current;
+    if (!form || busy) return;
+    if (!form.reportValidity()) return;
     setBusy(true);
     setError("");
-    const fd = new FormData(e.currentTarget);
+    const fd = new FormData(form);
     if (recFile) fd.set("voice", recFile);
+    try {
+      localStorage.setItem("charie-target", target);
+    } catch {
+      /* private mode */
+    }
     const res = await fetch("/api/tickets", { method: "POST", body: fd });
-    setBusy(false);
     if (!res.ok) {
-      setError((await res.json().catch(() => ({ error: "failed" })).then((d) => d.error as string)) ?? "failed");
+      setBusy(false);
+      setError(((await res.json().catch(() => ({ error: "failed" }))) as { error?: string }).error ?? "failed");
       return;
     }
-    const { id } = (await res.json()) as { id: string };
-    location.href = `/tickets/${id}`;
+    const tkt = (await res.json()) as { id: string; roomId: string; targetUrl: string; goal: string };
+    if (runAfter) {
+      await post("/api/runs", { ticketId: tkt.id, roomId: tkt.roomId, kind: "investigate", targetUrl: tkt.targetUrl, goal: tkt.goal });
+    }
+    location.href = `/tickets/${tkt.id}`;
   }
+  const [phSubject, phBody] = placeholders[kind] ?? placeholders.bug;
   return (
-    <form onSubmit={onSubmit}>
-      <label htmlFor="subject">Subject (or record/attach a voice note below instead)</label>
-      <input id="subject" name="subject" placeholder="Checkout button does nothing" />
-      <label htmlFor="body">Customer description</label>
-      <textarea id="body" name="body" placeholder="Customer tried 3 times, gave up. Order lost." />
-      <label htmlFor="goal">User task to verify (goal - blank auto-extracts from above)</label>
-      <input id="goal" name="goal" placeholder="Buy 3 different travel passes and complete checkout without assistance" />
+    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void submit(false); }}>
+      <label htmlFor="kind">What is this?</label>
+      <select id="kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+        <option value="bug">Customer bug</option>
+        <option value="ux">UX review</option>
+        <option value="a11y">Accessibility concern</option>
+        <option value="security">Security concern</option>
+      </select>
       <label htmlFor="targetUrl">App URL to test</label>
-      <input id="targetUrl" name="targetUrl" required defaultValue="http://localhost:3101" />
+      <input id="targetUrl" name="targetUrl" required value={target} onChange={(e) => setTarget(e.target.value)} placeholder="https://your-app.example.com" />
+      <label htmlFor="subject">Subject (or record a voice note below instead)</label>
+      <input id="subject" name="subject" placeholder={phSubject} />
+      <label htmlFor="body">Customer description</label>
+      <textarea id="body" name="body" placeholder={phBody} />
+      <details>
+        <summary className="small muted">Advanced: user task to verify (auto-extracted when blank)</summary>
+        <input id="goal" name="goal" placeholder="Buy 3 travel passes and complete checkout without assistance" style={{ marginTop: 6 }} />
+      </details>
       <label>Voice note (optional, transcribed into subject + description)</label>
       <VoiceRecorder onFile={setRecFile} />
       {!recFile && (
@@ -51,7 +87,8 @@ export function NewTicketForm() {
         </div>
       )}
       <div className="row" style={{ marginTop: 12 }}>
-        <button disabled={busy}>{busy ? "Filing…" : "File ticket + open room"}</button>
+        <button disabled={busy}>{busy ? "Filing…" : "File ticket"}</button>
+        <button disabled={busy} type="button" className="secondary" onClick={() => submit(true)}>File + run investigation</button>
         {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
       </div>
     </form>
