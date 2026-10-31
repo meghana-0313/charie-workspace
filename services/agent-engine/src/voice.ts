@@ -23,7 +23,7 @@ function hasFfmpeg(): boolean {
 function toWav(src: string): string {
   if (src.toLowerCase().endsWith(".wav")) return src;
   if (!hasFfmpeg()) throw new Error("ffmpeg missing for non-WAV audio");
-  const out = join(tmpdir(), `ghostqa-voice-${Date.now()}.wav`);
+  const out = join(tmpdir(), `charie-voice-${Date.now()}.wav`);
   execFileSync("ffmpeg", ["-y", "-i", src, "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le", "-map_metadata", "-1", out], {
     stdio: "ignore",
   });
@@ -44,7 +44,7 @@ export async function transcribe(
     const bytes = await readFile(wav);
     const base = (secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1").replace(/\/$/, "");
     const model = secret("META_VOICE_MODEL") ?? "muse-voice-transcribe-1.0";
-    const sessionId = `ghostqa-${Date.now().toString(36)}`;
+    const sessionId = `charie-${Date.now().toString(36)}`;
     const form = new FormData();
     form.set("request", new Blob([JSON.stringify({ mode: "DIARIZATION", model, audioEncoding: "WAV" })], { type: "application/json" }));
     form.set("audio", new Blob([new Uint8Array(bytes)], { type: "audio/wav" }), "note.wav");

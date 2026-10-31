@@ -15,7 +15,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian", "Guardian"], [`/guardian/${inc.id}`, inc.id]]}
+        crumbs={[["/", "Home"], ["/guardian", "Threats"], [`/guardian/${inc.id}`, inc.id]]}
         title={<>{inc.title} <Badge tone={inc.severity}>{inc.severity}</Badge> <Badge tone={inc.status}>{inc.status}</Badge></>}
         sub={<>Opened {inc.createdAt.slice(0, 16).replace("T", " ")} · mode: {inc.mode} · baseline suspicious events: {inc.baselineSuspicious}</>}
       />

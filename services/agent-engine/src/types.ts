@@ -1,4 +1,4 @@
-// Shared types for the GhostQA loop. Mirrors docs/ARCHITECTURE.md.
+// Shared types for the Charie loop. Mirrors docs/ARCHITECTURE.md.
 
 export type Category = "functional" | "usability" | "accessibility" | "security" | "change-impact";
 export type Severity = "blocker" | "major" | "minor";

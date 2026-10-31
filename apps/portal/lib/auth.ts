@@ -5,7 +5,7 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export const SESSION_COOKIE = "ghostqa_session";
+export const SESSION_COOKIE = "charie_session";
 const TTL_MS = 7 * 24 * 3600 * 1000;
 
 function signingKey(): string {

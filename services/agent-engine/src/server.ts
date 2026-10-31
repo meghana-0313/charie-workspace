@@ -12,6 +12,7 @@
 //   POST /nightshift/run  GET /nightshift/digests
 //   POST /signals/ingest  GET /signals/clusters  POST /signals/seed
 //   POST /pentest/run  GET /zoom/status  POST /zoom/join
+//   POST /a11y/run  GET /a11y/reports  POST /firstrun/run  GET /firstrun/reports
 //
 // Auth: x-engine-token must equal the ENGINE_TOKEN secret. When no token is
 // configured (local dev without GCP), auth is skipped with a one-time warning.
@@ -22,6 +23,8 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, unlinkSyn
 import { tmpdir } from "node:os";
 import { join, normalize, sep } from "node:path";
 import { GOAL } from "./explorer.js";
+import { runA11y } from "./a11y.js";
+import { runFirstRun } from "./firstrun.js";
 import { detectSignals, investigate, simulateResponse, verifyContainment } from "./guardian.js";
 import { executeRun } from "./job.js";
 import { loadDigests, runNightShift } from "./nightshift.js";
@@ -245,7 +248,7 @@ export function createApp(opts: ServerOpts): RequestListener {
             return;
           }
           const ext = body.blob.split(".").pop()?.toLowerCase() ?? "bin";
-          const tmp = join(tmpdir(), `ghostqa-tr-${Date.now()}.${ext}`);
+          const tmp = join(tmpdir(), `charie-tr-${Date.now()}.${ext}`);
           writeFileSync(tmp, bytes);
           try {
             const out = await transcribe(tmp);
@@ -508,6 +511,82 @@ export function createApp(opts: ServerOpts): RequestListener {
             /* none yet */
           }
           send(res, 200, { reports });
+          return;
+        }
+
+        function validTarget(raw: unknown): string | null {
+          if (typeof raw !== "string" || raw.length === 0 || raw.length > 2000) return null;
+          try {
+            const u = new URL(raw);
+            if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+            if (targetBlocked(raw)) return null;
+            return raw;
+          } catch {
+            return null;
+          }
+        }
+
+        function saveReport(file: string, report: unknown): void {
+          const pf = join(dataRoot, file);
+          let prior: unknown[] = [];
+          try {
+            prior = JSON.parse(readFileSync(pf, "utf8")) as unknown[];
+          } catch {
+            /* first report */
+          }
+          mkdirSync(dataRoot, { recursive: true });
+          writeFileSync(pf, JSON.stringify([...prior, report].slice(-10), null, 2));
+        }
+
+        function loadReports(file: string): unknown[] {
+          try {
+            return JSON.parse(readFileSync(join(dataRoot, file), "utf8")) as unknown[];
+          } catch {
+            return [];
+          }
+        }
+
+        if (req.method === "POST" && url.pathname === "/a11y/run") {
+          const parsed = await jsonBody(req);
+          const targetUrl = validTarget(parsed.ok ? parsed.body.targetUrl : null);
+          if (!targetUrl) {
+            send(res, 400, { error: "targetUrl must be a public http(s) URL" });
+            return;
+          }
+          try {
+            const report = await runA11y(targetUrl);
+            saveReport("a11y.json", report);
+            send(res, 200, report);
+          } catch (e) {
+            send(res, 502, { error: `accessibility run failed: ${(e as Error).message}` });
+          }
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/a11y/reports") {
+          send(res, 200, { reports: loadReports("a11y.json") });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/firstrun/run") {
+          const parsed = await jsonBody(req);
+          const targetUrl = validTarget(parsed.ok ? parsed.body.targetUrl : null);
+          if (!targetUrl) {
+            send(res, 400, { error: "targetUrl must be a public http(s) URL" });
+            return;
+          }
+          try {
+            const report = await runFirstRun(targetUrl);
+            saveReport("firstrun.json", report);
+            send(res, 200, report);
+          } catch (e) {
+            send(res, 502, { error: `first run failed: ${(e as Error).message}` });
+          }
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/firstrun/reports") {
+          send(res, 200, { reports: loadReports("firstrun.json") });
           return;
         }
 

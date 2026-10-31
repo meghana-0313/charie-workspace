@@ -20,7 +20,7 @@ async function valid(cookie: string | undefined, secret: string): Promise<boolea
 
 export async function middleware(req: NextRequest) {
   if (!process.env.PORTAL_PASSPHRASE) return NextResponse.next(); // local dev, no gate
-  const ok = await valid(req.cookies.get("ghostqa_session")?.value, process.env.SESSION_KEY ?? "");
+  const ok = await valid(req.cookies.get("charie_session")?.value, process.env.SESSION_KEY ?? "");
   if (ok) return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = "/login";

@@ -205,6 +205,47 @@ export interface ZoomView {
   setup: string[];
 }
 
+export interface A11yView {
+  id: string;
+  at: string;
+  targetUrl: string;
+  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string }>;
+  passed: number;
+  failed: number;
+  grade: string;
+}
+
+export interface FirstRunView {
+  id: string;
+  at: string;
+  targetUrl: string;
+  steps: Array<{ id: string; name: string; pass: boolean; evidence: string }>;
+  passed: number;
+  failed: number;
+  score: number;
+}
+
+export interface MeetRoom {
+  id: string;
+  title: string;
+  createdBy: string;
+  seq: number; // last signal sequence number
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MeetSignalKind = "join" | "leave" | "offer" | "answer" | "candidate";
+
+export interface MeetSignal {
+  seq: number;
+  roomId: string;
+  from: string;
+  to: string; // peer id or "*" for broadcast
+  kind: MeetSignalKind;
+  payload: string; // JSON: SDP or ICE candidate, "" for join/leave
+  createdAt: string;
+}
+
 export interface PushSubscription {
   endpoint: string;
   keys: { p256dh: string; auth: string };

@@ -122,7 +122,7 @@ export async function runDeployApp(name: string, image: string): Promise<string>
     url = (await runGetService(name)).url;
   }
   if (!url) throw new Error("Cloud Run gave no URL");
-  // Public invoker so GhostQA (and the user) can drive it.
+  // Public invoker so Charie (and the user) can drive it.
   await call(`${runBase()}/${name}:setIamPolicy`, {
     method: "POST",
     token: t,

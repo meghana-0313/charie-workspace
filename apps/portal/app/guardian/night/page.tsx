@@ -12,8 +12,8 @@ export default async function NightPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian/night", "Night Shift"]]}
-        title="Night Shift"
+        crumbs={[["/", "Home"], ["/guardian/night", "Night shift"]]}
+        title="Night shift"
         sub="Approved work orders execute overnight: autonomous re-verifications, security re-scans, evidence packs, and remediation notes. The morning digest lands here and pushes to your phone."
         actions={<NightShiftButton />}
       />

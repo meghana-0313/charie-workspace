@@ -1,8 +1,8 @@
 {
-  "name": "circle-back",
+  "name": "charie-workspace",
   "version": "0.1.0",
   "private": true,
-  "description": "GhostQA - autonomous product-quality engineer: ticket to verified fix in a closed loop.",
+  "description": "Charie - autonomous engineering intelligence: testing, security, production.",
   "type": "module",
   "workspaces": [
     "apps/*",

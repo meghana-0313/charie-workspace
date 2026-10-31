@@ -10,9 +10,9 @@ export default async function WorkOrdersPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian/work", "Work Orders"]]}
-        title={`Work Orders (${orders.length})`}
-        sub="Approved units of autonomous remediation. Propose one from an incident, a signal cluster, or a pen-test check; approve it; Night Shift executes overnight and reports proofs."
+        crumbs={[["/", "Home"], ["/guardian/work", "Fix tasks"]]}
+        title={`Fix tasks (${orders.length})`}
+        sub="Ordered remediation work with proofs. Propose one from a threat, a signal cluster, or a pen-test check; approve it; night shift executes overnight and reports proofs."
       />
       <div className="card">
         {orders.length === 0 ? (

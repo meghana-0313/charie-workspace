@@ -1,6 +1,6 @@
 # Meta stack mapping
 
-Every required Meta model/API, the real job it does in GhostQA, and its status.
+Every required Meta model/API, the real job it does in Charie, and its status.
 Rule: **a model counts as "used" only after a real request/inference succeeds -
 never from a stub.** Judges can trace each one to a file.
 
@@ -86,4 +86,4 @@ abuse, exfiltration); models interpret and explain, never gate detection alone.
 
 - Eight Meta technologies, each doing the job it's best at - no disconnected demo buttons.
 - Every call degrades gracefully, so the demo never dies on a network/API failure.
-- GhostQA *feeds* Muse Code instead of competing with it - a Meta-ecosystem story.
+- Charie *feeds* Muse Code instead of competing with it - a Meta-ecosystem story.

@@ -22,6 +22,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({
     approval,
     packets,
-    command: `ghostqa apply ${approval.id}`,
+    command: `charie apply ${approval.id}`,
   });
 }

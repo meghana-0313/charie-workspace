@@ -13,7 +13,7 @@ export function parseRepoUrl(input: string): { owner: string; repo: string } | n
 function headers(token?: string): Record<string, string> {
   const h: Record<string, string> = {
     accept: "application/vnd.github+json",
-    "user-agent": "ghostqa-portal",
+    "user-agent": "charie-portal",
   };
   if (token) h.authorization = `Bearer ${token}`;
   return h;
@@ -124,7 +124,7 @@ export async function postCommitStatus(opts: {
         state: opts.state,
         ...(opts.targetUrl ? { target_url: opts.targetUrl } : {}),
         description: opts.description.slice(0, 140),
-        context: "GhostQA",
+        context: "Charie",
       }),
       signal: AbortSignal.timeout(20000),
     });

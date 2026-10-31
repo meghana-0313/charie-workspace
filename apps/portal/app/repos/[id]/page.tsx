@@ -16,7 +16,7 @@ export default async function RepoPage({ params }: { params: Promise<{ id: strin
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/repos", "Repositories"], [`/repos/${repo.id}`, `${repo.owner}/${repo.repo}`]]}
+        crumbs={[["/", "Home"], ["/repos", "Test a repo"], [`/repos/${repo.id}`, `${repo.owner}/${repo.repo}`]]}
         title={<>{repo.owner}/{repo.repo} <Badge tone={repo.status === "live" ? "minor" : repo.status === "failed" ? "failed" : undefined}>{repo.status}</Badge></>}
         sub={<>Branch <code>{repo.branch}</code>{repo.subdir ? <> · subdir <code>{repo.subdir}</code></> : null} · {repo.visibility}{repo.hasToken ? " · token set" : ""}{repo.lastSha ? <> · <code>{repo.lastSha.slice(0, 7)}</code></> : null}</>}
         actions={<><BuildButton repoId={repo.id} building={repo.status === "building"} /><DisconnectButton repoId={repo.id} /></>}

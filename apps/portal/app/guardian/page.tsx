@@ -22,9 +22,9 @@ export default async function GuardianPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian", "Guardian"]]}
-        title={<>Runtime Guardian <Badge>simulated environment</Badge></>}
-        sub="Post-deploy threat monitoring. Events stream in through the webhook (/api/guardian/events), detectors flag attack patterns, Meta models investigate, and approved responses execute against a simulation, never real prod."
+        crumbs={[["/", "Home"], ["/guardian", "Threats"]]}
+        title={<>Threats <Badge>simulated environment</Badge></>}
+        sub="Charie Guard watches production after every deploy. Events stream in through the webhook (/api/guardian/events), detectors flag attack patterns, Meta models investigate, and approved responses execute against a simulation, never real prod."
         actions={<><SeedButton /><AnalyzeButton /><SweepButton /><PushButton /></>}
       />
 

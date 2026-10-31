@@ -11,9 +11,9 @@ export default async function ReposPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/repos", "Repositories"]]}
-        title="Repositories"
-        sub="Connect a GitHub repo and GhostQA builds it, deploys it, files a ticket, and runs the full investigation. No SDK upload, no external CI."
+        crumbs={[["/", "Home"], ["/repos", "Test a repo"]]}
+        title="Test a repo"
+        sub="Connect a GitHub repo and Charie builds it, deploys it, files a ticket, and runs the full investigation. No SDK upload, no external CI."
       />
       <div className="grid2">
         <div className="card">

@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -184,5 +184,44 @@ export const firestoreStore = {
   },
   async updateBuild(id: string, patch: Partial<RepoBuild>): Promise<void> {
     await firestore().collection("builds").doc(id).update(clean({ ...patch, updatedAt: now() }));
+  },
+
+  async listMeetRooms(): Promise<MeetRoom[]> {
+    const snap = await firestore().collection("meet_rooms").orderBy("createdAt", "desc").get();
+    return snap.docs.map((d) => d.data() as MeetRoom);
+  },
+  async getMeetRoom(id: string): Promise<MeetRoom | null> {
+    const d = await firestore().collection("meet_rooms").doc(id).get();
+    return d.exists ? (d.data() as MeetRoom) : null;
+  },
+  async createMeetRoom(input: { title: string; createdBy: string }): Promise<MeetRoom> {
+    const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };
+    await firestore().collection("meet_rooms").doc(room.id).set(room);
+    return room;
+  },
+  async postMeetSignal(roomId: string, input: { from: string; to: string; kind: MeetSignal["kind"]; payload: string }): Promise<MeetSignal> {
+    const ref = firestore().collection("meet_rooms").doc(roomId);
+    const sig = await firestore().runTransaction(async (tx) => {
+      const d = await tx.get(ref);
+      if (!d.exists) throw new Error("unknown room");
+      const seq = (d.data() as MeetRoom).seq + 1;
+      tx.update(ref, { seq, updatedAt: now() });
+      const s: MeetSignal = { ...input, seq, roomId, createdAt: now() };
+      tx.set(ref.collection("signals").doc(String(seq).padStart(10, "0")), s);
+      return s;
+    });
+    // Prune old signals (best effort, outside the transaction).
+    const old = await ref.collection("signals").orderBy("seq", "desc").offset(200).get().catch(() => null);
+    if (old && !old.empty) {
+      const batch = firestore().batch();
+      for (const doc of old.docs) batch.delete(doc.ref);
+      await batch.commit().catch(() => {});
+    }
+    return sig;
+  },
+  async listMeetSignals(roomId: string, since: number): Promise<MeetSignal[]> {
+    const snap = await firestore().collection("meet_rooms").doc(roomId).collection("signals")
+      .where("seq", ">", since).orderBy("seq").limit(200).get();
+    return snap.docs.map((d) => d.data() as MeetSignal);
   },
 };

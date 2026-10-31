@@ -9,8 +9,8 @@ export default async function SignalsPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian/signals", "Signals"]]}
-        title={`Customer signals (${total} messages)`}
+        crumbs={[["/", "Home"], ["/guardian/signals", "Live signals"]]}
+        title={`Live signals (${total} messages)`}
         sub="Support, chat, call transcripts, and reviews. Spark grades sentiment and theme per message; the engine clusters them into themes. Hot clusters become work orders."
       />
       <div className="grid2">

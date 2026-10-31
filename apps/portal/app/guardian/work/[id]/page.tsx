@@ -12,7 +12,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian/work", "Work Orders"], [`/guardian/work/${wo.id}`, wo.id]]}
+        crumbs={[["/", "Home"], ["/guardian/work", "Fix tasks"], [`/guardian/work/${wo.id}`, wo.id]]}
         title={<>{wo.title} <Badge tone={wo.status}>{wo.status}</Badge> <Badge tone={wo.risk}>{wo.risk} risk</Badge></>}
         sub={<>Source: {wo.source} <code>{wo.sourceRef}</code> · Created {wo.createdAt.slice(0, 16).replace("T", " ")}
           {wo.scheduledFor && <> · Scheduled for {wo.scheduledFor.slice(0, 16).replace("T", " ")}</>}</>}

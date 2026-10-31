@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -37,6 +37,8 @@ const incidents = file<Record<string, Incident>>("incidents", {});
 const pushSubs = file<Record<string, PushSubscription>>("push", {});
 const repos = file<Record<string, RepoConnection>>("repos", {});
 const builds = file<Record<string, RepoBuild>>("builds", {});
+const meetRooms = file<Record<string, MeetRoom>>("meet-rooms", {});
+const meetSignals = file<Record<string, MeetSignal[]>>("meet-signals", {});
 
 const now = () => new Date().toISOString();
 
@@ -225,5 +227,36 @@ export const fileStore = {
       all[id] = { ...all[id], ...patch, updatedAt: now() };
       builds.write(all);
     }
+  },
+
+  async listMeetRooms(): Promise<MeetRoom[]> {
+    return Object.values(meetRooms.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getMeetRoom(id: string): Promise<MeetRoom | null> {
+    return meetRooms.read()[id] ?? null;
+  },
+  async createMeetRoom(input: { title: string; createdBy: string }): Promise<MeetRoom> {
+    const all = meetRooms.read();
+    const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };
+    all[room.id] = room;
+    meetRooms.write(all);
+    return room;
+  },
+  async postMeetSignal(roomId: string, input: { from: string; to: string; kind: MeetSignal["kind"]; payload: string }): Promise<MeetSignal> {
+    const rooms = meetRooms.read();
+    const room = rooms[roomId];
+    if (!room) throw new Error("unknown room");
+    room.seq += 1;
+    room.updatedAt = now();
+    rooms[roomId] = room;
+    meetRooms.write(rooms);
+    const all = meetSignals.read();
+    const sig: MeetSignal = { ...input, seq: room.seq, roomId, createdAt: now() };
+    all[roomId] = [...(all[roomId] ?? []), sig].slice(-200);
+    meetSignals.write(all);
+    return sig;
+  },
+  async listMeetSignals(roomId: string, since: number): Promise<MeetSignal[]> {
+    return (meetSignals.read()[roomId] ?? []).filter((s) => s.seq > since);
   },
 };
