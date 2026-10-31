@@ -156,7 +156,10 @@ const report = await runPentest(
   { portalUrl: "https://portal.test", engineUrl: "https://engine.test", engineToken: "tok" },
   fetchImpl,
   tlsStub,
+  async () => 405,
 );
+const c3 = report.checks.find((c) => c.id === "C3-trace");
+ok(c3?.pass === true, "stubbed TRACE probe passes");
 ok(report.checks.length === 35, `35 bug-bounty checks, got ${report.checks.length}`);
 ok(report.recon?.endpoints.length === 9, "recon maps 9 endpoints");
 ok(report.failed === 0 && report.grade === "A", `hardened target grades A, got ${report.grade}: ${report.checks.filter((c) => !c.pass).map((c) => c.id).join(",")}`);

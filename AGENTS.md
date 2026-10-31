@@ -29,7 +29,7 @@ See README.md for the product story; this file is working notes for the agent.
 2. Branch per change, push, open a PR only when asked. Every commit carries a
    `Built-with: Muse Code by Meta` trailer. Never commit the SA JSON or idea txt.
 3. Verify before finishing: engine typecheck + `npm test` (62 regression, 46
-   server, 36 guardian-plus, 15 access), portal typecheck + `portal:build` when
+   server, 37 guardian-plus, 15 access), portal typecheck + `portal:build` when
    the portal changed.
 4. Fail soft on GCP: missing project/creds/secrets must degrade to heuristic or
    file-backed behavior, never crash. Tests stay offline-safe.

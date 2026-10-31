@@ -58,7 +58,7 @@ export async function middleware(req: NextRequest) {
   if (path === "/api/guardian/events" && req.headers.get("x-charie-key")) return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = "/login";
-  return NextResponse.next();
+  return NextResponse.redirect(url);
 }
 
 export const config = {
