@@ -12,7 +12,7 @@ import { _clearSecretCache } from "../src/secrets.js";
 let n = 0;
 const ok = (cond: unknown, msg: string) => { n++; assert.ok(cond, msg); };
 
-const root = mkdtempSync(join(tmpdir(), "ghostqa-srv-"));
+const root = mkdtempSync(join(tmpdir(), "charie-srv-"));
 // Seed one finished run + one artifact.
 mkdirSync(join(root, "done1", "mcp-packets"), { recursive: true });
 writeFileSync(join(root, "done1", "findings.json"), JSON.stringify([{ id: "a" }]));

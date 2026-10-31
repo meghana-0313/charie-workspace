@@ -56,7 +56,7 @@ npm run agent:run -- --target http://localhost:3101 --verify --baseline ./report
 Show `verification.json`: BUG-1 + UX-2 fixed, journey completes, no regressions.
 Ticket state: `verified`.
 
-**Closer:** *"Ticket to proof-of-fix, one loop. That's GhostQA: it circles back."*
+**Closer:** *"Ticket to proof-of-fix, one loop. Meet CHARIE: your software's autonomous companion."*
 
 ## If something breaks live
 

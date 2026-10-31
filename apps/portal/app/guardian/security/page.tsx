@@ -10,9 +10,9 @@ export default async function SecurityPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/guardian/security", "Security"]]}
-        title="Appendix B pen-test suite"
-        sub="Eleven automated checks against the live portal + engine: auth gate, security headers, TLS upgrade, token smuggling, path traversal, CORS, error leakage, SSRF guard, cookie flags, health, and TLS posture. Runs on demand here and nightly inside Night Shift."
+        crumbs={[["/", "Home"], ["/guardian/security", "Security tests"]]}
+        title="Security tests"
+        sub="Eleven automated checks against the live portal + engine: auth gate, security headers, TLS upgrade, token smuggling, path traversal, CORS, error leakage, SSRF guard, cookie flags, health, and TLS posture. Runs on demand here and nightly inside night shift."
         actions={<PentestButton />}
       />
       {!latest ? (

@@ -26,11 +26,11 @@ import type { JourneyTrace } from "../src/types.js";
 let n = 0;
 const ok = (cond: unknown, msg: string) => { n++; assert.ok(cond, msg); };
 
-// 1. Run-dir contract: GHOSTQA_RUN_ID wins verbatim, else stamp rules.
-process.env.GHOSTQA_RUN_ID = "portal-predicted-id";
+// 1. Run-dir contract: CHARIE_RUN_ID wins verbatim, else stamp rules.
+process.env.CHARIE_RUN_ID = "portal-predicted-id";
 ok(runDirName("S", false) === "portal-predicted-id", "env id used verbatim (investigate)");
 ok(runDirName("S", true) === "portal-predicted-id", "env id used verbatim (verify)");
-delete process.env.GHOSTQA_RUN_ID;
+delete process.env.CHARIE_RUN_ID;
 ok(runDirName("S", false) === "S", "investigate stamp default");
 ok(runDirName("S", true) === "S-verify", "verify stamp default");
 
@@ -166,7 +166,7 @@ const fullFinding: Finding = {
 const dd = await deepDive(fullFinding, stub({ choices: [{ message: { content: "ROOTCAUSE: r\nFIXPLAN: p" } }] }));
 ok(dd?.rootCause === "r" && dd.fixPlan === "p", "deep dive parses");
 
-const shotDir = mkdtempSync(join(tmpdir(), "ghostqa-shot-"));
+const shotDir = mkdtempSync(join(tmpdir(), "charie-shot-"));
 const tinyPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const shotPath = join(shotDir, "s.png");
 writeFileSync(shotPath, Buffer.from(tinyPng, "base64"));
@@ -177,7 +177,7 @@ const gb = await groundControls(
 );
 ok(gb.length === 1 && gb[0].x === 1 && gb[0].width === 10 && gb[0].label === "button", "grounding end to end (stubbed)");
 
-const imgDir = mkdtempSync(join(tmpdir(), "ghostqa-img-"));
+const imgDir = mkdtempSync(join(tmpdir(), "charie-img-"));
 const ufx: Finding = { ...fullFinding, id: "u1", category: "usability" };
 const imgs = await generateRedesignImages(ufx, imgDir, stub({ data: [{ b64_json: tinyPng }] }));
 ok(imgs.length === 1 && imgs[0] === "redesigns/u1-0.png" && existsSync(join(imgDir, imgs[0])), "redesign images saved");

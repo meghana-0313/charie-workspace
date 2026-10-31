@@ -1,8 +1,8 @@
-// GhostQA MCP server (stdio). Lets a coding agent (Muse Code, etc.) pull
+// Charie MCP server (stdio). Lets a coding agent (Muse Code, etc.) pull
 // investigation evidence and push back toward verification:
 //   list_runs → list_findings → get_finding (repro + fix packet) → … → get_verification
 //
-// Reports dir: GHOSTQA_REPORTS env, else ../agent-engine/reports.
+// Reports dir: CHARIE_REPORTS env, else ../agent-engine/reports.
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -10,7 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const REPORTS = process.env.GHOSTQA_REPORTS ?? new URL("../../agent-engine/reports", import.meta.url).pathname;
+const REPORTS = process.env.CHARIE_REPORTS ?? new URL("../../agent-engine/reports", import.meta.url).pathname;
 
 async function listRuns(): Promise<string[]> {
   try {
@@ -34,9 +34,9 @@ async function defaultRun(): Promise<string | null> {
   return runs[0] ?? null;
 }
 
-const server = new McpServer({ name: "ghostqa", version: "0.1.0" });
+const server = new McpServer({ name: "charie", version: "0.1.0" });
 
-server.tool("list_runs", "List GhostQA investigation runs (newest first).", {}, async () => ({
+server.tool("list_runs", "List Charie investigation runs (newest first).", {}, async () => ({
   content: [{ type: "text", text: JSON.stringify(await listRuns()) }],
 }));
 

@@ -1,17 +1,21 @@
 # AGENTS.md - read this first, every session
 
-GhostQA (`circle-back`): autonomous product-quality engineer for the Meta Global AI
-Developer Hackathon 2026. Ticket to verified fix in a closed loop. See README.md
-for the product story; this file is working notes for the coding agent.
+Charie (`charie-workspace`, formerly `circle-back`): autonomous engineering
+intelligence for the Meta Global AI Developer Hackathon 2026. Product family:
+Charie Build (QA/testing/debugging/engineering), Charie Guard (runtime security
+and threat response), Charie Ops (production intelligence and reliability).
+See README.md for the product story; this file is working notes for the agent.
 
 ## Layout
 
-- `apps/portal/` - Next.js dashboard (tickets, rooms, runs, approvals). File store
-  locally (`.data/`), Firestore when `PORTAL_STORE=firestore`. Passphrase login
-  via middleware + `/api/session`; gate open when `PORTAL_PASSPHRASE` unset.
+- `apps/portal/` - Next.js workspace (tickets, rooms, scans, meet, guard, ops).
+  File store locally (`.data/`), Firestore when `PORTAL_STORE=firestore`.
+  Passphrase login via middleware + `/api/session`; gate open when
+  `PORTAL_PASSPHRASE` unset. Session cookie: `charie_session`.
 - `services/agent-engine/` - Playwright loop + HTTP service (`src/serve.ts`, port
   3103). CLI (`src/run-loop.ts`) and server share `src/job.ts`. Reports to
-  `./reports/<ts>/`, uploaded to GCS when `GCS_BUCKET` set.
+  `./reports/<ts>/`, uploaded to GCS when `GCS_BUCKET` set. New checks:
+  `src/a11y.ts` (POST /a11y/run), `src/firstrun.ts` (POST /firstrun/run).
 - `services/mcp-server/` - MCP adapter over engine reports. Smoke: `npm run smoke`.
 - `apps/demo-target/` - buggy ShopFast store (port 3101) + `--fixed` build.
 - `deploy/` - Dockerfiles (portal, engine, demo) for Cloud Run.
@@ -24,15 +28,18 @@ for the product story; this file is working notes for the coding agent.
    and char counts only.
 2. Branch per change, push, open a PR only when asked. Every commit carries a
    `Built-with: Muse Code by Meta` trailer. Never commit the SA JSON or idea txt.
-3. Verify before finishing: engine typecheck + `npm test` (34 regression, 13
-   server, 4 MCP smoke), portal typecheck + `portal:build` when the portal changed.
+3. Verify before finishing: engine typecheck + `npm test` (62 regression, 46
+   server, 35 guardian-plus, 10 access), portal typecheck + `portal:build` when
+   the portal changed.
 4. Fail soft on GCP: missing project/creds/secrets must degrade to heuristic or
    file-backed behavior, never crash. Tests stay offline-safe.
 5. Honest labels only: `analysisSource` is `heuristic` until a real model call
    succeeds. Never claim a stub as a live integration.
 6. No em-dashes or en-dashes in any repo text (docs, comments, UI strings). Use
    hyphens. Functional `--` CLI flags stay untouched.
-7. Many docs are CRLF: use explicit CRLF in multi-line edits or they will not match.
+7. Env vars are `CHARIE_RUN_ID` / `CHARIE_REPORTS` (renamed from GHOSTQA_*).
+   Historic names that stay: GCS bucket `<project>-ghostqa`, service account
+   `circle-back-agent`, npm scope `@circle-back/*` (lockfile stability).
 
 ## Commands
 
@@ -44,13 +51,16 @@ for the product story; this file is working notes for the coding agent.
 - Sandbox quirks (this machine): npm needs a writable cache
   (`npm_config_cache` under the runtime temp dir); tsx/Next need `TEMP`/`TMP`
   redirected there too; no listening sockets, so server tests call the handler
-  directly; github.com was firewall-blocked until the user allowlisted it.
+  directly; PowerShell here is old and case-insensitive: never bulk `-replace`
+  for renames (it mangles case), use node scripts with exact splits.
 
 ## GCP prod (project `project-8b9ab843-d0d6-4ea4-a11`, region us-central1)
 
-- Cloud Run: `ghostqa-portal`, `ghostqa-engine` (4Gi/2cpu, concurrency 1,
-  3600s timeout), `ghostqa-demo`. Images in `us-central1-docker.pkg.dev/.../ghostqa`.
-- Firestore `(default)` in nam5, bucket `<project>-ghostqa`, registry `ghostqa`.
+- Cloud Run: `charie-portal`, `charie-engine` (4Gi/2cpu, concurrency 1,
+  3600s timeout), `charie-demo`. Images in
+  `us-central1-docker.pkg.dev/.../charie`. Preview: `charie-preview`.
+- Firestore `(default)` in nam5, bucket `<project>-ghostqa` (historic name kept),
+  registry `charie`.
 - Secrets (Engine reads directly; portal gets ENGINE_TOKEN/PORTAL_PASSPHRASE/
   SESSION_KEY as mounted env): META_API_KEY, META_API_BASE_URL
   (https://api.meta.ai/v1), META_SPARK/WONDER/IMAGE/VOICE/SAM_MODEL,
@@ -76,9 +86,8 @@ for the product story; this file is working notes for the coding agent.
 
 ## Open items
 
-- Display grounding boxes + redesign images in the portal ticket page (data ships
-  in findings.json/briefs.json; no UI yet).
 - Custom domain for the portal (needs a user-bought domain + 2 DNS records).
 - Harden `circle-back-agent` (drop Owner), delete its JSON key + the PAT.
-- Merge PR #4 (prod-cloudrun into dev) then the M2-M7 PR when approved.
-- Deploy Guardian (engine + portal images) after merges; then merge its PR too.
+- TURN relay for Meet rooms behind strict NATs (mesh + STUN today).
+- Delete legacy `ghostqa-*` Cloud Run services and the `ghostqa` image repo
+  after the Charie cutover verifies.

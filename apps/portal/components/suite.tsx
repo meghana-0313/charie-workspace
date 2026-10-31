@@ -136,7 +136,7 @@ export function WorkOrderButtons({ id, status }: { id: string; status: string })
       )}
       {(status === "approved" || status === "scheduled") && (
         <button disabled={busy !== ""} className="secondary" onClick={() => run("/api/guardian/nightshift", "run")}>
-          {busy === "run" ? "Night Shift running…" : "Run now (demo the shift)"}
+          {busy === "run" ? "Night shift running…" : "Run now (demo the shift)"}
         </button>
       )}
       {msg && <span className="small" style={{ color: "var(--danger)" }}>{msg}</span>}
@@ -224,7 +224,7 @@ export function NightShiftButton({ orderIds }: { orderIds?: string[] }) {
   }
   return (
     <span className="row">
-      <button disabled={busy} onClick={run}>{busy ? "Shift running…" : "Run Night Shift now"}</button>
+      <button disabled={busy} onClick={run}>{busy ? "Shift running…" : "Run night shift now"}</button>
       {msg && <span className="small muted">{msg}</span>}
     </span>
   );

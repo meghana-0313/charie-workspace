@@ -3,7 +3,7 @@
 
 import { readArtifact } from "./engine";
 import type {
-  BriefView, DigestView, PentestView, SignalClusterView, SweepView, WorkOrderStepView, WorkOrderView, ZoomView,
+  A11yView, BriefView, DigestView, FirstRunView, PentestView, SignalClusterView, SweepView, WorkOrderStepView, WorkOrderView, ZoomView,
 } from "./types";
 
 function base(): string {
@@ -127,4 +127,22 @@ export async function zoomStatus(): Promise<ZoomView | null> {
 
 export async function zoomJoin(meetingUrl: string): Promise<{ id: string } | null> {
   return post<{ id: string }>("/zoom/join", { meetingUrl });
+}
+
+export async function runA11y(targetUrl: string): Promise<A11yView | null> {
+  return post<A11yView>("/a11y/run", { targetUrl }, 300000);
+}
+
+export async function listA11yReports(): Promise<A11yView[]> {
+  const r = await get<{ reports: A11yView[] }>("/a11y/reports");
+  return r?.reports ?? [];
+}
+
+export async function runFirstRun(targetUrl: string): Promise<FirstRunView | null> {
+  return post<FirstRunView>("/firstrun/run", { targetUrl }, 300000);
+}
+
+export async function listFirstRunReports(): Promise<FirstRunView[]> {
+  const r = await get<{ reports: FirstRunView[] }>("/firstrun/reports");
+  return r?.reports ?? [];
 }

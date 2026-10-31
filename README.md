@@ -1,27 +1,34 @@
-# GhostQA - the AI that circles back with proof
+# Meet CHARIE - Autonomous Engineering Intelligence
 
 [![Built with Muse Code](https://img.shields.io/badge/Built%20with-Muse%20Code-0668E1?logo=meta)](https://dev.meta.ai/lp/muse-code)
 
-**One agent. Three perspectives. A closed loop from customer problem to verified fix.**
+**Your software's autonomous companion.**
 
-GhostQA (repo: `circle-back`) is an autonomous product-quality engineer built for the
-Meta Global AI Developer Hackathon 2026. It investigates a real app like a combination of
-a software engineer, a security tester, a usability researcher, and a first-time user,
-then proves the fix worked by re-running the same journey.
+Charie (repo: `charie-workspace`) is an autonomous engineering team built for the
+Meta Global AI Developer Hackathon 2026. File a customer problem and Charie
+investigates the real app, proposes fixes, proves they worked, watches
+production for threats, and meets with you on video. One workspace, three
+products:
 
-Live prod: https://ghostqa-portal-ehfuotlisq-uc.a.run.app (ask the team for the dashboard passphrase).
+| Product | Job | Where |
+|---|---|---|
+| Charie Build | QA, testing, debugging and engineering | Home, Test a repo, Tickets and fixes, UX and redesign, Accessibility, First run |
+| Charie Guard | Runtime security and threat response | Threats, Fix tasks, Security tests |
+| Charie Ops | Production intelligence and reliability | Live signals, Night shift, Meet |
+
+Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (ask the team for the dashboard passphrase).
 
 ## The core loop (the whole product in 6 steps)
 
 1. **Ticket in** - a customer problem arrives ("checkout button does nothing").
-2. **Investigate** - the agent reproduces it in the real app: functional run,
+2. **Investigate** - Charie reproduces it in the real app: functional run,
    first-time-user simulation, accessibility and safe security checks.
 3. **Room** - evidence (screenshots, repro steps, logs, diagnosis) lands in a shared
    issue room where the team discusses and approves one instruction.
 4. **Fix** - the approved instruction goes to the team's coding agent (via MCP) or a
    manual patch.
-5. **Verify** - GhostQA re-runs the exact same journey and diffs before/after.
-6. **Circle back** - the ticket gets a resolution package: what broke, what changed,
+5. **Verify** - Charie re-runs the exact same journey and diffs before/after.
+6. **Proof** - the ticket gets a resolution package: what broke, what changed,
    proof it works now.
 
 > A system that only produces insightful reports is another analysis tool.
@@ -32,18 +39,21 @@ Live prod: https://ghostqa-portal-ehfuotlisq-uc.a.run.app (ask the team for the 
 
 | Piece | Path | Job |
 |---|---|---|
-| Portal (dashboard) | `apps/portal/` | Tickets, issue rooms, evidence viewer, approvals, run/verify triggers. Next.js. Login-gated in prod, open locally. |
-| Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. Exposes an HTTP service in prod, same runs as the CLI. |
-| Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app GhostQA tests. Ships a fixed build for the verify step. |
+| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Login-gated in prod, open locally. |
+| Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. HTTP service in prod, same runs as the CLI. |
+| Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
-| Runtime Guardian | `apps/portal/app/guardian/` + engine `guardian.ts`, `workorders.ts`, `nightshift.ts`, `signals.ts`, `pentest.ts`, `sweep.ts`, `zoom.ts` | Post-deploy suite: incidents, work orders, Night Shift, customer signals, pen-test reports, continuous sweeps, Zoom bots, push alerts. |
+| Charie Guard | `apps/portal/app/guardian/` + engine `guardian.ts`, `workorders.ts`, `nightshift.ts`, `signals.ts`, `pentest.ts`, `sweep.ts` | Post-deploy suite: threats, fix tasks, night shift, live signals, security tests, continuous sweeps, push alerts. |
+| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Zoom bot via Recall.ai stays as the external fallback. |
+| UX, accessibility, first run | `apps/portal/app/ux|a11y|firstrun/` + engine `redesign.ts`, `a11y.ts`, `firstrun.ts` | UI analysis with generated screen redesigns, 8 accessibility checks with grades, 6 first-time-user checks with scores. |
 | Connected repos | `apps/portal/app/repos/` + `lib/repos.ts`, `lib/github.ts`, `lib/gcp.ts` | GitHub native integration: connect a repo, Cloud Build compiles it, Cloud Run hosts it, a ticket files itself, investigation runs, commit status posts back. |
-| Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. |
+| Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs, meet rooms, signals. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. |
 
 Typical flow: file a ticket in the portal, press Run investigation, watch the engine
 drive the demo store, review 6 seeded findings with screenshots and repro steps,
 approve a fix instruction, flip the demo to its fixed build, press Verify, and read
-the before/after proof.
+the before/after proof. Then open UX and redesign for screen alternatives, run an
+accessibility scan and a first run test, and start a Meet room to talk it over.
 
 ## Where things run (Firebase and Google Cloud)
 
@@ -52,11 +62,11 @@ it is the data/auth layer inside that same project:
 
 | Need | Service | Notes |
 |---|---|---|
-| Hosting (all 3 apps) | Cloud Run | Portal, engine, demo as separate services. Chosen over Firebase Hosting because the engine needs Playwright/Chromium. |
-| Database | Cloud Firestore | Tickets, rooms, messages, approvals, runs. See `docs/FIRESTORE_SCHEMA.md`. |
-| File blobs | Cloud Storage | Voice notes, report screenshots, traces. Same bucket the engine uploads reports to. |
+| Hosting (all 3 apps) | Cloud Run | `charie-portal`, `charie-engine`, `charie-demo`. Chosen over Firebase Hosting because the engine needs Playwright/Chromium. |
+| Database | Cloud Firestore | Tickets, rooms, messages, approvals, runs, meet rooms. See `docs/FIRESTORE_SCHEMA.md`. |
+| File blobs | Cloud Storage | Voice notes, report screenshots, traces. Bucket name keeps the historic `-ghostqa` suffix (internal only). |
 | Secrets | Secret Manager | Meta/Baseten keys, engine token, portal passphrase. No `.env` file exists anywhere; the backend reads secrets at runtime. |
-| Images/builds | Artifact Registry + Cloud Build | Container images built from `deploy/Dockerfile.*`. |
+| Images/builds | Artifact Registry + Cloud Build | Container images in the `charie` repo, built from `deploy/Dockerfile.*`. CI deploys on every push to dev. |
 
 Local runs need none of this: file store, no login gate, heuristic analysis.
 
@@ -69,7 +79,7 @@ used only after a real request succeeds, never from a stub.
 |---|---|---|
 | Muse Spark (`muse-spark-1.3`) | Enriches findings with cause/fix prose | Live with `META_API_KEY` (verified) |
 | Muse Wonder (`muse-wonder-1.0`) | Deep-dive tier for hard findings | Live (M5) |
-| Muse Image (`muse-image-1.0`) | Evidence-linked UI redesigns | Live: PNGs for first 2 usability findings (M2) |
+| Muse Image (`muse-image-1.0`) | Evidence-linked UI redesigns | Live: PNGs for usability findings, surfaced on UX and redesign (M2) |
 | Muse Voice (`muse-voice-transcribe-1.0`) | Voice bug reports to tickets | Live: voice-first tickets (M4) |
 | SAM 3.1 (`sam-3-1`) | Screenshot grounding boxes | Live in `findings[].grounding` (M3) |
 | Muse Glimmer (open weights) | Ticket triage | Live when reachable, heuristic fallback (M6) |
@@ -101,28 +111,34 @@ npm run portal:dev
 # -> open http://localhost:3102 in a browser
 ```
 
-Then click through the loop (about 3 minutes):
+Then click through the loop (about 5 minutes):
 
-1. On the dashboard, file a ticket: subject `Checkout button does nothing`,
-   body `Customer tried 3 times, gave up.`, target `http://localhost:3101`.
-   A room opens immediately.
+1. First login shows a 3-step onboarding card. File a ticket: subject
+   `Checkout button does nothing`, body `Customer tried 3 times, gave up.`,
+   target `http://localhost:3101`. A room opens immediately.
 2. On the ticket page press **Run investigation**, wait about a minute, refresh.
    Expect **6 findings**: 1 blocker (checkout 500), 2 usability, 2 accessibility,
    1 security surface note, each with repro steps and screenshots.
-3. Approve any finding's fix instruction to see the approval flow.
-4. For the verify step: stop Terminal 1, restart it with
+3. Open **UX and redesign** in the sidebar: the usability findings appear with
+   written briefs (and generated screens with `META_API_KEY`).
+4. Open **Accessibility** and scan `http://localhost:3101` for a graded report;
+   open **First run** for the new-user score.
+5. Approve any finding's fix instruction to see the approval flow.
+6. For the verify step: stop Terminal 1, restart it with
    `npm run dev:fixed --workspace apps/demo-target` (same URL, fixed build),
    then press **Verify fix** on the ticket page. Expect the before/after diff
    showing findings fixed.
-5. For Runtime Guardian: open `/guardian`, press **Simulate attack**, then **Analyze now**,
-   approve a response on the incident page, and **Verify containment**. Then propose a
-   work order from the incident, approve it, and press **Run Night Shift now** on
-   `/guardian/night` to watch autonomous execution with proofs and a morning digest.
-6. Prefer the CLI? `npm run agent:run -- --target http://localhost:3101`
+7. For Charie Guard: open **Threats**, press **Simulate attack**, then **Analyze now**,
+   approve a response on the incident page. Then propose a fix task from the
+   incident, approve it, and press **Run night shift now** on **Night shift** to
+   watch autonomous execution with proofs and a morning digest.
+8. Open **Meet**, start a room, join from a second tab, and talk: camera, mic,
+   and screen share run peer to peer with no third party.
+9. Prefer the CLI? `npm run agent:run -- --target http://localhost:3101`
    writes the same report to `services/agent-engine/reports/<timestamp>/`.
 
-Tests: `npm test` (engine regression + server + MCP smoke), plus
-`npm run typecheck --workspace services/agent-engine` and
+Tests: `npm test` (engine regression + server + guardian + accessibility suites),
+plus `npm run typecheck --workspace services/agent-engine` and
 `npm run typecheck --workspace apps/portal`.
 
 ## Live-model mode (optional)
@@ -145,7 +161,7 @@ diagnosis. In prod, keys come from Secret Manager instead; see
 | `apps/demo-target/` | ShopFast: intentionally buggy demo store. Run it first. |
 | `services/agent-engine/` | The autonomous loop: explore, simulate user, analyze, report, verify. |
 | `services/mcp-server/` | MCP adapter for coding agents. |
-| `apps/portal/` | Issue rooms UI. |
+| `apps/portal/` | The Charie workspace UI. |
 | `deploy/` | Dockerfiles for the three Cloud Run services. |
 | `docs/` | Architecture, demo script, Meta stack mapping, Firestore schema, roadmap. |
 | `AGENTS.md` | Working notes for AI coding sessions on this repo. |
@@ -157,13 +173,14 @@ diagnosis. In prod, keys come from Secret Manager instead; see
 - [docs/META_STACK.md](docs/META_STACK.md) - every Meta model/API and where it is used
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - database collections
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately *not* in the hackathon build
-  (Zoom agent, pentest, crypto review, mobile) and why
+  and why
 
 ## Scope honesty
 
 The hackathon build covers **web apps only**, one demo target, simulated (not live)
-support ingestion, and safe, authorized checks only. No remote control, no "certified
-secure" claims, no custom video service. Full rationale in `docs/ROADMAP.md`.
+support ingestion, and safe, authorized checks only. Meet rooms use mesh P2P with
+STUN (same-team calls; no TURN relay yet). No remote control, no "certified
+secure" claims. Full rationale in `docs/ROADMAP.md`.
 
 ## Built with Meta
 

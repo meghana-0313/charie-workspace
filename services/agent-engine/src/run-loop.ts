@@ -1,4 +1,4 @@
-// GhostQA run loop - CLI entry.
+// Charie run loop - CLI entry.
 //
 //   Investigate:  npm run run -- --target http://localhost:3101
 //   Verify fix:   npm run run -- --target http://localhost:3101 --verify --baseline ./reports/<ts>
@@ -28,17 +28,17 @@ if (verifyMode && !baselineDir) {
 }
 
 const { loaded } = await loadSecrets();
-if (loaded.length > 0) console.log(`[ghostqa] GCP secrets loaded: ${loaded.join(", ")}`);
+if (loaded.length > 0) console.log(`[charie] GCP secrets loaded: ${loaded.join(", ")}`);
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-// The portal pre-assigns the run dir via GHOSTQA_RUN_ID so it can poll status;
+// The portal pre-assigns the run dir via CHARIE_RUN_ID so it can poll status;
 // CLI runs without it keep generating their own stamp.
 const dirName = runDirName(stamp, verifyMode);
 const reportsRoot = resolve(process.cwd(), "reports");
 const outDir = join(reportsRoot, dirName);
 
-console.log(`[ghostqa] goal: ${goal}`);
-console.log(`[ghostqa] target: ${target} → ${outDir}`);
+console.log(`[charie] goal: ${goal}`);
+console.log(`[charie] target: ${target} → ${outDir}`);
 
 const { trace, findings, verification } = await executeRun({
   targetUrl: target,
@@ -48,8 +48,8 @@ const { trace, findings, verification } = await executeRun({
   outDir,
   reportsRoot,
 });
-console.log(`[ghostqa] journey done: goal ${trace.success ? "REACHED ✅" : "NOT reached ❌"} (${trace.actions.length} actions)`);
-console.log(`[ghostqa] findings: ${findings.length}`);
+console.log(`[charie] journey done: goal ${trace.success ? "REACHED ✅" : "NOT reached ❌"} (${trace.actions.length} actions)`);
+console.log(`[charie] findings: ${findings.length}`);
 for (const f of findings) console.log(`  - [${f.severity}/${f.category}] ${f.title}`);
-console.log(`[ghostqa] report: ${join(outDir, "report.md")}`);
-if (verification) console.log(`[ghostqa] verification: ${verification.summary}`);
+console.log(`[charie] report: ${join(outDir, "report.md")}`);
+if (verification) console.log(`[charie] verification: ${verification.summary}`);

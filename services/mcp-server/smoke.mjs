@@ -8,7 +8,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 const tsxCli = join(dir, "..", "..", "node_modules", "tsx", "dist", "cli.mjs");
 const child = spawn(process.execPath, [tsxCli, "src/index.ts"], {
   cwd: dir,
-  env: { ...process.env, GHOSTQA_REPORTS: join(dir, "fixtures") },
+  env: { ...process.env, CHARIE_REPORTS: join(dir, "fixtures") },
   stdio: ["pipe", "pipe", "inherit"],
 });
 
@@ -48,7 +48,7 @@ try {
   await send("initialize", {
     protocolVersion: "2025-06-18",
     capabilities: {},
-    clientInfo: { name: "ghostqa-smoke", version: "0.0.0" },
+    clientInfo: { name: "charie-smoke", version: "0.0.0" },
   });
   notify("notifications/initialized");
   const tools = await send("tools/list", {});

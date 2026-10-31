@@ -18,9 +18,19 @@ export default async function Dashboard() {
   return (
     <>
       <PageHead
-        title="Overview"
-        sub="Build Intelligence on the left, Runtime Intelligence in the sidebar. File a ticket, run the investigation, verify the fix."
+        title="Meet CHARIE"
+        sub="Your software's autonomous companion. Charie Build tests your product, Charie Guard answers threats, Charie Ops watches production. Start below."
       />
+      {tickets.length === 0 && runs.length === 0 && (
+        <div className="card">
+          <div className="card-title">First time here? Three steps</div>
+          <ol className="onboard">
+            <li><span className="step">1</span><span><Link href="/repos"><strong>Test a repo</strong></Link>. Connect GitHub; Charie builds, deploys, and files the first ticket itself.</span></li>
+            <li><span className="step">2</span><span><a href="#new-ticket"><strong>File a ticket</strong></a>. Describe a customer problem, or run an <Link href="/a11y">accessibility scan</Link> or <Link href="/firstrun">first run test</Link> on any URL.</span></li>
+            <li><span className="step">3</span><span><strong>Approve the fix</strong>. Open the ticket, run the investigation, approve findings in <Link href="/guardian/work">Fix tasks</Link>.</span></li>
+          </ol>
+        </div>
+      )}
       <div className="stats">
         <Stat num={openTickets} label="open tickets" />
         <Stat num={runs.length} label="recent engine runs" />

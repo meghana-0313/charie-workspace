@@ -1,4 +1,4 @@
-# GhostQA portal
+# Charie portal
 
 Tickets → rooms → runs → evidence → approved fix instructions. Local-first:
 JSON-file store now, Firestore + Firebase Auth plug in at the end (types already

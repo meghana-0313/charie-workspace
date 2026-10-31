@@ -14,11 +14,11 @@ const REGION = "us-central1";
 
 export function serviceNameFor(repo: RepoConnection): string {
   const slug = `${repo.owner}-${repo.repo}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
-  return `gqa-${slug || repo.id.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 30)}`;
+  return `charie-${slug || repo.id.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 30)}`;
 }
 
 export function imageFor(repo: RepoConnection, sha: string): string {
-  return `${REGION}-docker.pkg.dev/${gcpProject()}/ghostqa/${serviceNameFor(repo)}:${sha.slice(0, 12)}`;
+  return `${REGION}-docker.pkg.dev/${gcpProject()}/charie/${serviceNameFor(repo)}:${sha.slice(0, 12)}`;
 }
 
 function nodeDockerfile(startCommand: string): string {
@@ -152,7 +152,7 @@ export async function startBuild(repoId: string): Promise<RepoBuild> {
       sha,
       state: "pending",
       targetUrl: portalBase() ? `${portalBase()}/repos/${repo.id}` : undefined,
-      description: "GhostQA build started",
+      description: "Charie build started",
       token: repo.token,
     });
   }
@@ -190,7 +190,7 @@ export async function pollBuild(buildId: string): Promise<RepoBuild> {
       await postCommitStatus({
         owner: repo.owner, repo: repo.repo, sha: build.sha, state: "failure",
         targetUrl: portalBase() ? `${portalBase()}/repos/${repo.id}` : undefined,
-        description: "GhostQA build failed", token: repo.token,
+        description: "Charie build failed", token: repo.token,
       });
     }
     return (await store.getBuild(build.id)) as RepoBuild;
@@ -211,7 +211,7 @@ export async function pollBuild(buildId: string): Promise<RepoBuild> {
     });
     await store.addMessage(ticket.roomId!, {
       authorType: "agent",
-      authorName: "GhostQA",
+      authorName: "Charie",
       body: `Build ${build.id} deployed. Starting investigation of ${appUrl}.`,
     });
     const runId = await spawnEngineRun({ targetUrl: appUrl, goal, verify: false });
@@ -223,7 +223,7 @@ export async function pollBuild(buildId: string): Promise<RepoBuild> {
       await postCommitStatus({
         owner: repo.owner, repo: repo.repo, sha: build.sha, state: "success",
         targetUrl: portalBase() ? `${portalBase()}/tickets/${ticket.id}` : undefined,
-        description: "GhostQA deployed + testing", token: repo.token,
+        description: "Charie deployed + testing", token: repo.token,
       });
     }
     await pushToAll("Repo live and under test", subject, `/tickets/${ticket.id}`);

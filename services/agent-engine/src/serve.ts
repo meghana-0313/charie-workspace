@@ -7,7 +7,7 @@ import { createApp } from "./server.js";
 
 await loadSecrets();
 const port = Number(process.env.PORT ?? 3103);
-const reportsRoot = process.env.GHOSTQA_REPORTS ?? resolve(process.cwd(), "reports");
+const reportsRoot = process.env.CHARIE_REPORTS ?? resolve(process.cwd(), "reports");
 createServer(createApp({ reportsRoot })).listen(port, () => {
   console.log(`[engine] listening on :${port} (reports: ${reportsRoot})`);
 });

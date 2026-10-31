@@ -60,6 +60,14 @@ runs/{runId}/findings/{findingId}   # see Finding type in ARCHITECTURE.md
 verifications/{verificationId}
   findingId, beforeRunId, afterRunId, result: "fixed"|"regressed"|"inconclusive",
   diffSummary, createdAt
+
+meet_rooms/{roomId}            # Charie Meet native video rooms
+  title, createdBy, seq: number (last signal), createdAt, updatedAt
+
+meet_rooms/{roomId}/signals/{seq}   # WebRTC signaling, polled, pruned to 200
+  seq, roomId, from, to ("*" = broadcast),
+  kind: "join"|"leave"|"offer"|"answer"|"candidate",
+  payload (SDP/ICE JSON, "" for join/leave), createdAt
 ```
 
 ## Storage layout (Firebase Storage)

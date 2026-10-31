@@ -12,7 +12,7 @@ function arm(): boolean {
   const pub = process.env.VAPID_PUBLIC ?? "";
   const priv = process.env.VAPID_PRIVATE ?? "";
   if (!pub || !priv) return false;
-  webpush.setVapidDetails("mailto:ghostqa@localhost", pub, priv);
+  webpush.setVapidDetails("mailto:charie@localhost", pub, priv);
   armed = true;
   return true;
 }

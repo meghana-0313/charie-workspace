@@ -8,18 +8,25 @@ import { Icon } from "./icons";
 import { Palette } from "./palette";
 import { useState } from "react";
 
-const BUILD: Array<[string, string, string]> = [
-  ["/", "Overview", "grid"],
-  ["/repos", "Repositories", "repo"],
+const BUILD: Array<[string, string, string, string]> = [
+  ["/", "Home", "grid", "Tickets, runs, status"],
+  ["/repos", "Test a repo", "repo", "Connect GitHub, build, deploy"],
+  ["/tickets", "Tickets and fixes", "ticket", "Report to verified fix"],
+  ["/ux", "UX and redesign", "eye", "UI analysis, new screens"],
+  ["/a11y", "Accessibility", "access", "Checks with grades"],
+  ["/firstrun", "First run", "play", "New user experience"],
 ];
 
-const RUNTIME: Array<[string, string, string]> = [
-  ["/guardian", "Guardian", "shield"],
-  ["/guardian/work", "Work Orders", "order"],
-  ["/guardian/signals", "Signals", "signal"],
-  ["/guardian/night", "Night Shift", "moon"],
-  ["/guardian/security", "Security", "lock"],
-  ["/guardian/zoom", "Meetings", "video"],
+const GUARD: Array<[string, string, string, string]> = [
+  ["/guardian", "Threats", "shield", "Incidents and response"],
+  ["/guardian/work", "Fix tasks", "order", "Approve agent fixes"],
+  ["/guardian/security", "Security tests", "lock", "Pen tests and sweeps"],
+];
+
+const OPS: Array<[string, string, string, string]> = [
+  ["/guardian/signals", "Live signals", "signal", "Production complaints"],
+  ["/guardian/night", "Night shift", "moon", "Overnight agent runs"],
+  ["/guardian/zoom", "Meet", "video", "Built in video calls"],
 ];
 
 function active(path: string, href: string): boolean {
@@ -30,13 +37,13 @@ function active(path: string, href: string): boolean {
 
 export function Sidebar({ env }: { env: string }) {
   const path = usePathname();
-  const section = (label: string, links: Array<[string, string, string]>) => (
+  const section = (label: string, links: Array<[string, string, string, string]>) => (
     <>
       <div className="side-section">{label}</div>
-      {links.map(([href, label2, icon]) => (
+      {links.map(([href, label2, icon, desc]) => (
         <Link key={href} href={href} className={`side-link${active(path, href) ? " on" : ""}`}>
           <Icon name={icon} />
-          {label2}
+          <span>{label2}<span className="side-desc">{desc}</span></span>
         </Link>
       ))}
     </>
@@ -46,12 +53,13 @@ export function Sidebar({ env }: { env: string }) {
       <Link href="/" className="side-brand">
         <span className="side-mark">C</span>
         <span>
-          <span className="side-name">Agent CB</span>
-          <div className="side-sub">GhostQA Suite</div>
+          <span className="side-name">CHARIE</span>
+          <div className="side-sub">Autonomous engineering intelligence</div>
         </span>
       </Link>
-      {section("Build Intelligence", BUILD)}
-      {section("Runtime Intelligence", RUNTIME)}
+      {section("Charie Build", BUILD)}
+      {section("Charie Guard", GUARD)}
+      {section("Charie Ops", OPS)}
       <div className="side-foot">
         <Link href="/settings" className={`side-link${active(path, "/settings") ? " on" : ""}`}>
           <Icon name="gear" />

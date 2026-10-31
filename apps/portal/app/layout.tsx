@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar, Topbar } from "@/components/shell";
 
-export const metadata: Metadata = { title: "Agent CB · GhostQA Suite", description: "Build and Runtime Intelligence: tickets, evidence, fixes, proof." };
+export const metadata: Metadata = { title: "Charie · Autonomous Engineering Intelligence", description: "Meet CHARIE. Your software's autonomous companion: testing, security, production intelligence." };
 
 export const viewport = { themeColor: "#0b0c0f" };
 

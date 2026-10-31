@@ -42,7 +42,7 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
 
   const spark = findings.filter((f) => f.analysisSource === "muse-spark").length;
   const lines = [
-    `# GhostQA run report`,
+    `# Charie run report`,
     ``,
     `- **Goal:** ${trace.goal}`,
     `- **Target:** ${trace.targetUrl} (build: \`${trace.build}\`)`,

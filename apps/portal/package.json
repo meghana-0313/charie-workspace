@@ -2,7 +2,7 @@
   "name": "@circle-back/portal",
   "version": "0.1.0",
   "private": true,
-  "description": "GhostQA portal: tickets, issue rooms, runs, evidence viewer.",
+  "description": "Charie portal: tickets, issue rooms, runs, evidence viewer.",
   "scripts": {
     "dev": "next dev -p 3102",
     "build": "next build",

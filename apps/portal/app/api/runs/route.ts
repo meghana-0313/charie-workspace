@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   await store.setTicketStatus(ticketId, "investigating");
   await store.addMessage(roomId, {
     authorType: "agent",
-    authorName: "GhostQA",
+    authorName: "Charie",
     body: kind === "verify" ? `Verification started against baseline ${baselineRunId}.` : "Investigation started - driving the app now.",
   });
   return NextResponse.json({ runId, status: "running" }, { status: 201 });

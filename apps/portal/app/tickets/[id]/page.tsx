@@ -40,7 +40,7 @@ async function RoomView({ ticketId }: { ticketId: string }) {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], [`/tickets/${ticket.id}`, ticket.subject.slice(0, 40)]]}
+        crumbs={[["/", "Home"], [`/tickets/${ticket.id}`, ticket.subject.slice(0, 40)]]}
         title={<>{ticket.subject} <Badge tone={ticket.status}>{ticket.status}</Badge></>}
         sub={ticket.body}
         actions={<RunButtons ticketId={ticket.id} roomId={room.id} targetUrl={ticket.targetUrl} goal={ticket.goal} baselineRunId={baseline?.runId} />}

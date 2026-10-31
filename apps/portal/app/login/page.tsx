@@ -25,9 +25,9 @@ export default function LoginPage() {
       <div className="card login-card">
         <div className="row" style={{ marginBottom: 4 }}>
           <span className="side-mark">C</span>
-          <strong style={{ fontSize: "var(--text-lg)" }}>Agent CB</strong>
+          <strong style={{ fontSize: "var(--text-lg)" }}>CHARIE</strong>
         </div>
-        <p className="muted small">Build + Runtime Intelligence. Enter the shared dashboard passphrase.</p>
+        <p className="muted small">Autonomous engineering intelligence. Enter the shared dashboard passphrase.</p>
         <form onSubmit={submit} className="stack" style={{ marginTop: 12 }}>
           <input
             type="password"

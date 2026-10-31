@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   const ticket = await store.createTicket({ subject, body, goal, targetUrl, voiceNotePath });
   await store.addMessage(ticket.roomId!, {
     authorType: "agent",
-    authorName: "GhostQA",
+    authorName: "Charie",
     body: `Room opened for "${subject}". Press "Run investigation" to drive ${targetUrl} toward the goal.`,
   });
   return NextResponse.json(ticket, { status: 201 });

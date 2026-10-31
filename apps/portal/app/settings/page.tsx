@@ -22,16 +22,17 @@ export default async function SettingsPage() {
     ["Environment", <Badge tone={env === "Production" ? "minor" : "major"}>{env}</Badge>, process.env.PORTAL_STORE === "firestore" ? "Firestore + Cloud Storage" : "Local JSON files + uploads"],
     ["Engine service", engineOk ? <Badge tone="minor">reachable</Badge> : <Badge tone="failed">unreachable</Badge>, engineUrl],
     ["Meta models", <Badge>engine-side</Badge>, "Keys live in Secret Manager; the engine reads them at runtime. The portal never sees them."],
-    ["Zoom bots", zoom?.configured ? <Badge tone="minor">connected</Badge> : <Badge>not configured</Badge>, zoom?.configured ? `${zoom.bots.length} recent bot(s)` : "Add RECALL_API_KEY to light this up."],
+    ["Meet rooms", <Badge tone="minor">built in</Badge>, "Native video rooms need no setup."],
+    ["Zoom fallback", zoom?.configured ? <Badge tone="minor">connected</Badge> : <Badge>not configured</Badge>, zoom?.configured ? `${zoom.bots.length} recent bot(s)` : "Add RECALL_API_KEY to light this up."],
     ["Push alerts", process.env.VAPID_PUBLIC ? <Badge tone="minor">enabled</Badge> : <Badge>off</Badge>, `${subs.length} subscriber(s)`],
     ["GitHub repos", <Badge tone={repos.length > 0 ? "minor" : undefined}>{repos.length} connected</Badge>, "Connect a repo to build and test it here."],
-    ["Scheduler", <Badge tone="minor">hourly + nightly</Badge>, "Sweep :07 past the hour, Night Shift 03:00 UTC."],
+    ["Scheduler", <Badge tone="minor">hourly + nightly</Badge>, "Sweep :07 past the hour, night shift 03:00 UTC."],
   ];
 
   return (
     <>
       <PageHead
-        crumbs={[["/", "Overview"], ["/settings", "Settings"]]}
+        crumbs={[["/", "Home"], ["/settings", "Settings"]]}
         title="Settings"
         sub="Environment and integrations. Secrets stay in Secret Manager; this page only reports live status."
       />

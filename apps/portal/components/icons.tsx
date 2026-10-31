@@ -15,6 +15,9 @@ const P: Record<string, string> = {
   ticket: '<path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M14 6v2M14 11v2M14 16v2"/>',
   check: '<path d="M4 12l5 5L20 6"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
+  access: '<circle cx="12" cy="5" r="2"/><path d="M4 9.5h16M12 9.5V14m0 0l-3.5 7M12 14l3.5 7"/>',
+  play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/>',
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof P & string; size?: number }) {

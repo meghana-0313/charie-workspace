@@ -6,14 +6,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const COMMANDS: Array<[string, string, string]> = [
-  ["Overview", "/", "dashboard, home, tickets"],
-  ["Repositories", "/repos", "github, connect, build"],
-  ["Guardian incidents", "/guardian", "threats, monitoring, runtime"],
-  ["Work orders", "/guardian/work", "remediation, approve"],
-  ["Customer signals", "/guardian/signals", "support, inbox, sentiment"],
-  ["Night Shift", "/guardian/night", "overnight, digest, autonomous"],
-  ["Security scans", "/guardian/security", "pentest, headers, tls"],
-  ["Meeting bots", "/guardian/zoom", "zoom, recall, standup"],
+  ["Home", "/", "dashboard, overview, tickets"],
+  ["Test a repo", "/repos", "github, connect, build, repositories"],
+  ["Tickets and fixes", "/tickets", "report, bug, verify"],
+  ["UX and redesign", "/ux", "design, screens, usability, mockup"],
+  ["Accessibility", "/a11y", "a11y, contrast, labels, wcag"],
+  ["First run", "/firstrun", "onboarding, new user, landing"],
+  ["Threats", "/guardian", "incidents, monitoring, runtime"],
+  ["Fix tasks", "/guardian/work", "remediation, approve, work orders"],
+  ["Security tests", "/guardian/security", "pentest, headers, tls"],
+  ["Live signals", "/guardian/signals", "support, inbox, sentiment, complaints"],
+  ["Night shift", "/guardian/night", "overnight, digest, autonomous"],
+  ["Meet", "/guardian/zoom", "video, call, standup, zoom"],
   ["Settings", "/settings", "environment, integrations"],
   ["New ticket", "/#new-ticket", "file, report, bug"],
 ];
