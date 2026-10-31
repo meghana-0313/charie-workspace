@@ -21,7 +21,7 @@ export function GuestLobby({ roomId, roomTitle, token }: { roomId: string; roomT
     if (!name.trim() || !issue.trim() || !consent || busy) return;
     setBusy(true);
     setError("");
-    const res = await fetch(`/api/meet/rooms/${roomId}/guest`, {
+    const res = await fetch(`/api/meet/rooms/${roomId}/guest?token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ token, name: name.trim(), issue: issue.trim(), consent }),
