@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
+import type { ApiKey, Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, TeamSeat, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -39,6 +39,9 @@ const repos = file<Record<string, RepoConnection>>("repos", {});
 const builds = file<Record<string, RepoBuild>>("builds", {});
 const meetRooms = file<Record<string, MeetRoom>>("meet-rooms", {});
 const meetSignals = file<Record<string, MeetSignal[]>>("meet-signals", {});
+const seats = file<Record<string, TeamSeat>>("team-seats", {});
+const apiKeys = file<Record<string, ApiKey>>("api-keys", {});
+const settings = file<Record<string, string>>("settings", {});
 
 const now = () => new Date().toISOString();
 
@@ -258,5 +261,57 @@ export const fileStore = {
   },
   async listMeetSignals(roomId: string, since: number): Promise<MeetSignal[]> {
     return (meetSignals.read()[roomId] ?? []).filter((s) => s.seq > since);
+  },
+
+  async listSeats(): Promise<TeamSeat[]> {
+    return Object.values(seats.read()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+  async getSeatByName(name: string): Promise<TeamSeat | null> {
+    return Object.values(seats.read()).find((s) => s.name.toLowerCase() === name.toLowerCase()) ?? null;
+  },
+  async saveSeat(seat: TeamSeat): Promise<void> {
+    const all = seats.read();
+    all[seat.id] = seat;
+    seats.write(all);
+  },
+  async deleteSeat(id: string): Promise<void> {
+    const all = seats.read();
+    delete all[id];
+    seats.write(all);
+  },
+  async touchSeatLogin(id: string): Promise<void> {
+    const all = seats.read();
+    if (all[id]) {
+      all[id].lastLoginAt = now();
+      seats.write(all);
+    }
+  },
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    return Object.values(apiKeys.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getApiKeyByPrefix(prefix: string): Promise<ApiKey | null> {
+    return Object.values(apiKeys.read()).find((k) => k.prefix === prefix && !k.revoked) ?? null;
+  },
+  async saveApiKey(key: ApiKey): Promise<void> {
+    const all = apiKeys.read();
+    all[key.id] = key;
+    apiKeys.write(all);
+  },
+  async touchApiKey(id: string): Promise<void> {
+    const all = apiKeys.read();
+    if (all[id]) {
+      all[id].lastUsedAt = now();
+      apiKeys.write(all);
+    }
+  },
+
+  async getSetting(key: string): Promise<string | null> {
+    return settings.read()[key] ?? null;
+  },
+  async setSetting(key: string, value: string): Promise<void> {
+    const all = settings.read();
+    all[key] = value;
+    settings.write(all);
   },
 };

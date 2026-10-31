@@ -183,10 +183,11 @@ export interface PentestView {
   id: string;
   at: string;
   targets: string[];
-  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string }>;
+  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string; owasp?: string }>;
   passed: number;
   failed: number;
   grade: string;
+  recon?: { server: string; poweredBy: string; tech: string[]; endpoints: string[] };
 }
 
 export interface DigestView {
@@ -196,6 +197,16 @@ export interface DigestView {
   pentest: PentestView | null;
   digest: string;
   durationMs: number;
+}
+
+export interface LogWatchView {
+  id: string;
+  at: string;
+  projectId: string;
+  windowMinutes: number;
+  configured: boolean;
+  total: number;
+  groups: Array<{ signature: string; service: string; count: number; sample: string; firstSeen: string; lastSeen: string }>;
 }
 
 export interface ZoomView {
@@ -209,10 +220,11 @@ export interface A11yView {
   id: string;
   at: string;
   targetUrl: string;
-  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string }>;
+  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string; owasp?: string }>;
   passed: number;
   failed: number;
   grade: string;
+  recon?: { server: string; poweredBy: string; tech: string[]; endpoints: string[] };
 }
 
 export interface FirstRunView {
@@ -232,6 +244,27 @@ export interface MeetRoom {
   seq: number; // last signal sequence number
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TeamSeat {
+  id: string;
+  name: string;
+  role: "admin" | "member";
+  salt: string;
+  passHash: string;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface ApiKey {
+  id: string;
+  prefix: string;
+  name: string;
+  salt: string;
+  hash: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revoked: boolean;
 }
 
 export type MeetSignalKind = "join" | "leave" | "offer" | "answer" | "candidate";

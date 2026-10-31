@@ -4,6 +4,7 @@ import { gradeA11ySnapshot, runA11y } from "../src/a11y.js";
 import type { A11ySnapshot, SnapBrowser } from "../src/a11y.js";
 import { gradeFirstRunSnapshot, runFirstRun } from "../src/firstrun.js";
 import type { FirstRunSnapshot } from "../src/firstrun.js";
+import { groupEntries, runLogWatch } from "../src/logwatch.js";
 
 let n = 0;
 const ok = (cond: unknown, msg: string) => { n++; assert.ok(cond, msg); };
@@ -76,5 +77,36 @@ const live2 = await runFirstRun("https://shop.test", {
   ]),
 });
 ok(live2.score === 100 && live2.steps.length === 6, "stubbed first run scores");
+
+// Log watch grouping.
+const grouped = groupEntries([
+  { timestamp: "2026-01-01T00:00:00Z", severity: "ERROR", resource: { labels: { service_name: "api" } }, httpRequest: { status: 500 }, textPayload: "boom" },
+  { timestamp: "2026-01-01T00:01:00Z", severity: "ERROR", resource: { labels: { service_name: "api" } }, httpRequest: { status: 500 }, textPayload: "boom again" },
+  { timestamp: "2026-01-01T00:02:00Z", severity: "ERROR", resource: { labels: { service_name: "web" } }, textPayload: "disk full" },
+]);
+ok(grouped.length === 2, "two signatures grouped");
+ok(grouped[0].count === 2 && grouped[0].service === "api", "5xx grouped by service+status");
+ok(grouped[1].signature.includes("disk full"), "message head in signature");
+
+// Log watch run with stubbed metadata + logging APIs.
+const logStub = (async (url: string) => {
+  if (String(url).includes("metadata.google.internal")) {
+    return { ok: true, json: async () => ({ access_token: "tok" }) };
+  }
+  return {
+    ok: true,
+    json: async () => ({
+      entries: [
+        { timestamp: "2026-01-01T00:00:00Z", severity: "ERROR", resource: { labels: { service_name: "api" } }, httpRequest: { status: 503 }, textPayload: "upstream down" },
+      ],
+    }),
+  };
+}) as unknown as typeof fetch;
+const lw = await runLogWatch("proj-test", { fetchImpl: logStub });
+ok(lw.configured && lw.total === 1 && lw.groups[0].signature.includes("http-503"), "stubbed run reports");
+const lwOff = await runLogWatch("proj-test", {
+  fetchImpl: (async () => { throw new Error("no metadata"); }) as unknown as typeof fetch,
+});
+ok(!lwOff.configured && lwOff.groups.length === 0, "no GCP degrades honestly");
 
 console.log(`access: ${n} assertions passed`);

@@ -3,7 +3,7 @@
 
 import { readArtifact } from "./engine";
 import type {
-  A11yView, BriefView, DigestView, FirstRunView, PentestView, SignalClusterView, SweepView, WorkOrderStepView, WorkOrderView, ZoomView,
+  A11yView, BriefView, DigestView, FirstRunView, LogWatchView, PentestView, SignalClusterView, SweepView, WorkOrderStepView, WorkOrderView, ZoomView,
 } from "./types";
 
 function base(): string {
@@ -145,4 +145,13 @@ export async function runFirstRun(targetUrl: string): Promise<FirstRunView | nul
 export async function listFirstRunReports(): Promise<FirstRunView[]> {
   const r = await get<{ reports: FirstRunView[] }>("/firstrun/reports");
   return r?.reports ?? [];
+}
+
+export async function runLogWatch(projectId: string): Promise<LogWatchView | null> {
+  return post<LogWatchView>("/guardian/logwatch", { projectId }, 120000);
+}
+
+export async function lastLogWatch(): Promise<LogWatchView | null> {
+  const r = await get<{ report: LogWatchView | null }>("/guardian/logwatch");
+  return r?.report ?? null;
 }

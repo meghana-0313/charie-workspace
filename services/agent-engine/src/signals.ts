@@ -11,7 +11,7 @@ import { secret } from "./secrets.js";
 
 export interface SignalMessage {
   id: string;
-  channel: "support" | "chat" | "call" | "review";
+  channel: "support" | "chat" | "call" | "review" | "logs";
   author: string;
   text: string;
   ts: string;

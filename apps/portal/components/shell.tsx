@@ -5,7 +5,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "./icons";
+import { CharieMark } from "./mark";
 import { Palette } from "./palette";
+import { LogoutButton, ThemeToggle } from "./theme";
 import { useState } from "react";
 
 const BUILD: Array<[string, string, string, string]> = [
@@ -51,7 +53,7 @@ export function Sidebar({ env }: { env: string }) {
   return (
     <aside className="sidebar">
       <Link href="/" className="side-brand">
-        <span className="side-mark">C</span>
+        <span className="side-mark"><CharieMark /></span>
         <span>
           <span className="side-name">CHARIE</span>
           <div className="side-sub">Autonomous engineering intelligence</div>
@@ -61,10 +63,15 @@ export function Sidebar({ env }: { env: string }) {
       {section("Charie Guard", GUARD)}
       {section("Charie Ops", OPS)}
       <div className="side-foot">
+        <Link href="/team" className={`side-link${active(path, "/team") ? " on" : ""}`}>
+          <Icon name="access" />
+          Team
+        </Link>
         <Link href="/settings" className={`side-link${active(path, "/settings") ? " on" : ""}`}>
           <Icon name="gear" />
           Settings
         </Link>
+        <LogoutButton />
         <span className={`env${env === "Development" ? " env-dev" : ""}`}>
           <span className="env-dot" />
           {env}
@@ -87,6 +94,7 @@ export function Topbar() {
         </button>
         <div className="topbar-right">
           <span className="small muted">ticket → evidence → fix → proof</span>
+          <ThemeToggle />
         </div>
       </div>
       {open && <Palette close={() => setOpen(false)} />}

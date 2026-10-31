@@ -12,7 +12,8 @@
 //   POST /nightshift/run  GET /nightshift/digests
 //   POST /signals/ingest  GET /signals/clusters  POST /signals/seed
 //   POST /pentest/run  GET /zoom/status  POST /zoom/join
-//   POST /a11y/run  GET /a11y/reports  POST /firstrun/run  GET /firstrun/reports
+//   POST /a11y/run  GET /a11y/reports  POST /firstrun/run  GET /firstrun/reports
+//   POST /guardian/logwatch  GET /guardian/logwatch
 //
 // Auth: x-engine-token must equal the ENGINE_TOKEN secret. When no token is
 // configured (local dev without GCP), auth is skipped with a one-time warning.
@@ -27,7 +28,8 @@ import { runA11y } from "./a11y.js";
 import { runFirstRun } from "./firstrun.js";
 import { detectSignals, investigate, simulateResponse, verifyContainment } from "./guardian.js";
 import { executeRun } from "./job.js";
-import { loadDigests, runNightShift } from "./nightshift.js";
+import { loadDigests, runNightShift } from "./nightshift.js";
+import { runLogWatch } from "./logwatch.js";
 import { runPentest } from "./pentest.js";
 import { secret } from "./secrets.js";
 import { appendMessages, clusterMessages, gradeMessage, loadMessages, seedMessages } from "./signals.js";
@@ -447,7 +449,7 @@ export function createApp(opts: ServerOpts): RequestListener {
           }
           const stamped: SignalMessage[] = msgs.map((m, i) => ({
             id: `sig_${Date.now().toString(36)}_${i}`,
-            channel: (["support", "chat", "call", "review"].includes(m.channel ?? "") ? m.channel : "support") as SignalMessage["channel"],
+            channel: (["support", "chat", "call", "review", "logs"].includes(m.channel ?? "") ? m.channel : "support") as SignalMessage["channel"],
             author: (m.author ?? "anonymous").slice(0, 120),
             text: m.text as string,
             ts: new Date().toISOString(),
@@ -587,6 +589,45 @@ export function createApp(opts: ServerOpts): RequestListener {
 
         if (req.method === "GET" && url.pathname === "/firstrun/reports") {
           send(res, 200, { reports: loadReports("firstrun.json") });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/guardian/logwatch") {
+          const parsed = await jsonBody(req);
+          const raw = (parsed.ok ? parsed.body.projectId : null) as string | undefined;
+          const projectId = (raw && raw.trim()) || process.env.GCP_PROJECT_ID || "";
+          if (!projectId) {
+            send(res, 400, { error: "projectId required (body or GCP_PROJECT_ID env)" });
+            return;
+          }
+          try {
+            const report = await runLogWatch(projectId);
+            saveReport("logwatch.json", report);
+            if (report.configured && report.groups.length > 0) {
+              const stamped: SignalMessage[] = report.groups.slice(0, 5).map((g, i) => ({
+                id: `lw_${Date.now().toString(36)}_${i}`,
+                channel: "logs",
+                author: `log-watch:${g.service}`,
+                text: `${g.count}x in 60m: ${g.signature}. Sample: ${g.sample.slice(0, 200)}`,
+                ts: new Date().toISOString(),
+              }));
+              for (const m of stamped) {
+                const gr = await gradeMessage(m);
+                m.sentiment = gr.sentiment;
+                if (gr.theme) m.theme = gr.theme;
+              }
+              appendMessages(dataRoot, stamped);
+            }
+            send(res, 200, report);
+          } catch (e) {
+            send(res, 502, { error: `log watch failed: ${(e as Error).message}` });
+          }
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/guardian/logwatch") {
+          const reports = loadReports("logwatch.json");
+          send(res, 200, { report: reports.at(-1) ?? null });
           return;
         }
 

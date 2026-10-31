@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
+import type { ApiKey, Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, TeamSeat, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -223,5 +223,48 @@ export const firestoreStore = {
     const snap = await firestore().collection("meet_rooms").doc(roomId).collection("signals")
       .where("seq", ">", since).orderBy("seq").limit(200).get();
     return snap.docs.map((d) => d.data() as MeetSignal);
+  },
+
+  async listSeats(): Promise<TeamSeat[]> {
+    const snap = await firestore().collection("team_seats").orderBy("createdAt").get();
+    return snap.docs.map((d) => d.data() as TeamSeat);
+  },
+  async getSeatByName(name: string): Promise<TeamSeat | null> {
+    const snap = await firestore().collection("team_seats").where("nameLower", "==", name.toLowerCase()).limit(1).get();
+    return snap.empty ? null : (snap.docs[0].data() as TeamSeat);
+  },
+  async saveSeat(seat: TeamSeat): Promise<void> {
+    await firestore().collection("team_seats").doc(seat.id).set({ ...seat, nameLower: seat.name.toLowerCase() });
+  },
+  async deleteSeat(id: string): Promise<void> {
+    await firestore().collection("team_seats").doc(id).delete().catch(() => {});
+  },
+  async touchSeatLogin(id: string): Promise<void> {
+    await firestore().collection("team_seats").doc(id).update({ lastLoginAt: now() }).catch(() => {});
+  },
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    const snap = await firestore().collection("api_keys").orderBy("createdAt", "desc").get();
+    return snap.docs.map((d) => d.data() as ApiKey);
+  },
+  async getApiKeyByPrefix(prefix: string): Promise<ApiKey | null> {
+    const snap = await firestore().collection("api_keys").where("prefix", "==", prefix).limit(1).get();
+    if (snap.empty) return null;
+    const k = snap.docs[0].data() as ApiKey;
+    return k.revoked ? null : k;
+  },
+  async saveApiKey(key: ApiKey): Promise<void> {
+    await firestore().collection("api_keys").doc(key.id).set(key);
+  },
+  async touchApiKey(id: string): Promise<void> {
+    await firestore().collection("api_keys").doc(id).update({ lastUsedAt: now() }).catch(() => {});
+  },
+
+  async getSetting(key: string): Promise<string | null> {
+    const d = await firestore().collection("settings").doc(key).get();
+    return d.exists ? String((d.data() as { value: string }).value) : null;
+  },
+  async setSetting(key: string, value: string): Promise<void> {
+    await firestore().collection("settings").doc(key).set({ value, updatedAt: now() });
   },
 };
