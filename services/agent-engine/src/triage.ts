@@ -1,7 +1,7 @@
 // Triage: ticket text → runnable goal + severity pre-grade.
-// Heuristic v0; Muse Glimmer takes over via GLIMMER_ENDPOINT in M6.
+// Muse Glimmer (M6) when reachable, heuristic fallback otherwise.
 
-import { secret } from "./secrets.js";
+import { glimmerComplete, parseTriage } from "./glimmer.js";
 
 export function extractGoal(subject: string, body: string): string {
   const text = `${subject.trim()}. ${body.trim()}`;
@@ -16,8 +16,18 @@ export function preGrade(subject: string, body: string): "blocker" | "major" | "
   return "minor";
 }
 
-export async function glimmerTriage(_subject: string, _body: string): Promise<{ goal: string; grade: string } | null> {
-  if (!secret("GLIMMER_ENDPOINT")) return null;
-  console.warn("[triage] Muse Glimmer endpoint set but integration pending (M6); heuristic used");
-  return null;
+export async function glimmerTriage(subject: string, body: string): Promise<{ goal: string; grade: string } | null> {
+  const out = await glimmerComplete(
+    [
+      {
+        role: "system",
+        content:
+          "You triage customer bug reports. Reply with exactly two lines: 'GOAL: <the user task to verify, max 140 chars>' then 'GRADE: <blocker|major|minor>'. No other text.",
+      },
+      { role: "user", content: `Subject: ${subject}\nBody: ${body}` },
+    ],
+    { quiet: true },
+  );
+  if (!out) return null;
+  return parseTriage(out);
 }

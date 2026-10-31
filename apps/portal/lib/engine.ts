@@ -76,6 +76,38 @@ export async function readPacket(runId: string, findingId: string): Promise<stri
   return f ? f.data.toString("utf8") : null;
 }
 
+/** Goal extraction via engine triage (Glimmer when live). Null on any failure. */
+export async function triageTicket(subject: string, body: string): Promise<{ goal: string; grade: string; source: string } | null> {
+  try {
+    const res = await fetch(`${base()}/triage`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ subject, body }),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { goal: string; grade: string; source: string };
+  } catch {
+    return null;
+  }
+}
+
+/** Voice note to subject/body via engine transcription. Null on any failure. */
+export async function transcribeNote(blob: string): Promise<{ subject: string; body: string } | null> {
+  try {
+    const res = await fetch(`${base()}/transcribe`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ blob }),
+      signal: AbortSignal.timeout(120000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { subject: string; body: string };
+  } catch {
+    return null;
+  }
+}
+
 /** Fetch a report artifact (e.g. screenshots). Null when missing. */
 export async function readArtifact(runId: string, rel: string[]): Promise<{ data: Buffer; type: string } | null> {
   const res = await fetch(

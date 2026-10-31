@@ -3,7 +3,23 @@
 // optionally enriches cause/fix prose when META_API_KEY is set.
 
 import { enrichFinding, hasMetaKey } from "./meta-client.js";
+import { secondOpinion } from "./baseten.js";
+import { groundControls } from "./grounding.js";
+import { deepDive, needsDeepDive } from "./wonder.js";
+import { join } from "node:path";
 import type { ConfusionSignal, Finding, JourneyTrace } from "./types.js";
+
+/** Noun-ish labels for SAM: quoted phrases first, else longest plain words. */
+export function groundingLabels(title: string): string[] {
+  const quoted = [...title.matchAll(/"([^"]+)"/g)].map((m) => m[1].trim()).filter(Boolean);
+  if (quoted.length > 0) return quoted.slice(0, 3);
+  const stop = new Set(["the", "with", "and", "for", "are", "from", "into", "does"]);
+  return title
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 3 && !stop.has(w))
+    .slice(0, 2);
+}
 
 function signalsOf(trace: JourneyTrace, signal: ConfusionSignal["signal"]): ConfusionSignal[] {
   return trace.confusionSignals.filter((s) => s.signal === signal);
@@ -17,7 +33,7 @@ function allShots(trace: JourneyTrace): string[] {
   return trace.actions.map((a) => a.screenshot).filter((s): s is string => !!s);
 }
 
-export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
+export async function analyze(trace: JourneyTrace, shotsDir?: string): Promise<Finding[]> {
   const findings: Finding[] = [];
   const logs = trace.events.map((e) => `[${e.kind}] ${e.detail}`);
 
@@ -193,6 +209,42 @@ export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
     );
   } else {
     console.log("[analyst] heuristic mode (set META_API_KEY for Muse Spark enrichment)");
+  }
+
+  // Muse Wonder deep dives for low-confidence / multi-component findings.
+  await Promise.all(
+    findings.filter(needsDeepDive).map(async (f) => {
+      const dive = await deepDive(f);
+      if (dive) {
+        f.suspectedCause = dive.rootCause;
+        f.suggestedFix = dive.fixPlan;
+        f.analysisSource = "muse-wonder";
+      }
+    }),
+  );
+
+  // Spark Open second opinion: disagreement lowers confidence one notch.
+  await Promise.all(
+    findings.map(async (f) => {
+      if (f.confidence === "low") return;
+      const second = await secondOpinion(f);
+      if (second && second.severity !== f.severity) {
+        f.confidence = f.confidence === "high" ? "medium" : "low";
+        console.log(`[analyst] Spark Open disagrees on ${f.id} (${f.severity} vs ${second.severity}) - confidence lowered`);
+      }
+    }),
+  );
+
+  // SAM grounding for the first screenshot of each finding with evidence.
+  if (shotsDir) {
+    await Promise.all(
+      findings.map(async (f) => {
+        const shot = f.evidence.screenshots[0];
+        if (!shot) return;
+        const boxes = await groundControls(join(shotsDir, shot), groundingLabels(f.title));
+        if (boxes.length > 0) f.grounding = [{ screenshot: shot, boxes }];
+      }),
+    );
   }
 
   return findings;

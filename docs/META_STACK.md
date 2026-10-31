@@ -8,18 +8,18 @@ never from a stub.** Judges can trace each one to a file.
 
 | Meta model | Real job in the product | Code | Status |
 |---|---|---|---|
-| **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; later, journey planner | `services/agent-engine/src/analyst.ts` via `meta-client.ts` | Wired, needs `META_API_KEY` |
-| **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Interface + selector live; model call pending (M5) |
-| **Muse Image** | Evidence-linked UI redesigns: 2-3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Written-brief fallback live; images pending (M2) |
-| **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` | Upload + storage live; transcription pending (M4) |
-| **SAM 3.1** | Screenshot grounding: segments cited UI controls → bounding boxes on failure screenshots, before/after diff regions | `services/agent-engine/src/grounding.ts` | Interface live, whole-shot fallback; model pending (M3) |
+| **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; later, journey planner | `services/agent-engine/src/analyst.ts` via `meta-client.ts` | Live with `META_API_KEY` (key verified 200); heuristic fallback |
+| **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Live: deep dives replace low-confidence prose (M5) |
+| **Muse Image** | Evidence-linked UI redesigns: 2-3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Live: PNGs in `redesigns/` + briefs.json, first 2 usability findings (M2) |
+| **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` + engine `/transcribe` | Live: voice-first tickets (M4) |
+| **SAM 3.1** | Screenshot grounding: segments cited UI controls → bounding boxes on failure screenshots, before/after diff regions | `services/agent-engine/src/grounding.ts` | Live: boxes in `findings[].grounding`, whole-shot fallback (M3) |
 
 ## Open weights (spend: Baseten / Modal credits - NOT interchangeable with Model API credits)
 
 | Meta model | Real job in the product | Runtime | Status |
 |---|---|---|---|
-| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Second-opinion analyst: independently re-grades Spark findings; disagreement lowers confidence | Hosted open-weight endpoint (e.g. Baseten) | Planned (M7) |
-| **Muse Glimmer** | Lightweight triage: ticket → goal extraction, severity pre-grade, finding dedup | Baseten or Modal; local only if laptop VRAM checks out | Heuristic live (`triage.ts`, wired to portal); model pending (M6) |
+| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Second-opinion analyst: independently re-grades Spark findings; disagreement lowers confidence | Baseten Model API (`src/baseten.ts`) | Live (slug verified 200); disagreement lowers confidence (M7) |
+| **Muse Glimmer** | Lightweight triage: ticket → goal extraction, severity pre-grade, finding dedup | Ollama-local default (`muse-glimmer:30b`), any OpenAI-compatible endpoint | Live when reachable via engine `/triage`, heuristic fallback (M6) |
 
 > No giant weight downloads on the Windows laptop without a hardware check first.
 > Open-weight integrations are provider-endpoint-first.
@@ -28,7 +28,7 @@ never from a stub.** Judges can trace each one to a file.
 
 | Tool | Real job | Status |
 |---|---|---|
-| **Muse Code** | Built this repo; at runtime, consumes MCP fix packets (`mcp-packets/*.md` → `services/mcp-server/`) and returns fixes for verification | Packets live; server planned (M8) |
+| **Muse Code** | Built this repo; at runtime, consumes MCP fix packets (`mcp-packets/*.md` → `services/mcp-server/`) and returns fixes for verification | Packets + stdio server live, 4/4 smoke (M8) |
 
 ## Configuration
 
@@ -52,7 +52,9 @@ META_VOICE_MODEL             # muse-voice-transcribe-1.0
 META_SAM_MODEL               # sam-3-1
 SPARK_OPEN_MODEL_ID          # meta-models/muse-spark-open-1026
 SPARK_OPEN_ENDPOINT          # https://inference.baseten.co/v1
-GLIMMER_ENDPOINT             # (M6; Ollama-local default, hosted endpoint optional)
+GLIMMER_ENDPOINT             # default http://localhost:11434/v1 (Ollama)
+GLIMMER_MODEL                # default muse-glimmer:30b
+GLIMMER_API_KEY              # only for hosted endpoints (omit for Ollama)
 BASETEN_API_KEY              # Baseten Model API key (open weights)
 MODAL_CREDENTIALS            # (backup for open weights)
 ```
@@ -63,10 +65,10 @@ Local access needs the Secret Manager Secret Accessor role
 ## Milestones (vertical slice first, then incremental)
 
 - **M0 DONE:** buggy demo-target + explore→analyze→report→verify loop, heuristic mode.
-- **M1:** Spark live (key + endpoint confirm; first real inference).
-- **M2:** Image redesigns in the report. **M3:** SAM grounding boxes. **M4:** voice tickets.
-- **M5:** Wonder deep-dive escalation. **M6:** Glimmer triage. **M7:** Spark Open second opinion.
-- **M8:** Portal rooms + MCP server serving findings to Muse Code.
+- **M1 DONE:** Spark live (key verified 200; first real inference in prod).
+- **M2 DONE:** Image redesigns in the report. **M3 DONE:** SAM grounding boxes. **M4 DONE:** voice tickets.
+- **M5 DONE:** Wonder deep-dive escalation. **M6 DONE:** Glimmer triage. **M7 DONE:** Spark Open second opinion.
+- **M8 DONE:** Portal rooms + MCP server serving findings to Muse Code.
 
 ## Why this mapping wins points
 

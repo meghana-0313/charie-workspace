@@ -74,6 +74,8 @@ for the product story; this file is working notes for the coding agent.
 
 ## Open items
 
-- Wire M2/M3/M4/M5 model calls, M6 Glimmer triage, M7 Spark Open second opinion.
+- Display grounding boxes + redesign images in the portal ticket page (data ships
+  in findings.json/briefs.json; no UI yet).
 - Custom domain for the portal (needs a user-bought domain + 2 DNS records).
-- Merge PR #4 (prod-cloudrun into dev) when the user approves.
+- Harden `circle-back-agent` (drop Owner), delete its JSON key + the PAT.
+- Merge PR #4 (prod-cloudrun into dev) then the M2-M7 PR when approved.
