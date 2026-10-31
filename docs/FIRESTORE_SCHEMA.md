@@ -39,6 +39,17 @@ incidents/{incidentId}          # Runtime Guardian; simulated: true always
 push_subscriptions/{sha256(endpoint)}
   endpoint, keys: { p256dh, auth }, createdAt
 
+repos/{repoId}               # Connected GitHub repos
+  owner, repo, branch, subdir, startCommand,
+  visibility: "public"|"private", hasToken, token?,
+  status: "connected"|"building"|"live"|"failed",
+  lastSha?, appUrl?, ticketId?, createdAt, updatedAt
+
+builds/{buildId}             # Repo Cloud Builds (query by repoId, sort in code)
+  repoId, sha, cloudBuildId, strategy: "dockerfile"|"node"|"python",
+  status: "queued"|"working"|"success"|"failure"|"deployed"|"error",
+  appUrl?, ticketId?, detail?, createdAt, updatedAt
+
 runs/{runId}
   ticketId|roomId, kind: "investigate"|"verify",
   targetUrl, buildId, goal, startedAt, finishedAt, status

@@ -37,6 +37,7 @@ Live prod: https://ghostqa-portal-ehfuotlisq-uc.a.run.app (ask the team for the 
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app GhostQA tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
 | Runtime Guardian | `apps/portal/app/guardian/` + engine `guardian.ts`, `workorders.ts`, `nightshift.ts`, `signals.ts`, `pentest.ts`, `sweep.ts`, `zoom.ts` | Post-deploy suite: incidents, work orders, Night Shift, customer signals, pen-test reports, continuous sweeps, Zoom bots, push alerts. |
+| Connected repos | `apps/portal/app/repos/` + `lib/repos.ts`, `lib/github.ts`, `lib/gcp.ts` | GitHub native integration: connect a repo, Cloud Build compiles it, Cloud Run hosts it, a ticket files itself, investigation runs, commit status posts back. |
 | Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. |
 
 Typical flow: file a ticket in the portal, press Run investigation, watch the engine
