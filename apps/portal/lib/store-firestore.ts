@@ -17,6 +17,11 @@ function firestore() {
 
 const now = () => new Date().toISOString();
 
+/** Firestore rejects `undefined` values — drop them (keeps optional fields safe). */
+function clean<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
 export const firestoreStore = {
   async listTickets(): Promise<Ticket[]> {
     const snap = await firestore().collection("tickets").orderBy("createdAt", "desc").get();
@@ -36,7 +41,7 @@ export const firestoreStore = {
     ticket.roomId = room.id;
     ticket.status = "in-room";
     ticket.updatedAt = now();
-    await fs.collection("tickets").doc(ticket.id).set(ticket);
+    await fs.collection("tickets").doc(ticket.id).set(clean({ ...ticket }));
     await fs.collection("rooms").doc(room.id).set(room);
     return ticket;
   },
@@ -85,7 +90,7 @@ export const firestoreStore = {
   },
   async createRun(input: Omit<PortalRun, "status" | "createdAt">): Promise<PortalRun> {
     const run: PortalRun = { ...input, status: "running", createdAt: now() };
-    await firestore().collection("runs").doc(run.id).set(run);
+    await firestore().collection("runs").doc(run.id).set(clean({ ...run }));
     return run;
   },
   async setRunStatus(id: string, status: PortalRun["status"]): Promise<void> {
