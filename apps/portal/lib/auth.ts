@@ -41,9 +41,13 @@ export function checkSeatSecret(secret: string, salt: string, hash: string): boo
 /** Mint a session. Name "" = owner (legacy shared passphrase). */
 export function mintSession(name = ""): string {
   const exp = Date.now() + TTL_MS;
+  if (!name) {
+    const sig = createHmac("sha256", signingKey()).update(String(exp)).digest("base64url");
+    return `${exp}.${sig}`;
+  }
   const nameHex = Buffer.from(name, "utf8").toString("hex");
   const sig = createHmac("sha256", signingKey()).update(`${exp}.${nameHex}`).digest("base64url");
-  return name ? `${exp}.${nameHex}.${sig}` : `${exp}.${sig}`;
+  return `${exp}.${nameHex}.${sig}`;
 }
 
 /** Returns the seat name ("" for owner) or null when invalid. */
