@@ -45,12 +45,17 @@ jobs:
         with:
           workload_identity_provider: projects/591747902299/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: circle-back-agent@project-8b9ab843-d0d6-4ea4-a11.iam.gserviceaccount.com
+      - id: app-secrets
+        uses: google-github-actions/get-secretmanager-secrets@v2
+        with:
+          secrets: |-
+            VAPID_PUBLIC:projects/${{ env.PROJECT_ID }}/secrets/VAPID_PUBLIC
       - run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
       - run: |
           docker build -f deploy/Dockerfile.engine -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/engine:${{ github.sha }} .
           docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/engine:${{ github.sha }}
       - run: |
-          docker build -f deploy/Dockerfile.portal -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }} .
+          docker build -f deploy/Dockerfile.portal --build-arg NEXT_PUBLIC_VAPID_PUBLIC=${{ steps.app-secrets.outputs.VAPID_PUBLIC }} -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }} .
           docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }}
       - run: |
           docker build -f deploy/Dockerfile.demo -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/demo:${{ github.sha }} .
@@ -76,6 +81,8 @@ jobs:
           env_vars: |
             GCP_PROJECT_ID=${{ env.PROJECT_ID }}
             GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
+            PORTAL_URL=https://ghostqa-portal-ehfuotlisq-uc.a.run.app
+            ENGINE_PUBLIC_URL=${{ env.ENGINE_URL }}
           flags: --memory=4Gi --cpu=2 --concurrency=1 --timeout=3600 --max-instances=2 --allow-unauthenticated
       - uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -95,8 +102,11 @@ jobs:
             GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
             PORTAL_STORE=firestore
             ENGINE_URL=${{ env.ENGINE_URL }}
+            PORTAL_PUBLIC_URL=https://ghostqa-portal-ehfuotlisq-uc.a.run.app
           secrets: |
             ENGINE_TOKEN=ENGINE_TOKEN:latest
             PORTAL_PASSPHRASE=PORTAL_PASSPHRASE:latest
             SESSION_KEY=SESSION_KEY:latest
+            VAPID_PUBLIC=VAPID_PUBLIC:latest
+            VAPID_PRIVATE=VAPID_PRIVATE:latest
           flags: --memory=1Gi --cpu=1 --timeout=300 --allow-unauthenticated
