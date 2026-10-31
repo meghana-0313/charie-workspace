@@ -72,12 +72,13 @@ export async function runSweep(targets: SweepTargets, root: string, fetchImpl: F
     checks.push({ name: "engine auth gate", pass: false, evidence: (e as Error).message });
   }
   try {
-    const r = await get(`${targets.portalUrl.replace(/\/$/, "")}/`, {});
+    // /login is the stable public page: / redirects to it for robots.
+    const r = await get(`${targets.portalUrl.replace(/\/$/, "")}/login`, {});
     const csp = r.headers.get("content-security-policy") ?? "";
     checks.push({
       name: "portal reachable + csp",
       pass: r.ok && csp.length > 0,
-      evidence: `GET / → ${r.status}${csp ? "" : ", no content-security-policy"}`,
+      evidence: `GET /login → ${r.status}${csp ? "" : ", no content-security-policy"}`,
     });
   } catch (e) {
     checks.push({ name: "portal reachable + csp", pass: false, evidence: (e as Error).message });

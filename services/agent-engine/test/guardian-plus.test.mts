@@ -93,7 +93,7 @@ function canned(url: string, init?: { method?: string; headers?: Record<string, 
       status = 400;
       body = init.body === "{not json" ? '{"error":"invalid JSON body"}' : '{"error":"target blocked"}';
     }
-  } else if (u.hostname === "portal.test" && u.pathname === "/") {
+  } else if (u.hostname === "portal.test" && (u.pathname === "/" || u.pathname === "/login")) {
     H("content-security-policy", "default-src 'self'");
     H("x-frame-options", "DENY");
     H("x-content-type-options", "nosniff");
