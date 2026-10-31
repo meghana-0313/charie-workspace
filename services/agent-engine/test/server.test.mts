@@ -123,6 +123,47 @@ ok((await call("POST", "/guardian/respond", H, JSON.stringify({ action: "nuke", 
 const gVer = await call("POST", "/guardian/verify", H, JSON.stringify({ baselineSuspicious: 10, events: [] }));
 ok(gVer.code === 200 && (gVer.json() as { contained: boolean }).contained === true, "guardian verify containment");
 
+ok((await call("GET", "/workorders")).code === 401, "workorders need token");
+const woEmpty = await call("GET", "/workorders", H);
+ok(woEmpty.code === 200 && (woEmpty.json() as { workorders: unknown[] }).workorders.length === 0, "workorders start empty");
+ok((await call("POST", "/workorders", H, JSON.stringify({ title: "x" }))).code === 400, "workorder validates input");
+const woCreate = await call("POST", "/workorders", H, JSON.stringify({
+  title: "Re-verify checkout", source: "guardian", sourceRef: "inc_1",
+  plan: [{ kind: "re-analyze", label: "rescan", ref: "inc_1" }],
+}));
+const woBody = woCreate.json() as { id: string; status: string };
+ok(woCreate.code === 201 && woBody.status === "proposed", "workorder created");
+ok((await call("GET", `/workorders/${woBody.id}`, H)).code === 200, "workorder fetched by id");
+ok((await call("GET", "/workorders/nope", H)).code === 404, "unknown workorder 404");
+const woAppr = await call("POST", `/workorders/${woBody.id}/approve`, H, JSON.stringify({ by: "meg" }));
+ok(woAppr.code === 200 && (woAppr.json() as { status: string }).status === "approved", "workorder approved");
+const woSched = await call("POST", `/workorders/${woBody.id}/schedule`, H, JSON.stringify({}));
+ok(woSched.code === 200 && (woSched.json() as { status: string }).status === "scheduled", "workorder scheduled");
+ok((await call("POST", `/workorders/${woBody.id}/approve`, H, JSON.stringify({}))).code === 409, "double approve rejected");
+
+ok((await call("POST", "/signals/ingest", H, JSON.stringify({}))).code === 400, "signals need messages");
+const sig = await call("POST", "/signals/ingest", H, JSON.stringify({
+  messages: [{ channel: "support", text: "checkout charged me twice, ridiculous" }],
+}));
+const sigBody = sig.json() as { ingested: number; clusters: Array<{ size: number }> };
+ok(sig.code === 201 && sigBody.ingested === 1 && sigBody.clusters.length === 1, "signals ingested + clustered");
+const clu = await call("GET", "/signals/clusters", H);
+ok(clu.code === 200 && (clu.json() as { total: number }).total === 1, "clusters listed");
+const seed = await call("POST", "/signals/seed", H, JSON.stringify({}));
+ok(seed.code === 201 && (seed.json() as { total: number }).total === 7, "signals seeded");
+
+const dig = await call("GET", "/nightshift/digests", H);
+ok(dig.code === 200 && (dig.json() as { digests: unknown[] }).digests.length === 0, "digests start empty");
+const sw = await call("GET", "/guardian/sweeps", H);
+ok(sw.code === 200 && (sw.json() as { sweeps: unknown[] }).sweeps.length === 0, "sweeps start empty");
+ok((await call("POST", "/guardian/sweep", H, JSON.stringify({}))).code === 400, "sweep needs targets");
+ok((await call("POST", "/pentest/run", H, JSON.stringify({}))).code === 400, "pentest needs targets");
+const pr = await call("GET", "/pentest/reports", H);
+ok(pr.code === 200 && (pr.json() as { reports: unknown[] }).reports.length === 0, "pentest reports start empty");
+const zs = await call("GET", "/zoom/status", H);
+ok(zs.code === 200 && (zs.json() as { configured: boolean }).configured === false, "zoom unconfigured without key");
+ok((await call("POST", "/zoom/join", H, JSON.stringify({ meetingUrl: "https://zoom.us/j/1" }))).code === 501, "zoom join refuses without key");
+
 delete process.env.ENGINE_TOKEN;
 if (savedMetaKey !== undefined) process.env.META_API_KEY = savedMetaKey;
 if (savedBasetenKey !== undefined) process.env.BASETEN_API_KEY = savedBasetenKey;

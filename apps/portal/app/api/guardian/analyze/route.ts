@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { guardianAnalyze } from "@/lib/engine";
+import { pushToAll } from "@/lib/push";
 import type { Incident } from "@/lib/types";
 
 // POST /api/guardian/analyze - run the recent window through detection + AI.
@@ -32,5 +33,6 @@ export async function POST() {
     updatedAt: now,
   };
   await store.saveIncident(incident);
+  await pushToAll(`Guardian: ${incident.severity} incident`, incident.title, `/guardian/${incident.id}`);
   return NextResponse.json({ incident, mode: incident.mode }, { status: 201 });
 }

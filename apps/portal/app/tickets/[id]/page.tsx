@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
 import { readFindings, readReportMd, readVerification, runStatus } from "@/lib/engine";
+import { readBriefs } from "@/lib/guardian";
+import { boxesFor, GroundedShot, RedesignBriefs } from "@/components/evidence";
 import { ApproveButton, MessageForm, RunButtons } from "@/components/forms";
+import { DispatchButton } from "@/components/suite";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +28,7 @@ async function RoomView({ ticketId }: { ticketId: string }) {
   }
   const runViews = await Promise.all(room.runIds.map(async (runId) => {
     const rec = await store.getRun(runId);
-    return { runId, rec, status: await runStatus(runId), findings: (await readFindings(runId)) ?? [], verification: await readVerification(runId), report: await readReportMd(runId) };
+    return { runId, rec, status: await runStatus(runId), findings: (await readFindings(runId)) ?? [], verification: await readVerification(runId), report: await readReportMd(runId), briefs: await readBriefs(runId) };
   }));
   const baseline = runViews.find((r) => r.rec?.kind === "investigate" && r.status === "done");
   const messages = await store.listMessages(room.id);
@@ -49,7 +52,7 @@ async function RoomView({ ticketId }: { ticketId: string }) {
         <div className="panel"><p className="muted">No runs yet. Press <strong>Run investigation</strong> above, then refresh in about a minute.</p></div>
       )}
 
-      {runViews.map(({ runId, rec, status, findings, verification, report }) => (
+      {runViews.map(({ runId, rec, status, findings, verification, report, briefs }) => (
         <div className="panel" key={runId}>
           <h2>{rec?.kind === "verify" ? "Verification" : "Investigation"} <span className="pill">{status}</span></h2>
           <p className="small muted"><code>{runId}</code>{rec?.baselineRunId && <> · baseline <code>{rec.baselineRunId}</code></>}</p>
@@ -66,9 +69,14 @@ async function RoomView({ ticketId }: { ticketId: string }) {
               <p className="small"><code>{f.id}</code> · suspected cause: {f.suspectedCause} (confidence: {f.confidence})</p>
               <p className="small">Suggested fix: {f.suggestedFix}</p>
               <ol className="repro">{f.reproSteps.map((s, i) => <li key={i}>{s}</li>)}</ol>
-              {f.evidence.screenshots.map((s) => (
-                <img key={s} className="shot" src={`/api/artifacts/${runId}/${s}`} alt={`${f.id} evidence ${s}`} />
-              ))}
+              {f.evidence.screenshots.map((s) => {
+                const boxes = boxesFor(f, s);
+                return boxes.length > 0 ? (
+                  <GroundedShot key={s} src={`/api/artifacts/${runId}/${s}`} alt={`${f.id} evidence ${s}`} boxes={boxes} />
+                ) : (
+                  <img key={s} className="shot" src={`/api/artifacts/${runId}/${s}`} alt={`${f.id} evidence ${s}`} />
+                );
+              })}
               <div className="row" style={{ marginTop: 6 }}>
                 {approvedIds.has(f.id)
                   ? <span className="pill">fix instruction approved</span>
@@ -77,6 +85,7 @@ async function RoomView({ ticketId }: { ticketId: string }) {
               </div>
             </div>
           ))}
+          <RedesignBriefs briefs={briefs} runId={runId} />
           {report && (
             <details style={{ marginTop: 10 }}>
               <summary className="small">Full report.md</summary>
@@ -106,6 +115,9 @@ async function RoomView({ ticketId }: { ticketId: string }) {
               <div className="who">{a.approvedBy} · {a.createdAt.slice(0, 16).replace("T", " ")} · <span className="pill">{a.status}</span></div>
               <div className="small"><code>{a.findingIds.join(", ")}</code></div>
               <div>{a.instruction}</div>
+              {a.status === "approved" && (
+                <div style={{ marginTop: 6 }}><DispatchButton approvalId={a.id} roomId={room.id} /></div>
+              )}
             </div>
           ))}
         </div>

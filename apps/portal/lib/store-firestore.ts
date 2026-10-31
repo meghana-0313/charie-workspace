@@ -3,8 +3,9 @@
 // account on Cloud Run, `gcloud auth application-default login` locally).
 // Timestamps stay ISO strings so domain types are identical across adapters.
 
+import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { Approval, GuardEventView, Incident, PortalRun, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, Room, RoomMessage, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -20,6 +21,11 @@ const now = () => new Date().toISOString();
 /** Firestore rejects `undefined` values - drop them (keeps optional fields safe). */
 function clean<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
+/** Push endpoints are URLs - hash them into safe doc ids. */
+function subId(endpoint: string): string {
+  return createHash("sha256").update(endpoint).digest("hex");
 }
 
 export const firestoreStore = {
@@ -83,6 +89,13 @@ export const firestoreStore = {
     await firestore().collection("rooms").doc(roomId).collection("approvals").doc(a.id).set(a);
     return a;
   },
+  async setApprovalStatus(roomId: string, approvalId: string, status: Approval["status"]): Promise<Approval | null> {
+    const ref = firestore().collection("rooms").doc(roomId).collection("approvals").doc(approvalId);
+    const d = await ref.get();
+    if (!d.exists) return null;
+    await ref.update({ status });
+    return { ...(d.data() as Approval), status };
+  },
 
   async getRun(id: string): Promise<PortalRun | null> {
     const d = await firestore().collection("runs").doc(id).get();
@@ -124,5 +137,16 @@ export const firestoreStore = {
   },
   async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
     await firestore().collection("incidents").doc(id).update({ ...patch, updatedAt: now() });
+  },
+
+  async savePushSubscription(sub: Omit<PushSubscription, "createdAt">): Promise<void> {
+    await firestore().collection("push_subscriptions").doc(subId(sub.endpoint)).set({ ...sub, createdAt: now() });
+  },
+  async listPushSubscriptions(): Promise<PushSubscription[]> {
+    const snap = await firestore().collection("push_subscriptions").get();
+    return snap.docs.map((d) => d.data() as PushSubscription);
+  },
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await firestore().collection("push_subscriptions").doc(subId(endpoint)).delete().catch(() => {});
   },
 };

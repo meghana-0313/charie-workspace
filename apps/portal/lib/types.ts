@@ -103,6 +103,7 @@ export interface Incident {
   } | null;
   mode: "investigated" | "signals-only";
   baselineSuspicious: number;
+  voiceBrief?: string;
   actions: IncidentAction[];
   simulated: true;
   createdAt: string;
@@ -122,4 +123,89 @@ export interface FindingView {
   suggestedFix: string;
   regressionCheck: string;
   analysisSource: string;
+  grounding?: Array<{
+    screenshot: string;
+    boxes: Array<{ x: number; y: number; width: number; height: number; label: string }>;
+  }>;
+}
+
+export interface BriefView {
+  findingId: string;
+  directions: Array<{ name: string; change: string; tradeoff: string }>;
+  componentPlan: string;
+  images: string[];
+}
+
+// Guardian suite views. Mirror the engine shapes; the portal stays decoupled.
+export interface WorkOrderStepView {
+  kind: "verify-fix" | "re-analyze" | "evidence-pack" | "docs-note";
+  label: string;
+  ref: string;
+  detail?: string;
+  targetUrl?: string;
+  baselineRunId?: string;
+  goal?: string;
+}
+
+export interface WorkOrderView {
+  id: string;
+  title: string;
+  source: string;
+  sourceRef: string;
+  status: string;
+  risk: string;
+  plan: WorkOrderStepView[];
+  approvals: Array<{ by: string; at: string }>;
+  proofs: Array<{ at: string; step: string; ok: boolean; detail: string; artifact?: string }>;
+  scheduledFor?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SignalClusterView {
+  id: string;
+  theme: string;
+  size: number;
+  angryShare: number;
+  sampleIds: string[];
+  samples: string[];
+}
+
+export interface SweepView {
+  id: string;
+  at: string;
+  pass: boolean;
+  checks: Array<{ name: string; pass: boolean; evidence: string }>;
+}
+
+export interface PentestView {
+  id: string;
+  at: string;
+  targets: string[];
+  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string }>;
+  passed: number;
+  failed: number;
+  grade: string;
+}
+
+export interface DigestView {
+  id: string;
+  at: string;
+  orders: Array<{ id: string; title: string; status: string; proofs: WorkOrderView["proofs"] }>;
+  pentest: PentestView | null;
+  digest: string;
+  durationMs: number;
+}
+
+export interface ZoomView {
+  configured: boolean;
+  provider: string;
+  bots: Array<{ id: string; meetingUrl: string; status: string }>;
+  setup: string[];
+}
+
+export interface PushSubscription {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  createdAt: string;
 }
