@@ -23,6 +23,10 @@ mkdirSync(join(root, "base1"), { recursive: true });
 writeFileSync(join(root, "base1", "findings.json"), JSON.stringify([]));
 
 process.env.ENGINE_TOKEN = "t0k";
+const savedMetaKey = process.env.META_API_KEY;
+const savedBasetenKey = process.env.BASETEN_API_KEY;
+delete process.env.META_API_KEY;
+delete process.env.BASETEN_API_KEY;
 _clearSecretCache();
 const app = createApp({ reportsRoot: root });
 
@@ -101,6 +105,26 @@ ok(
   "transcribe unknown blob 404",
 );
 
+const benign = [{ id: "e1", ts: new Date().toISOString(), kind: "auth", outcome: "success" }];
+const gClear = await call("POST", "/guardian/analyze", H, JSON.stringify({ events: benign }));
+ok(gClear.code === 200 && (gClear.json() as { mode: string }).mode === "clear", "guardian clear window");
+const attack = [];
+for (let i = 0; i < 25; i++) {
+  attack.push({ id: `a${i}`, ts: new Date().toISOString(), kind: "auth", outcome: "failure", actor: `u${i % 4}`, ip: "9.9.9.9" });
+}
+const gHit = await call("POST", "/guardian/analyze", H, JSON.stringify({ events: attack }));
+const gHitBody = gHit.json() as { signals: Array<{ type: string }>; mode: string };
+ok(gHit.code === 200 && gHitBody.signals.length === 1 && gHitBody.signals[0].type === "credential-stuffing", "guardian detects stuffing");
+ok(gHitBody.mode === "signals-only", "no keys means signals only, no investigation");
+ok((await call("POST", "/guardian/analyze", H, JSON.stringify({}))).code === 400, "guardian needs events");
+const gResp = await call("POST", "/guardian/respond", H, JSON.stringify({ action: "block_ip", target: "9.9.9.9" }));
+ok(gResp.code === 200 && (gResp.json() as { status: string }).status === "simulated-contained", "guardian simulated response");
+ok((await call("POST", "/guardian/respond", H, JSON.stringify({ action: "nuke", target: "x" }))).code === 400, "guardian rejects bad action");
+const gVer = await call("POST", "/guardian/verify", H, JSON.stringify({ baselineSuspicious: 10, events: [] }));
+ok(gVer.code === 200 && (gVer.json() as { contained: boolean }).contained === true, "guardian verify containment");
+
 delete process.env.ENGINE_TOKEN;
+if (savedMetaKey !== undefined) process.env.META_API_KEY = savedMetaKey;
+if (savedBasetenKey !== undefined) process.env.BASETEN_API_KEY = savedBasetenKey;
 _clearSecretCache();
 console.log(`SERVER PASS: ${n}/${n} assertions`);

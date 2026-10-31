@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Approval, PortalRun, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, Room, RoomMessage, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -32,6 +32,8 @@ const rooms = file<Record<string, Room>>("rooms", {});
 const messages = file<Record<string, RoomMessage[]>>("messages", {});
 const approvals = file<Record<string, Approval[]>>("approvals", {});
 const runs = file<Record<string, PortalRun>>("runs", {});
+const gevents = file<GuardEventView[]>("guardian-events", []);
+const incidents = file<Record<string, Incident>>("incidents", {});
 
 const now = () => new Date().toISOString();
 
@@ -126,5 +128,30 @@ export const fileStore = {
     return Object.values(runs.read())
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
+  },
+
+  async saveEvents(events: GuardEventView[]): Promise<void> {
+    gevents.write([...gevents.read(), ...events].slice(-1000));
+  },
+  async listRecentEvents(limit = 200): Promise<GuardEventView[]> {
+    return gevents.read().slice(-limit);
+  },
+  async saveIncident(inc: Incident): Promise<void> {
+    const all = incidents.read();
+    all[inc.id] = inc;
+    incidents.write(all);
+  },
+  async getIncident(id: string): Promise<Incident | null> {
+    return incidents.read()[id] ?? null;
+  },
+  async listIncidents(): Promise<Incident[]> {
+    return Object.values(incidents.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
+    const all = incidents.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      incidents.write(all);
+    }
   },
 };

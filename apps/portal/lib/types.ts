@@ -54,6 +54,61 @@ export interface PortalRun {
   createdAt: string;
 }
 
+// Guardian types. Mirror the engine shapes; the portal stays decoupled.
+export interface GuardEventView {
+  id: string;
+  ts: string;
+  kind: "auth" | "api" | "traffic" | "infra";
+  actor?: string;
+  ip?: string;
+  endpoint?: string;
+  outcome?: "success" | "failure" | "deny" | "allow";
+  country?: string;
+  bytes?: number;
+  records?: number;
+}
+
+export interface IncidentSignal {
+  type: string;
+  severity: string;
+  title: string;
+  evidence: string[];
+  actors: string[];
+  ips: string[];
+}
+
+export interface IncidentAction {
+  id: string;
+  action: "block_ip" | "revoke_sessions" | "rate_limit";
+  target: string;
+  status: string;
+  detail: string;
+  at: string;
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  severity: "blocker" | "major" | "minor";
+  status: "open" | "contained" | "resolved";
+  signals: IncidentSignal[];
+  investigation: {
+    verdict: string;
+    severity: string;
+    summary: string;
+    timeline: string[];
+    plan: string[];
+    disagreement: string | null;
+    glimmerFiltered: number;
+  } | null;
+  mode: "investigated" | "signals-only";
+  baselineSuspicious: number;
+  actions: IncidentAction[];
+  simulated: true;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Subset of the engine Finding type, re-declared to keep the portal decoupled.
 export interface FindingView {
   id: string;

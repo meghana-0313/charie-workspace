@@ -4,7 +4,7 @@
 // Timestamps stay ISO strings so domain types are identical across adapters.
 
 import { getFirestore } from "firebase-admin/firestore";
-import type { Approval, PortalRun, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, Room, RoomMessage, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -99,5 +99,30 @@ export const firestoreStore = {
   async listRuns(limit = 20): Promise<PortalRun[]> {
     const snap = await firestore().collection("runs").orderBy("createdAt", "desc").limit(limit).get();
     return snap.docs.map((d) => d.data() as PortalRun);
+  },
+
+  async saveEvents(events: GuardEventView[]): Promise<void> {
+    const fs = firestore();
+    const batch = fs.batch();
+    for (const e of events) batch.set(fs.collection("guardian-events").doc(e.id), e);
+    await batch.commit();
+  },
+  async listRecentEvents(limit = 200): Promise<GuardEventView[]> {
+    const snap = await firestore().collection("guardian-events").orderBy("ts", "desc").limit(limit).get();
+    return snap.docs.map((d) => d.data() as GuardEventView).reverse();
+  },
+  async saveIncident(inc: Incident): Promise<void> {
+    await firestore().collection("incidents").doc(inc.id).set(inc);
+  },
+  async getIncident(id: string): Promise<Incident | null> {
+    const d = await firestore().collection("incidents").doc(id).get();
+    return d.exists ? (d.data() as Incident) : null;
+  },
+  async listIncidents(): Promise<Incident[]> {
+    const snap = await firestore().collection("incidents").orderBy("createdAt", "desc").get();
+    return snap.docs.map((d) => d.data() as Incident);
+  },
+  async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
+    await firestore().collection("incidents").doc(id).update({ ...patch, updatedAt: now() });
   },
 };

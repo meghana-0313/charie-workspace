@@ -10,6 +10,8 @@ import { analyze, groundingLabels } from "../src/analyst.js";
 import { parseGrade, secondOpinion } from "../src/baseten.js";
 import { extractOutputText, groundControls, parseBoxes } from "../src/grounding.js";
 import { glimmerComplete, parseTriage } from "../src/glimmer.js";
+import { detectSignals, parseInvestigation, simulateResponse, verifyContainment } from "../src/guardian.js";
+import type { GuardEvent } from "../src/guardian.js";
 import { hasMetaKey, modelId } from "../src/meta-client.js";
 import { briefFor, generateRedesignImages } from "../src/redesign.js";
 import { runDirName } from "../src/run-id.js";
@@ -191,5 +193,44 @@ for (const [k, v] of Object.entries(savedKeys)) {
   else process.env[k] = v;
 }
 _clearSecretCache();
+
+// 8. Guardian detectors (pure) + response sim.
+let eid = 0;
+const ev = (over: Partial<GuardEvent>): GuardEvent => ({
+  id: `e${eid++}`, ts: new Date().toISOString(), kind: "auth", ...over,
+});
+const stuffing: GuardEvent[] = [];
+for (let i = 0; i < 25; i++) {
+  stuffing.push(ev({ outcome: "failure", actor: `user${i % 4}`, ip: "9.9.9.9" }));
+}
+const sigStuff = detectSignals(stuffing);
+ok(sigStuff.length === 1 && sigStuff[0].type === "credential-stuffing" && sigStuff[0].severity === "blocker", "stuffing detected");
+ok(detectSignals(stuffing.slice(0, 5)).length === 0, "below threshold stays quiet");
+
+const takeover: GuardEvent[] = [];
+for (let i = 0; i < 5; i++) takeover.push(ev({ outcome: "failure", actor: "vic", ip: "9.9.9.9", country: "US" }));
+takeover.push(ev({ outcome: "success", actor: "vic", ip: "9.9.9.9", country: "XX" }));
+takeover.push(ev({ kind: "api", outcome: "success", actor: "vic", ip: "9.9.9.9", endpoint: "/admin/export" }));
+const sigTake = detectSignals(takeover);
+ok(sigTake.length === 1 && sigTake[0].type === "account-takeover", "takeover detected");
+
+const abuse: GuardEvent[] = [];
+for (let i = 0; i < 35; i++) abuse.push(ev({ kind: "api", outcome: "success", ip: "7.7.7.7", endpoint: "/api/billing/export" }));
+ok(detectSignals(abuse)[0]?.type === "api-abuse", "api abuse detected");
+
+const exfil: GuardEvent[] = [];
+for (let i = 0; i < 3; i++) exfil.push(ev({ kind: "api", outcome: "success", actor: "svc", bytes: 8_000_000 }));
+ok(detectSignals(exfil)[0]?.severity === "major", "exfiltration detected");
+
+const inv = parseInvestigation("VERDICT: stuffing attack\nSEVERITY: blocker\nSUMMARY: bad\nTIMELINE:\n- a\n- b\nPLAN:\n- block\n- revoke\n");
+ok(inv?.verdict === "stuffing attack" && inv.timeline.length === 2 && inv.plan.length === 2, "investigation parser");
+ok(parseInvestigation("nope") === null, "investigation parser rejects junk");
+
+const sim = simulateResponse("block_ip", "9.9.9.9");
+ok(sim.status === "simulated-contained" && sim.detail.includes("9.9.9.9"), "simulated block");
+const cont = verifyContainment(100, [ev({ outcome: "failure" }), ev({ outcome: "success" })]);
+ok(cont.contained === true && cont.after === 1, "containment verified on drop");
+const cont2 = verifyContainment(10, stuffing.slice(0, 9));
+ok(cont2.contained === false, "containment honestly fails when attack continues");
 
 console.log(`REGRESSION PASS: ${n}/${n} assertions`);

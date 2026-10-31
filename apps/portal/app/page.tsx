@@ -9,6 +9,7 @@ export default async function Dashboard() {
   const runs = await store.listRuns(10);
   return (
     <>
+      <p><Link href="/guardian">Runtime Guardian: post-deploy threat monitoring →</Link></p>
       <div className="panel">
         <h2>New ticket</h2>
         <p className="muted small">

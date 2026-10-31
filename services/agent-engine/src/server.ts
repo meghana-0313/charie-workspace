@@ -15,6 +15,7 @@ import { existsSync, readFileSync, statSync, writeFileSync, unlinkSync } from "n
 import { tmpdir } from "node:os";
 import { join, normalize, sep } from "node:path";
 import { GOAL } from "./explorer.js";
+import { detectSignals, investigate, simulateResponse, verifyContainment } from "./guardian.js";
 import { executeRun } from "./job.js";
 import { secret } from "./secrets.js";
 import { fetchVoiceNote } from "./storage.js";
@@ -226,6 +227,64 @@ export function createApp(opts: ServerOpts): RequestListener {
               /* already gone */
             }
           }
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/guardian/analyze") {
+          let body: { events?: unknown };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          if (!Array.isArray(body.events) || body.events.length === 0 || body.events.length > 500) {
+            send(res, 400, { error: "events[] with 1-500 entries required" });
+            return;
+          }
+          const signals = detectSignals(body.events as Parameters<typeof detectSignals>[0]);
+          if (signals.length === 0) {
+            send(res, 200, { signals: [], investigation: null, mode: "clear" });
+            return;
+          }
+          const investigation = await investigate(signals);
+          send(res, 200, {
+            signals,
+            investigation,
+            mode: investigation ? "investigated" : "signals-only",
+          });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/guardian/respond") {
+          let body: { action?: string; target?: string };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          if ((body.action !== "block_ip" && body.action !== "revoke_sessions" && body.action !== "rate_limit") || !body.target) {
+            send(res, 400, { error: "action block_ip|revoke_sessions|rate_limit + target required" });
+            return;
+          }
+          send(res, 200, simulateResponse(body.action, body.target));
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/guardian/verify") {
+          let body: { baselineSuspicious?: number; events?: unknown };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          if (typeof body.baselineSuspicious !== "number" || !Array.isArray(body.events) || body.events.length > 500) {
+            send(res, 400, { error: "baselineSuspicious number + events[] (max 500) required" });
+            return;
+          }
+          send(res, 200, verifyContainment(body.baselineSuspicious, body.events as Parameters<typeof verifyContainment>[1]));
           return;
         }
 
