@@ -1,6 +1,6 @@
 // Minimal client for the Meta Model API (OpenAI-compatible chat surface).
 // Key, base URL and model IDs resolve via secrets.ts (env first, GCP Secret
-// Manager second — no .env file). Model IDs verified against dev.meta.ai docs.
+// Manager second - no .env file). Model IDs verified against dev.meta.ai docs.
 // When no key is present the engine falls back to heuristics.
 
 import { secret } from "./secrets.js";
@@ -22,11 +22,14 @@ export function modelId(kind: "spark" | "wonder" | "image" | "voice" | "sam"): s
   return secret("META_SPARK_MODEL") ?? secret("META_TEXT_MODEL") ?? "muse-spark-1.3";
 }
 
-export async function chat(messages: ChatMessage[], opts?: { model?: string; maxTokens?: number }): Promise<string> {
+export async function chat(
+  messages: ChatMessage[],
+  opts?: { model?: string; maxTokens?: number; fetchImpl?: typeof fetch },
+): Promise<string> {
   const key = secret("META_API_KEY");
   if (!key) throw new Error("META_API_KEY not set");
   const base = (secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1").replace(/\/$/, "");
-  const res = await fetch(`${base}/chat/completions`, {
+  const res = await (opts?.fetchImpl ?? fetch)(`${base}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
     body: JSON.stringify({

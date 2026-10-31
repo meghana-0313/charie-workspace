@@ -52,7 +52,7 @@ export async function runStatus(runId: string): Promise<"running" | "done" | "fa
   try {
     return (await runState(runId))?.status ?? "failed";
   } catch {
-    return "running"; // transport blip — keep polling rather than fail the run
+    return "running"; // transport blip - keep polling rather than fail the run
   }
 }
 
@@ -74,6 +74,97 @@ export async function readVerification(runId: string): Promise<unknown | null> {
 export async function readPacket(runId: string, findingId: string): Promise<string | null> {
   const f = await readArtifact(runId, ["mcp-packets", `${findingId}.md`]);
   return f ? f.data.toString("utf8") : null;
+}
+
+/** Goal extraction via engine triage (Glimmer when live). Null on any failure. */
+export async function triageTicket(subject: string, body: string): Promise<{ goal: string; grade: string; source: string } | null> {
+  try {
+    const res = await fetch(`${base()}/triage`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ subject, body }),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { goal: string; grade: string; source: string };
+  } catch {
+    return null;
+  }
+}
+
+/** Voice note to subject/body via engine transcription. Null on any failure. */
+export async function transcribeNote(blob: string): Promise<{ subject: string; body: string } | null> {
+  try {
+    const res = await fetch(`${base()}/transcribe`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ blob }),
+      signal: AbortSignal.timeout(120000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { subject: string; body: string };
+  } catch {
+    return null;
+  }
+}
+
+/** Analyze an event window for threats. Null when the engine is unreachable. */
+export async function guardianAnalyze(events: unknown[]): Promise<{
+  signals: Array<{ type: string; severity: string; title: string; evidence: string[]; actors: string[]; ips: string[] }>;
+  investigation: {
+    verdict: string; severity: string; summary: string; timeline: string[]; plan: string[];
+    disagreement: string | null; glimmerFiltered: number;
+  } | null;
+  mode: string;
+} | null> {
+  try {
+    const res = await fetch(`${base()}/guardian/analyze`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ events }),
+      signal: AbortSignal.timeout(120000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Awaited<ReturnType<typeof guardianAnalyze>> & {};
+  } catch {
+    return null;
+  }
+}
+
+/** Execute a simulated response action. Null on failure. */
+export async function guardianRespond(action: string, target: string): Promise<{
+  id: string; action: "block_ip" | "revoke_sessions" | "rate_limit"; target: string; status: string; detail: string; at: string;
+} | null> {
+  try {
+    const res = await fetch(`${base()}/guardian/respond`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ action, target }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as NonNullable<Awaited<ReturnType<typeof guardianRespond>>>;
+  } catch {
+    return null;
+  }
+}
+
+/** Verify containment against a fresh window. Null on failure. */
+export async function guardianVerify(baselineSuspicious: number, events: unknown[]): Promise<{
+  contained: boolean; before: number; after: number; detail: string;
+} | null> {
+  try {
+    const res = await fetch(`${base()}/guardian/verify`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ baselineSuspicious, events }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as NonNullable<Awaited<ReturnType<typeof guardianVerify>>>;
+  } catch {
+    return null;
+  }
 }
 
 /** Fetch a report artifact (e.g. screenshots). Null when missing. */

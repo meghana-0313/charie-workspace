@@ -1,4 +1,4 @@
-// Server tests (offline, no browser, no sockets — the handler is invoked
+// Server tests (offline, no browser, no sockets - the handler is invoked
 // directly with mock req/res so this runs even in locked-down sandboxes).
 // Covers: health, auth gate, request validation, run/artifacts reads.
 import { strict as assert } from "node:assert";
@@ -23,6 +23,10 @@ mkdirSync(join(root, "base1"), { recursive: true });
 writeFileSync(join(root, "base1", "findings.json"), JSON.stringify([]));
 
 process.env.ENGINE_TOKEN = "t0k";
+const savedMetaKey = process.env.META_API_KEY;
+const savedBasetenKey = process.env.BASETEN_API_KEY;
+delete process.env.META_API_KEY;
+delete process.env.BASETEN_API_KEY;
 _clearSecretCache();
 const app = createApp({ reportsRoot: root });
 
@@ -82,7 +86,86 @@ ok(
   (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://x/", verify: true, baselineRunId: "ghost" }))).code === 404,
   "unknown baseline 404",
 );
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://169.254.169.254/" }))).code === 400,
+  "metadata IP blocked",
+);
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://metadata.google.internal/" }))).code === 400,
+  "metadata host blocked",
+);
+
+const tri = await call("POST", "/triage", H, JSON.stringify({ subject: "Checkout broken", body: "500 on pay" }));
+const triBody = tri.json() as { goal: string; grade: string; source: string };
+ok(tri.code === 200 && triBody.goal.length > 0 && ["blocker", "major", "minor"].includes(triBody.grade), "triage answers");
+ok((await call("POST", "/triage", H, JSON.stringify({}))).code === 400, "triage needs subject/body");
+ok((await call("POST", "/transcribe", H, JSON.stringify({}))).code === 400, "transcribe needs blob");
+ok(
+  (await call("POST", "/transcribe", H, JSON.stringify({ blob: "uploads/nope.wav" }))).code === 404,
+  "transcribe unknown blob 404",
+);
+
+const benign = [{ id: "e1", ts: new Date().toISOString(), kind: "auth", outcome: "success" }];
+const gClear = await call("POST", "/guardian/analyze", H, JSON.stringify({ events: benign }));
+ok(gClear.code === 200 && (gClear.json() as { mode: string }).mode === "clear", "guardian clear window");
+const attack = [];
+for (let i = 0; i < 25; i++) {
+  attack.push({ id: `a${i}`, ts: new Date().toISOString(), kind: "auth", outcome: "failure", actor: `u${i % 4}`, ip: "9.9.9.9" });
+}
+const gHit = await call("POST", "/guardian/analyze", H, JSON.stringify({ events: attack }));
+const gHitBody = gHit.json() as { signals: Array<{ type: string }>; mode: string };
+ok(gHit.code === 200 && gHitBody.signals.length === 1 && gHitBody.signals[0].type === "credential-stuffing", "guardian detects stuffing");
+ok(gHitBody.mode === "signals-only", "no keys means signals only, no investigation");
+ok((await call("POST", "/guardian/analyze", H, JSON.stringify({}))).code === 400, "guardian needs events");
+const gResp = await call("POST", "/guardian/respond", H, JSON.stringify({ action: "block_ip", target: "9.9.9.9" }));
+ok(gResp.code === 200 && (gResp.json() as { status: string }).status === "simulated-contained", "guardian simulated response");
+ok((await call("POST", "/guardian/respond", H, JSON.stringify({ action: "nuke", target: "x" }))).code === 400, "guardian rejects bad action");
+const gVer = await call("POST", "/guardian/verify", H, JSON.stringify({ baselineSuspicious: 10, events: [] }));
+ok(gVer.code === 200 && (gVer.json() as { contained: boolean }).contained === true, "guardian verify containment");
+
+ok((await call("GET", "/workorders")).code === 401, "workorders need token");
+const woEmpty = await call("GET", "/workorders", H);
+ok(woEmpty.code === 200 && (woEmpty.json() as { workorders: unknown[] }).workorders.length === 0, "workorders start empty");
+ok((await call("POST", "/workorders", H, JSON.stringify({ title: "x" }))).code === 400, "workorder validates input");
+const woCreate = await call("POST", "/workorders", H, JSON.stringify({
+  title: "Re-verify checkout", source: "guardian", sourceRef: "inc_1",
+  plan: [{ kind: "re-analyze", label: "rescan", ref: "inc_1" }],
+}));
+const woBody = woCreate.json() as { id: string; status: string };
+ok(woCreate.code === 201 && woBody.status === "proposed", "workorder created");
+ok((await call("GET", `/workorders/${woBody.id}`, H)).code === 200, "workorder fetched by id");
+ok((await call("GET", "/workorders/nope", H)).code === 404, "unknown workorder 404");
+const woAppr = await call("POST", `/workorders/${woBody.id}/approve`, H, JSON.stringify({ by: "meg" }));
+ok(woAppr.code === 200 && (woAppr.json() as { status: string }).status === "approved", "workorder approved");
+const woSched = await call("POST", `/workorders/${woBody.id}/schedule`, H, JSON.stringify({}));
+ok(woSched.code === 200 && (woSched.json() as { status: string }).status === "scheduled", "workorder scheduled");
+ok((await call("POST", `/workorders/${woBody.id}/approve`, H, JSON.stringify({}))).code === 409, "double approve rejected");
+
+ok((await call("POST", "/signals/ingest", H, JSON.stringify({}))).code === 400, "signals need messages");
+const sig = await call("POST", "/signals/ingest", H, JSON.stringify({
+  messages: [{ channel: "support", text: "checkout charged me twice, ridiculous" }],
+}));
+const sigBody = sig.json() as { ingested: number; clusters: Array<{ size: number }> };
+ok(sig.code === 201 && sigBody.ingested === 1 && sigBody.clusters.length === 1, "signals ingested + clustered");
+const clu = await call("GET", "/signals/clusters", H);
+ok(clu.code === 200 && (clu.json() as { total: number }).total === 1, "clusters listed");
+const seed = await call("POST", "/signals/seed", H, JSON.stringify({}));
+ok(seed.code === 201 && (seed.json() as { total: number }).total === 7, "signals seeded");
+
+const dig = await call("GET", "/nightshift/digests", H);
+ok(dig.code === 200 && (dig.json() as { digests: unknown[] }).digests.length === 0, "digests start empty");
+const sw = await call("GET", "/guardian/sweeps", H);
+ok(sw.code === 200 && (sw.json() as { sweeps: unknown[] }).sweeps.length === 0, "sweeps start empty");
+ok((await call("POST", "/guardian/sweep", H, JSON.stringify({}))).code === 400, "sweep needs targets");
+ok((await call("POST", "/pentest/run", H, JSON.stringify({}))).code === 400, "pentest needs targets");
+const pr = await call("GET", "/pentest/reports", H);
+ok(pr.code === 200 && (pr.json() as { reports: unknown[] }).reports.length === 0, "pentest reports start empty");
+const zs = await call("GET", "/zoom/status", H);
+ok(zs.code === 200 && (zs.json() as { configured: boolean }).configured === false, "zoom unconfigured without key");
+ok((await call("POST", "/zoom/join", H, JSON.stringify({ meetingUrl: "https://zoom.us/j/1" }))).code === 501, "zoom join refuses without key");
 
 delete process.env.ENGINE_TOKEN;
+if (savedMetaKey !== undefined) process.env.META_API_KEY = savedMetaKey;
+if (savedBasetenKey !== undefined) process.env.BASETEN_API_KEY = savedBasetenKey;
 _clearSecretCache();
 console.log(`SERVER PASS: ${n}/${n} assertions`);

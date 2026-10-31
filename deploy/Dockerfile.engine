@@ -22,6 +22,7 @@ COPY services/agent-engine/package.json ./services/agent-engine/
 COPY services/mcp-server/package.json ./services/mcp-server/
 RUN npm ci --workspace @circle-back/agent-engine --omit=dev
 RUN npm exec --workspace @circle-back/agent-engine -- playwright install --with-deps chromium
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/services/agent-engine/dist ./services/agent-engine/dist
 WORKDIR /app/services/agent-engine
 EXPOSE 3103

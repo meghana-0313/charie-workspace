@@ -1,4 +1,4 @@
-// GhostQA run loop — CLI entry.
+// GhostQA run loop - CLI entry.
 //
 //   Investigate:  npm run run -- --target http://localhost:3101
 //   Verify fix:   npm run run -- --target http://localhost:3101 --verify --baseline ./reports/<ts>

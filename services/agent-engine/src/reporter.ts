@@ -3,12 +3,12 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { briefFor } from "./redesign.js";
+import { briefFor, generateRedesignImages } from "./redesign.js";
 import type { Finding, JourneyTrace } from "./types.js";
 
 export function mcpPacket(f: Finding, trace: JourneyTrace): string {
   return [
-    `# Fix instruction — ${f.id} [${f.severity}/${f.category}]`,
+    `# Fix instruction - ${f.id} [${f.severity}/${f.category}]`,
     ``,
     `## Problem`,
     f.title,
@@ -48,7 +48,7 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
     `- **Target:** ${trace.targetUrl} (build: \`${trace.build}\`)`,
     `- **Ran:** ${trace.startedAt} → ${trace.finishedAt}`,
     `- **Goal reached:** ${trace.success ? "YES ✅" : "NO ❌"}`,
-    `- **Analysis:** ${spark}/${findings.length} findings enriched by Muse Spark${spark === 0 ? " (heuristic mode — set META_API_KEY to upgrade)" : ""}`,
+    `- **Analysis:** ${spark}/${findings.length} findings enriched by Muse Spark${spark === 0 ? " (heuristic mode - set META_API_KEY to upgrade)" : ""}`,
     ``,
     `> Usability results below are **AI simulation (heuristic v0)**, not human data.`,
     `> Human validation is a separate, optional step.`,
@@ -58,7 +58,7 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
   ];
   for (const [i, f] of findings.entries()) {
     lines.push(
-      `### ${i + 1}. ${f.title} — \`${f.id}\``,
+      `### ${i + 1}. ${f.title} - \`${f.id}\``,
       ``,
       `- Category: ${f.category} · Severity: **${f.severity}** · Confidence: ${f.confidence} · Source: ${f.analysisSource}`,
       `- Suspected cause: ${f.suspectedCause}`,
@@ -72,26 +72,40 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
     );
   }
   const briefs = findings.map(briefFor).filter((b) => b !== null);
+  for (const b of briefs.slice(0, 2)) {
+    const f = findings.find((x) => x.id === b.findingId);
+    if (f) b.images = await generateRedesignImages(f, outDir);
+  }
   if (briefs.length > 0) {
     await writeFile(join(outDir, "briefs.json"), JSON.stringify(briefs, null, 2));
-    lines.push(`## Redesign briefs (${briefs.length})`, ``, `> Written briefs (heuristic v0). Muse Image visual alternatives attach here in M2.`, ``);
+    const withImages = briefs.filter((b) => b.images.length > 0).length;
+    lines.push(
+      `## Redesign briefs (${briefs.length})`,
+      ``,
+      withImages > 0
+        ? `> Written briefs plus Muse Image visual alternatives (${withImages} with images).`
+        : `> Written briefs (heuristic v0). Set META_API_KEY for Muse Image visual alternatives.`,
+      ``,
+    );
     for (const b of briefs) {
       lines.push(`### ${b.findingId}`, ``);
       for (const d of b.directions) lines.push(`- **${d.name}:** ${d.change}`, `  Trade-off: ${d.tradeoff}`);
-      lines.push(`- Component plan: ${b.componentPlan}`, ``);
+      lines.push(`- Component plan: ${b.componentPlan}`);
+      for (const img of b.images) lines.push(`- Alternative UI: ![](${img})`);
+      lines.push(``);
     }
   }
   lines.push(
     `## Action trace (${trace.actions.length} actions, ${trace.events.length} events)`,
     ``,
     ...trace.actions.map(
-      (a) => `- [+${a.t}ms] ${a.ok ? "✅" : "❌"} ${a.action}${a.detail ? ` — ${a.detail}` : ""}${a.screenshot ? ` (${a.screenshot})` : ""}`,
+      (a) => `- [+${a.t}ms] ${a.ok ? "✅" : "❌"} ${a.action}${a.detail ? ` - ${a.detail}` : ""}${a.screenshot ? ` (${a.screenshot})` : ""}`,
     ),
     ``,
     `## Confusion signals (${trace.confusionSignals.length})`,
     ``,
     ...(trace.confusionSignals.length === 0
-      ? ["None — the naive-user pass completed without hesitation signals."]
+      ? ["None - the naive-user pass completed without hesitation signals."]
       : trace.confusionSignals.map((s) => `- [${s.signal}] ${s.step}: ${s.detail}`)),
     ``,
   );

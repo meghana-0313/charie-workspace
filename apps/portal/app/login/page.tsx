@@ -17,24 +17,30 @@ export default function LoginPage() {
       body: JSON.stringify({ passphrase }),
     });
     if (res.ok) router.push("/");
-    else setError("Wrong passphrase — try again.");
+    else setError("Wrong passphrase - try again.");
   }
 
   return (
-    <div className="panel" style={{ maxWidth: 420, margin: "60px auto" }}>
-      <h2>GhostQA login</h2>
-      <p className="muted small">Enter the shared dashboard passphrase.</p>
-      <form onSubmit={submit} className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
-        <input
-          type="password"
-          value={passphrase}
-          onChange={(e) => setPassphrase(e.target.value)}
-          placeholder="passphrase"
-          autoFocus
-        />
-        <button type="submit">Sign in</button>
-        {error && <p className="small" style={{ color: "var(--danger, #c00)" }}>{error}</p>}
-      </form>
+    <div className="login-wrap">
+      <div className="card login-card">
+        <div className="row" style={{ marginBottom: 4 }}>
+          <span className="side-mark">C</span>
+          <strong style={{ fontSize: "var(--text-lg)" }}>Agent CB</strong>
+        </div>
+        <p className="muted small">Build + Runtime Intelligence. Enter the shared dashboard passphrase.</p>
+        <form onSubmit={submit} className="stack" style={{ marginTop: 12 }}>
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="passphrase"
+            autoFocus
+            aria-label="passphrase"
+          />
+          <button type="submit">Sign in</button>
+          {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
+        </form>
+      </div>
     </div>
   );
 }

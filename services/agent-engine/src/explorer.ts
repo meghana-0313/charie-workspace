@@ -1,5 +1,5 @@
 // Explorer: drives the real app with Playwright toward the goal and records
-// everything — actions, screenshots, console errors, failed requests — plus
+// everything - actions, screenshots, console errors, failed requests - plus
 // first-time-user confusion signals (heuristic v0; vision-driven sim later).
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -72,7 +72,7 @@ export async function runJourney(targetUrl: string, outDir: string, goal: string
     await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
   }
 
-  // 2. Checkout step 1 — first with an INVALID email (UX-2 probe).
+  // 2. Checkout step 1 - first with an INVALID email (UX-2 probe).
   await page.goto(`${targetUrl}/checkout`);
   await page.fill("#email", "not-an-email");
   await page.fill("#name", "Ada Tester");
@@ -145,7 +145,7 @@ export async function runJourney(targetUrl: string, outDir: string, goal: string
   await page.locator("#continue-1").click();
   await page.waitForSelector("#step2:visible", { timeout: 3000 });
 
-  // 7. Place the order — twice, like a confused customer (BUG-1 repro + reclick).
+  // 7. Place the order - twice, like a confused customer (BUG-1 repro + reclick).
   await page.fill("#card", "4242424242424242");
   await page.locator("#place-order").click();
   await page.waitForTimeout(1200);

@@ -18,7 +18,11 @@ export interface Finding {
   suggestedFix: string;
   regressionCheck: string;
   status: FindingStatus;
-  analysisSource: "heuristic" | "muse-spark"; // honest label for the demo
+  analysisSource: "heuristic" | "muse-spark" | "muse-wonder"; // honest label for the demo
+  grounding?: Array<{
+    screenshot: string;
+    boxes: Array<{ x: number; y: number; width: number; height: number; label: string }>;
+  }>;
 }
 
 export interface TraceAction {

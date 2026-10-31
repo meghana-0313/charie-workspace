@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Edge-safe session check (Web Crypto — node:crypto is unavailable here).
+// Edge-safe session check (Web Crypto - node:crypto is unavailable here).
 async function valid(cookie: string | undefined, secret: string): Promise<boolean> {
   if (!cookie || !secret) return false;
   const [exp, sig] = cookie.split(".");
@@ -28,5 +28,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/session|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!login|api/session|_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|icon\\.svg).*)"],
 };

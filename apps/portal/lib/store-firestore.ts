@@ -3,8 +3,9 @@
 // account on Cloud Run, `gcloud auth application-default login` locally).
 // Timestamps stay ISO strings so domain types are identical across adapters.
 
+import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { Approval, PortalRun, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -17,9 +18,14 @@ function firestore() {
 
 const now = () => new Date().toISOString();
 
-/** Firestore rejects `undefined` values — drop them (keeps optional fields safe). */
+/** Firestore rejects `undefined` values - drop them (keeps optional fields safe). */
 function clean<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
+/** Push endpoints are URLs - hash them into safe doc ids. */
+function subId(endpoint: string): string {
+  return createHash("sha256").update(endpoint).digest("hex");
 }
 
 export const firestoreStore = {
@@ -31,7 +37,7 @@ export const firestoreStore = {
     const d = await firestore().collection("tickets").doc(id).get();
     return d.exists ? (d.data() as Ticket) : null;
   },
-  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string }): Promise<Ticket> {
+  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string }): Promise<Ticket> {
     const fs = firestore();
     const ticket: Ticket = { ...input, id: uid("tkt"), status: "new", createdAt: now(), updatedAt: now() };
     const room: Room = {
@@ -83,6 +89,13 @@ export const firestoreStore = {
     await firestore().collection("rooms").doc(roomId).collection("approvals").doc(a.id).set(a);
     return a;
   },
+  async setApprovalStatus(roomId: string, approvalId: string, status: Approval["status"]): Promise<Approval | null> {
+    const ref = firestore().collection("rooms").doc(roomId).collection("approvals").doc(approvalId);
+    const d = await ref.get();
+    if (!d.exists) return null;
+    await ref.update({ status });
+    return { ...(d.data() as Approval), status };
+  },
 
   async getRun(id: string): Promise<PortalRun | null> {
     const d = await firestore().collection("runs").doc(id).get();
@@ -99,5 +112,77 @@ export const firestoreStore = {
   async listRuns(limit = 20): Promise<PortalRun[]> {
     const snap = await firestore().collection("runs").orderBy("createdAt", "desc").limit(limit).get();
     return snap.docs.map((d) => d.data() as PortalRun);
+  },
+
+  async saveEvents(events: GuardEventView[]): Promise<void> {
+    const fs = firestore();
+    const batch = fs.batch();
+    for (const e of events) batch.set(fs.collection("guardian-events").doc(e.id), e);
+    await batch.commit();
+  },
+  async listRecentEvents(limit = 200): Promise<GuardEventView[]> {
+    const snap = await firestore().collection("guardian-events").orderBy("ts", "desc").limit(limit).get();
+    return snap.docs.map((d) => d.data() as GuardEventView).reverse();
+  },
+  async saveIncident(inc: Incident): Promise<void> {
+    await firestore().collection("incidents").doc(inc.id).set(inc);
+  },
+  async getIncident(id: string): Promise<Incident | null> {
+    const d = await firestore().collection("incidents").doc(id).get();
+    return d.exists ? (d.data() as Incident) : null;
+  },
+  async listIncidents(): Promise<Incident[]> {
+    const snap = await firestore().collection("incidents").orderBy("createdAt", "desc").get();
+    return snap.docs.map((d) => d.data() as Incident);
+  },
+  async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
+    await firestore().collection("incidents").doc(id).update({ ...patch, updatedAt: now() });
+  },
+
+  async savePushSubscription(sub: Omit<PushSubscription, "createdAt">): Promise<void> {
+    await firestore().collection("push_subscriptions").doc(subId(sub.endpoint)).set({ ...sub, createdAt: now() });
+  },
+  async listPushSubscriptions(): Promise<PushSubscription[]> {
+    const snap = await firestore().collection("push_subscriptions").get();
+    return snap.docs.map((d) => d.data() as PushSubscription);
+  },
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await firestore().collection("push_subscriptions").doc(subId(endpoint)).delete().catch(() => {});
+  },
+
+  async listRepos(): Promise<RepoConnection[]> {
+    const snap = await firestore().collection("repos").orderBy("createdAt", "desc").get();
+    return snap.docs.map((d) => d.data() as RepoConnection);
+  },
+  async getRepo(id: string): Promise<RepoConnection | null> {
+    const d = await firestore().collection("repos").doc(id).get();
+    return d.exists ? (d.data() as RepoConnection) : null;
+  },
+  async saveRepo(repo: RepoConnection): Promise<void> {
+    await firestore().collection("repos").doc(repo.id).set(clean({ ...repo }));
+  },
+  async updateRepo(id: string, patch: Partial<RepoConnection>): Promise<void> {
+    await firestore().collection("repos").doc(id).update(clean({ ...patch, updatedAt: now() }));
+  },
+  async deleteRepo(id: string): Promise<void> {
+    await firestore().collection("repos").doc(id).delete().catch(() => {});
+  },
+
+  async listBuilds(repoId: string): Promise<RepoBuild[]> {
+    // No orderBy: where+orderBy needs a composite index. Sort in memory.
+    const snap = await firestore().collection("builds").where("repoId", "==", repoId).get();
+    return snap.docs
+      .map((d) => d.data() as RepoBuild)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getBuild(id: string): Promise<RepoBuild | null> {
+    const d = await firestore().collection("builds").doc(id).get();
+    return d.exists ? (d.data() as RepoBuild) : null;
+  },
+  async saveBuild(build: RepoBuild): Promise<void> {
+    await firestore().collection("builds").doc(build.id).set(clean({ ...build }));
+  },
+  async updateBuild(id: string, patch: Partial<RepoBuild>): Promise<void> {
+    await firestore().collection("builds").doc(id).update(clean({ ...patch, updatedAt: now() }));
   },
 };

@@ -1,9 +1,9 @@
-# Firestore schema (planned — portal milestone)
+# Firestore schema (planned - portal milestone)
 
 Database choice: **Cloud Firestore** (Firebase). Rationale: real-time rooms,
 generous free tier, Auth + Storage in one console, fastest to a working portal in
 the hackathon window. All collections work identically if we later move to
-self-hosted Postgres — access goes through a repository layer, never raw queries
+self-hosted Postgres - access goes through a repository layer, never raw queries
 in components.
 
 ## Collections
@@ -24,7 +24,31 @@ rooms/{roomId}/messages/{msgId}
   body, findingIds: string[], createdAt
 
 rooms/{roomId}/approvals/{approvalId}
-  findingIds, instruction: string, approvedBy, approvedAt, status
+  findingIds, instruction: string, approvedBy, approvedAt,
+  status: "approved"|"sent-to-agent"
+
+guardian-events/{eventId}
+  ts, kind: "auth"|"api"|"traffic"|"infra",
+  actor?, ip?, endpoint?, outcome?, country?, bytes?, records?
+
+incidents/{incidentId}          # Runtime Guardian; simulated: true always
+  title, severity, status: "open"|"contained"|"resolved",
+  signals[], investigation?, mode, baselineSuspicious,
+  voiceBrief?, actions[], createdAt, updatedAt
+
+push_subscriptions/{sha256(endpoint)}
+  endpoint, keys: { p256dh, auth }, createdAt
+
+repos/{repoId}               # Connected GitHub repos
+  owner, repo, branch, subdir, startCommand,
+  visibility: "public"|"private", hasToken, token?,
+  status: "connected"|"building"|"live"|"failed",
+  lastSha?, appUrl?, ticketId?, createdAt, updatedAt
+
+builds/{buildId}             # Repo Cloud Builds (query by repoId, sort in code)
+  repoId, sha, cloudBuildId, strategy: "dockerfile"|"node"|"python",
+  status: "queued"|"working"|"success"|"failure"|"deployed"|"error",
+  appUrl?, ticketId?, detail?, createdAt, updatedAt
 
 runs/{runId}
   ticketId|roomId, kind: "investigate"|"verify",

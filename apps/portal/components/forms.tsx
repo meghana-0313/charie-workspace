@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { VoiceRecorder } from "./suite";
 
 async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: string } & Record<string, unknown>> {
   const res = await fetch(url, {
@@ -15,11 +16,13 @@ async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: 
 export function NewTicketForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [recFile, setRecFile] = useState<File | null>(null);
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError("");
     const fd = new FormData(e.currentTarget);
+    if (recFile) fd.set("voice", recFile);
     const res = await fetch("/api/tickets", { method: "POST", body: fd });
     setBusy(false);
     if (!res.ok) {
@@ -31,16 +34,22 @@ export function NewTicketForm() {
   }
   return (
     <form onSubmit={onSubmit}>
-      <label htmlFor="subject">Subject</label>
-      <input id="subject" name="subject" required placeholder="Checkout button does nothing" />
+      <label htmlFor="subject">Subject (or record/attach a voice note below instead)</label>
+      <input id="subject" name="subject" placeholder="Checkout button does nothing" />
       <label htmlFor="body">Customer description</label>
-      <textarea id="body" name="body" required placeholder="Customer tried 3 times, gave up. Order lost." />
-      <label htmlFor="goal">User task to verify (goal — blank auto-extracts from above)</label>
+      <textarea id="body" name="body" placeholder="Customer tried 3 times, gave up. Order lost." />
+      <label htmlFor="goal">User task to verify (goal - blank auto-extracts from above)</label>
       <input id="goal" name="goal" placeholder="Buy 3 different travel passes and complete checkout without assistance" />
       <label htmlFor="targetUrl">App URL to test</label>
       <input id="targetUrl" name="targetUrl" required defaultValue="http://localhost:3101" />
-      <label htmlFor="voice">Voice note (optional, stored for M4 transcription)</label>
-      <input id="voice" name="voice" type="file" accept="audio/*" />
+      <label>Voice note (optional, transcribed into subject + description)</label>
+      <VoiceRecorder onFile={setRecFile} />
+      {!recFile && (
+        <div style={{ marginTop: 8 }}>
+          <label htmlFor="voice" style={{ fontWeight: 400 }}>…or attach an audio file</label>
+          <input id="voice" name="voice" type="file" accept="audio/*" />
+        </div>
+      )}
       <div className="row" style={{ marginTop: 12 }}>
         <button disabled={busy}>{busy ? "Filing…" : "File ticket + open room"}</button>
         {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}

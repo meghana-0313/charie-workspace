@@ -1,10 +1,10 @@
 // JSON-file store: local stand-in for Firestore. Same async interface as
-// store-firestore.ts — see lib/store.ts for the selector.
+// store-firestore.ts - see lib/store.ts for the selector.
 // Data lives in apps/portal/.data (gitignored).
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Approval, PortalRun, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -32,6 +32,11 @@ const rooms = file<Record<string, Room>>("rooms", {});
 const messages = file<Record<string, RoomMessage[]>>("messages", {});
 const approvals = file<Record<string, Approval[]>>("approvals", {});
 const runs = file<Record<string, PortalRun>>("runs", {});
+const gevents = file<GuardEventView[]>("guardian-events", []);
+const incidents = file<Record<string, Incident>>("incidents", {});
+const pushSubs = file<Record<string, PushSubscription>>("push", {});
+const repos = file<Record<string, RepoConnection>>("repos", {});
+const builds = file<Record<string, RepoBuild>>("builds", {});
 
 const now = () => new Date().toISOString();
 
@@ -42,7 +47,7 @@ export const fileStore = {
   async getTicket(id: string): Promise<Ticket | null> {
     return tickets.read()[id] ?? null;
   },
-  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string }): Promise<Ticket> {
+  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string }): Promise<Ticket> {
     const all = tickets.read();
     const ticket: Ticket = { ...input, id: uid("tkt"), status: "new", createdAt: now(), updatedAt: now() };
     all[ticket.id] = ticket;
@@ -104,6 +109,16 @@ export const fileStore = {
     approvals.write(all);
     return a;
   },
+  async setApprovalStatus(roomId: string, approvalId: string, status: Approval["status"]): Promise<Approval | null> {
+    const all = approvals.read();
+    const list = all[roomId] ?? [];
+    const i = list.findIndex((a) => a.id === approvalId);
+    if (i < 0) return null;
+    list[i] = { ...list[i], status };
+    all[roomId] = list;
+    approvals.write(all);
+    return list[i];
+  },
 
   async getRun(id: string): Promise<PortalRun | null> {
     return runs.read()[id] ?? null;
@@ -126,5 +141,89 @@ export const fileStore = {
     return Object.values(runs.read())
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
+  },
+
+  async saveEvents(events: GuardEventView[]): Promise<void> {
+    gevents.write([...gevents.read(), ...events].slice(-1000));
+  },
+  async listRecentEvents(limit = 200): Promise<GuardEventView[]> {
+    return gevents.read().slice(-limit);
+  },
+  async saveIncident(inc: Incident): Promise<void> {
+    const all = incidents.read();
+    all[inc.id] = inc;
+    incidents.write(all);
+  },
+  async getIncident(id: string): Promise<Incident | null> {
+    return incidents.read()[id] ?? null;
+  },
+  async listIncidents(): Promise<Incident[]> {
+    return Object.values(incidents.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
+    const all = incidents.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      incidents.write(all);
+    }
+  },
+
+  async savePushSubscription(sub: Omit<PushSubscription, "createdAt">): Promise<void> {
+    const all = pushSubs.read();
+    all[sub.endpoint] = { ...sub, createdAt: now() };
+    pushSubs.write(all);
+  },
+  async listPushSubscriptions(): Promise<PushSubscription[]> {
+    return Object.values(pushSubs.read());
+  },
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    const all = pushSubs.read();
+    delete all[endpoint];
+    pushSubs.write(all);
+  },
+
+  async listRepos(): Promise<RepoConnection[]> {
+    return Object.values(repos.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getRepo(id: string): Promise<RepoConnection | null> {
+    return repos.read()[id] ?? null;
+  },
+  async saveRepo(repo: RepoConnection): Promise<void> {
+    const all = repos.read();
+    all[repo.id] = repo;
+    repos.write(all);
+  },
+  async updateRepo(id: string, patch: Partial<RepoConnection>): Promise<void> {
+    const all = repos.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      repos.write(all);
+    }
+  },
+  async deleteRepo(id: string): Promise<void> {
+    const all = repos.read();
+    delete all[id];
+    repos.write(all);
+  },
+
+  async listBuilds(repoId: string): Promise<RepoBuild[]> {
+    return Object.values(builds.read())
+      .filter((b) => b.repoId === repoId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getBuild(id: string): Promise<RepoBuild | null> {
+    return builds.read()[id] ?? null;
+  },
+  async saveBuild(build: RepoBuild): Promise<void> {
+    const all = builds.read();
+    all[build.id] = build;
+    builds.write(all);
+  },
+  async updateBuild(id: string, patch: Partial<RepoBuild>): Promise<void> {
+    const all = builds.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      builds.write(all);
+    }
   },
 };

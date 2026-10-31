@@ -2,7 +2,7 @@
   "name": "circle-back",
   "version": "0.1.0",
   "private": true,
-  "description": "GhostQA — autonomous product-quality engineer: ticket to verified fix in a closed loop.",
+  "description": "GhostQA - autonomous product-quality engineer: ticket to verified fix in a closed loop.",
   "type": "module",
   "workspaces": [
     "apps/*",

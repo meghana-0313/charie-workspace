@@ -5,7 +5,7 @@ import { fileStore } from "./store-file";
 import { firestoreStore } from "./store-firestore";
 
 export { OWNER, uid } from "./uid";
-/** Kept for existing callers — the human author name on messages/approvals. */
+/** Kept for existing callers - the human author name on messages/approvals. */
 export { OWNER as DEMO_USER } from "./uid";
 
 export type Store = typeof fileStore;

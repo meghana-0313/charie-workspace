@@ -3,11 +3,22 @@
 // analyst finding coverage incl. surface checks, triage + redesign basics,
 // secrets resolution (env fast path, GCP fail-soft, confirmed model IDs).
 import { strict as assert } from "node:assert";
-import { analyze } from "../src/analyst.js";
+import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { analyze, groundingLabels } from "../src/analyst.js";
+import { parseGrade, secondOpinion } from "../src/baseten.js";
+import { extractOutputText, groundControls, parseBoxes } from "../src/grounding.js";
+import { glimmerComplete, parseTriage } from "../src/glimmer.js";
+import { detectSignals, parseInvestigation, simulateResponse, verifyContainment } from "../src/guardian.js";
+import type { GuardEvent } from "../src/guardian.js";
 import { hasMetaKey, modelId } from "../src/meta-client.js";
-import { briefFor } from "../src/redesign.js";
+import { briefFor, generateRedesignImages } from "../src/redesign.js";
 import { runDirName } from "../src/run-id.js";
 import { _clearSecretCache, loadSecrets, secret } from "../src/secrets.js";
+import { transcribe } from "../src/voice.js";
+import { deepDive, parseDeepDive } from "../src/wonder.js";
+import type { Finding } from "../src/types.js";
 import { checkHeaders } from "../src/surface.js";
 import { extractGoal, preGrade } from "../src/triage.js";
 import type { JourneyTrace } from "../src/types.js";
@@ -107,5 +118,119 @@ for (const [k, v] of Object.entries(savedEnv)) {
   else process.env[k] = v;
 }
 _clearSecretCache();
+
+// 7. Model clients (stubbed fetch, no network).
+const savedKeys: Record<string, string | undefined> = {
+  META_API_KEY: process.env.META_API_KEY,
+  BASETEN_API_KEY: process.env.BASETEN_API_KEY,
+};
+process.env.META_API_KEY = "test-meta";
+process.env.BASETEN_API_KEY = "test-baseten";
+const stub = (json: unknown, okFlag = true) =>
+  (async () => ({ ok: okFlag, status: okFlag ? 200 : 500, json: async () => json })) as unknown as typeof fetch;
+
+ok(parseGrade("SEVERITY: major\nNOTE: slow query")?.severity === "major", "grade parser");
+ok(parseGrade("nothing here") === null, "grade parser rejects junk");
+ok(parseTriage("GOAL: buy a pass\nGRADE: minor")?.goal === "buy a pass", "triage parser");
+ok(parseTriage("junk") === null, "triage parser rejects junk");
+ok(parseDeepDive("ROOTCAUSE: race\nFIXPLAN: lock it")?.fixPlan === "lock it", "deep-dive parser");
+const pb = parseBoxes('see <|box;x1=10;y1=20;x2=110;y2=120;w=1000;h=800|> now', "btn");
+ok(pb.length === 1 && pb[0].width === 100 && pb[0].height === 100 && pb[0].label === "btn", "box parser");
+ok(parseBoxes("no boxes", "x").length === 0, "box parser empty");
+ok(
+  extractOutputText({ output: [{ content: [{ type: "output_text", text: "hi" }] }] }) === "hi",
+  "responses text extractor",
+);
+ok(groundingLabels('"Place order" fails silently')[0] === "Place order", "quoted label first");
+
+const miniFinding = {
+  title: "t", category: "functional", severity: "blocker", suspectedCause: "s", suggestedFix: "f",
+} as Finding;
+const so = await secondOpinion(miniFinding, stub({ choices: [{ message: { content: "SEVERITY: minor\nNOTE: cosmetic" } }] }));
+ok(so?.severity === "minor" && so.note === "cosmetic", "second opinion parses content");
+const so2 = await secondOpinion(
+  miniFinding,
+  stub({ choices: [{ message: { content: null, reasoning_content: "SEVERITY: major\nNOTE: r" } }] }),
+);
+ok(so2?.severity === "major", "second opinion falls back to reasoning_content");
+ok((await secondOpinion(miniFinding, stub({}, false))) === null, "second opinion null on HTTP error");
+
+const gc = await glimmerComplete([{ role: "user", content: "hi" }], { fetchImpl: stub({ choices: [{ message: { content: "hello" } }] }) });
+ok(gc === "hello", "glimmer client parses");
+
+const fullFinding: Finding = {
+  id: "f1", category: "functional", severity: "major", title: "t", goal: "g", reproSteps: ["a"],
+  evidence: { screenshots: [], trace: "tr", logs: [] }, suspectedCause: "s", confidence: "low",
+  suggestedFix: "f", regressionCheck: "r", status: "open", analysisSource: "heuristic",
+};
+const dd = await deepDive(fullFinding, stub({ choices: [{ message: { content: "ROOTCAUSE: r\nFIXPLAN: p" } }] }));
+ok(dd?.rootCause === "r" && dd.fixPlan === "p", "deep dive parses");
+
+const shotDir = mkdtempSync(join(tmpdir(), "ghostqa-shot-"));
+const tinyPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const shotPath = join(shotDir, "s.png");
+writeFileSync(shotPath, Buffer.from(tinyPng, "base64"));
+const gb = await groundControls(
+  shotPath,
+  ["button"],
+  stub({ output: [{ content: [{ type: "output_text", text: "x <|box;x1=1;y1=2;x2=11;y2=22;w=100;h=100|> y" }] }] }),
+);
+ok(gb.length === 1 && gb[0].x === 1 && gb[0].width === 10 && gb[0].label === "button", "grounding end to end (stubbed)");
+
+const imgDir = mkdtempSync(join(tmpdir(), "ghostqa-img-"));
+const ufx: Finding = { ...fullFinding, id: "u1", category: "usability" };
+const imgs = await generateRedesignImages(ufx, imgDir, stub({ data: [{ b64_json: tinyPng }] }));
+ok(imgs.length === 1 && imgs[0] === "redesigns/u1-0.png" && existsSync(join(imgDir, imgs[0])), "redesign images saved");
+ok((await generateRedesignImages(fullFinding, imgDir, stub({ data: [] }))).length === 0, "redesign skips non-usability");
+
+const wavPath = join(shotDir, "n.wav");
+writeFileSync(wavPath, Buffer.from("RIFFxxxx"));
+const tr = await transcribe(wavPath, stub({ transcript: "Checkout is broken. Fix it now." }));
+ok(tr?.subject === "Checkout is broken" && tr.body.includes("Fix it now"), "transcription parses");
+
+for (const [k, v] of Object.entries(savedKeys)) {
+  if (v === undefined) delete process.env[k];
+  else process.env[k] = v;
+}
+_clearSecretCache();
+
+// 8. Guardian detectors (pure) + response sim.
+let eid = 0;
+const ev = (over: Partial<GuardEvent>): GuardEvent => ({
+  id: `e${eid++}`, ts: new Date().toISOString(), kind: "auth", ...over,
+});
+const stuffing: GuardEvent[] = [];
+for (let i = 0; i < 25; i++) {
+  stuffing.push(ev({ outcome: "failure", actor: `user${i % 4}`, ip: "9.9.9.9" }));
+}
+const sigStuff = detectSignals(stuffing);
+ok(sigStuff.length === 1 && sigStuff[0].type === "credential-stuffing" && sigStuff[0].severity === "blocker", "stuffing detected");
+ok(detectSignals(stuffing.slice(0, 5)).length === 0, "below threshold stays quiet");
+
+const takeover: GuardEvent[] = [];
+for (let i = 0; i < 5; i++) takeover.push(ev({ outcome: "failure", actor: "vic", ip: "9.9.9.9", country: "US" }));
+takeover.push(ev({ outcome: "success", actor: "vic", ip: "9.9.9.9", country: "XX" }));
+takeover.push(ev({ kind: "api", outcome: "success", actor: "vic", ip: "9.9.9.9", endpoint: "/admin/export" }));
+const sigTake = detectSignals(takeover);
+ok(sigTake.length === 1 && sigTake[0].type === "account-takeover", "takeover detected");
+
+const abuse: GuardEvent[] = [];
+for (let i = 0; i < 35; i++) abuse.push(ev({ kind: "api", outcome: "success", ip: "7.7.7.7", endpoint: "/api/billing/export" }));
+ok(detectSignals(abuse)[0]?.type === "api-abuse", "api abuse detected");
+
+const exfil: GuardEvent[] = [];
+for (let i = 0; i < 3; i++) exfil.push(ev({ kind: "api", outcome: "success", actor: "svc", bytes: 8_000_000 }));
+ok(detectSignals(exfil)[0]?.severity === "major", "exfiltration detected");
+
+const inv = parseInvestigation("VERDICT: stuffing attack\nSEVERITY: blocker\nSUMMARY: bad\nTIMELINE:\n- a\n- b\nPLAN:\n- block\n- revoke\n");
+ok(inv?.verdict === "stuffing attack" && inv.timeline.length === 2 && inv.plan.length === 2, "investigation parser");
+ok(parseInvestigation("nope") === null, "investigation parser rejects junk");
+
+const sim = simulateResponse("block_ip", "9.9.9.9");
+ok(sim.status === "simulated-contained" && sim.detail.includes("9.9.9.9"), "simulated block");
+const cont = verifyContainment(100, [ev({ outcome: "failure" }), ev({ outcome: "success" })]);
+ok(cont.contained === true && cont.after === 1, "containment verified on drop");
+const cont2 = verifyContainment(10, stuffing.slice(0, 9));
+ok(cont2.contained === false, "containment honestly fails when attack continues");
 
 console.log(`REGRESSION PASS: ${n}/${n} assertions`);

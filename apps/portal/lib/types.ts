@@ -10,6 +10,7 @@ export interface Ticket {
   goal: string;
   targetUrl: string;
   voiceNotePath?: string; // uploaded audio; transcription wires up in M4
+  sourceRepo?: string; // owner/repo when auto-filed from a connected repo build
   status: TicketStatus;
   roomId?: string;
   createdAt: string;
@@ -54,6 +55,62 @@ export interface PortalRun {
   createdAt: string;
 }
 
+// Guardian types. Mirror the engine shapes; the portal stays decoupled.
+export interface GuardEventView {
+  id: string;
+  ts: string;
+  kind: "auth" | "api" | "traffic" | "infra";
+  actor?: string;
+  ip?: string;
+  endpoint?: string;
+  outcome?: "success" | "failure" | "deny" | "allow";
+  country?: string;
+  bytes?: number;
+  records?: number;
+}
+
+export interface IncidentSignal {
+  type: string;
+  severity: string;
+  title: string;
+  evidence: string[];
+  actors: string[];
+  ips: string[];
+}
+
+export interface IncidentAction {
+  id: string;
+  action: "block_ip" | "revoke_sessions" | "rate_limit";
+  target: string;
+  status: string;
+  detail: string;
+  at: string;
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  severity: "blocker" | "major" | "minor";
+  status: "open" | "contained" | "resolved";
+  signals: IncidentSignal[];
+  investigation: {
+    verdict: string;
+    severity: string;
+    summary: string;
+    timeline: string[];
+    plan: string[];
+    disagreement: string | null;
+    glimmerFiltered: number;
+  } | null;
+  mode: "investigated" | "signals-only";
+  baselineSuspicious: number;
+  voiceBrief?: string;
+  actions: IncidentAction[];
+  simulated: true;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Subset of the engine Finding type, re-declared to keep the portal decoupled.
 export interface FindingView {
   id: string;
@@ -67,4 +124,123 @@ export interface FindingView {
   suggestedFix: string;
   regressionCheck: string;
   analysisSource: string;
+  grounding?: Array<{
+    screenshot: string;
+    boxes: Array<{ x: number; y: number; width: number; height: number; label: string }>;
+  }>;
+}
+
+export interface BriefView {
+  findingId: string;
+  directions: Array<{ name: string; change: string; tradeoff: string }>;
+  componentPlan: string;
+  images: string[];
+}
+
+// Guardian suite views. Mirror the engine shapes; the portal stays decoupled.
+export interface WorkOrderStepView {
+  kind: "verify-fix" | "re-analyze" | "evidence-pack" | "docs-note";
+  label: string;
+  ref: string;
+  detail?: string;
+  targetUrl?: string;
+  baselineRunId?: string;
+  goal?: string;
+}
+
+export interface WorkOrderView {
+  id: string;
+  title: string;
+  source: string;
+  sourceRef: string;
+  status: string;
+  risk: string;
+  plan: WorkOrderStepView[];
+  approvals: Array<{ by: string; at: string }>;
+  proofs: Array<{ at: string; step: string; ok: boolean; detail: string; artifact?: string }>;
+  scheduledFor?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SignalClusterView {
+  id: string;
+  theme: string;
+  size: number;
+  angryShare: number;
+  sampleIds: string[];
+  samples: string[];
+}
+
+export interface SweepView {
+  id: string;
+  at: string;
+  pass: boolean;
+  checks: Array<{ name: string; pass: boolean; evidence: string }>;
+}
+
+export interface PentestView {
+  id: string;
+  at: string;
+  targets: string[];
+  checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string }>;
+  passed: number;
+  failed: number;
+  grade: string;
+}
+
+export interface DigestView {
+  id: string;
+  at: string;
+  orders: Array<{ id: string; title: string; status: string; proofs: WorkOrderView["proofs"] }>;
+  pentest: PentestView | null;
+  digest: string;
+  durationMs: number;
+}
+
+export interface ZoomView {
+  configured: boolean;
+  provider: string;
+  bots: Array<{ id: string; meetingUrl: string; status: string }>;
+  setup: string[];
+}
+
+export interface PushSubscription {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  createdAt: string;
+}
+
+export interface RepoConnection {
+  id: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  subdir: string; // build context inside the repo, "" = root
+  startCommand: string; // used by generated Dockerfiles
+  visibility: "public" | "private";
+  hasToken: boolean;
+  token?: string; // PAT for private repos (v1: same trust boundary as Firestore data)
+  status: "connected" | "building" | "live" | "failed";
+  lastSha?: string;
+  appUrl?: string;
+  ticketId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RepoBuildStatus = "queued" | "working" | "success" | "failure" | "deployed" | "error";
+
+export interface RepoBuild {
+  id: string;
+  repoId: string;
+  sha: string;
+  cloudBuildId: string;
+  strategy: "dockerfile" | "node" | "python";
+  status: RepoBuildStatus;
+  appUrl?: string;
+  ticketId?: string;
+  detail?: string;
+  createdAt: string;
+  updatedAt: string;
 }

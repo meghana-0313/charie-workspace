@@ -32,7 +32,7 @@ export interface RunOutcome {
 export async function executeRun(req: RunRequest): Promise<RunOutcome> {
   await mkdir(req.outDir, { recursive: true });
   const trace = await runJourney(req.targetUrl, req.outDir, req.goal);
-  const findings = await analyze(trace);
+  const findings = await analyze(trace, req.outDir);
   await writeReport(req.outDir, trace, findings);
   let verification: VerificationResult | null = null;
   if (req.verifyMode) {

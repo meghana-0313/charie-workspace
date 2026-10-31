@@ -1,6 +1,6 @@
 // Passive surface checks: response headers, cookie flags, and DOM accessibility
 // signals. Safe by design (no probing, no payloads). Findings built from these
-// are always labeled surface checks — never a penetration test.
+// are always labeled surface checks - never a penetration test.
 
 import type { Page } from "playwright";
 

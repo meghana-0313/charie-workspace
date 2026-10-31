@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
 import { readFindings, readReportMd, readVerification, runStatus } from "@/lib/engine";
+import { readBriefs } from "@/lib/guardian";
+import { boxesFor, GroundedShot, RedesignBriefs } from "@/components/evidence";
 import { ApproveButton, MessageForm, RunButtons } from "@/components/forms";
+import { DispatchButton } from "@/components/suite";
+import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -25,33 +29,40 @@ async function RoomView({ ticketId }: { ticketId: string }) {
   }
   const runViews = await Promise.all(room.runIds.map(async (runId) => {
     const rec = await store.getRun(runId);
-    return { runId, rec, status: await runStatus(runId), findings: (await readFindings(runId)) ?? [], verification: await readVerification(runId), report: await readReportMd(runId) };
+    return { runId, rec, status: await runStatus(runId), findings: (await readFindings(runId)) ?? [], verification: await readVerification(runId), report: await readReportMd(runId), briefs: await readBriefs(runId) };
   }));
   const baseline = runViews.find((r) => r.rec?.kind === "investigate" && r.status === "done");
   const messages = await store.listMessages(room.id);
   const approvals = await store.listApprovals(room.id);
   const approvedIds = new Set(approvals.flatMap((a) => a.findingIds));
+  const findingCount = runViews.reduce((n, r) => n + r.findings.length, 0);
 
   return (
     <>
-      <p><Link href="/">← All tickets</Link></p>
-      <div className="panel">
-        <h2>{ticket.subject} <span className="pill">{ticket.status}</span></h2>
-        <p>{ticket.body}</p>
-        <p className="small muted">Goal: {ticket.goal}</p>
-        <p className="small muted">Target: <code>{ticket.targetUrl}</code>
-          {ticket.voiceNotePath && <> · Voice note (<code>{ticket.voiceNotePath}</code>, transcription pending M4)<br /><audio controls src={`/api/${ticket.voiceNotePath}`} style={{ marginTop: 6, maxWidth: "100%" }} /></>}
-        </p>
-        <RunButtons ticketId={ticket.id} roomId={room.id} targetUrl={ticket.targetUrl} goal={ticket.goal} baselineRunId={baseline?.runId} />
+      <PageHead
+        crumbs={[["/", "Overview"], [`/tickets/${ticket.id}`, ticket.subject.slice(0, 40)]]}
+        title={<>{ticket.subject} <Badge tone={ticket.status}>{ticket.status}</Badge></>}
+        sub={ticket.body}
+        actions={<RunButtons ticketId={ticket.id} roomId={room.id} targetUrl={ticket.targetUrl} goal={ticket.goal} baselineRunId={baseline?.runId} />}
+      />
+
+      <div className="card">
+        <div className="small muted">Goal: {ticket.goal}</div>
+        <div className="small muted">Target: <code>{ticket.targetUrl}</code>
+          {ticket.voiceNotePath && <> · Voice note <code>{ticket.voiceNotePath}</code><br /><audio controls src={`/api/${ticket.voiceNotePath}`} style={{ marginTop: 6, maxWidth: "100%" }} /></>}
+        </div>
+        <div className="small muted">{findingCount} finding(s) across {runViews.length} run(s)</div>
       </div>
 
       {runViews.length === 0 && (
-        <div className="panel"><p className="muted">No runs yet. Press <strong>Run investigation</strong> above, then refresh in about a minute.</p></div>
+        <div className="card">
+          <EmptyState title="No runs yet" body="Press Run investigation above, then refresh in about a minute." />
+        </div>
       )}
 
-      {runViews.map(({ runId, rec, status, findings, verification, report }) => (
-        <div className="panel" key={runId}>
-          <h2>{rec?.kind === "verify" ? "Verification" : "Investigation"} <span className="pill">{status}</span></h2>
+      {runViews.map(({ runId, rec, status, findings, verification, report, briefs }) => (
+        <div className="card" key={runId}>
+          <div className="card-title">{rec?.kind === "verify" ? "Verification" : "Investigation"} <Badge tone={status}>{status}</Badge></div>
           <p className="small muted"><code>{runId}</code>{rec?.baselineRunId && <> · baseline <code>{rec.baselineRunId}</code></>}</p>
           {status === "running" && <p className="muted">Engine is driving the app… <a href="">refresh</a></p>}
           {verification != null && (
@@ -62,21 +73,27 @@ async function RoomView({ ticketId }: { ticketId: string }) {
           )}
           {findings.map((f) => (
             <div key={f.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
-              <p><strong>{f.title}</strong> <span className="pill">{f.severity}</span> <span className="pill">{f.category}</span> <span className="pill">{f.analysisSource}</span></p>
+              <p><strong>{f.title}</strong> <Badge tone={f.severity}>{f.severity}</Badge> <Badge>{f.category}</Badge> <Badge>{f.analysisSource}</Badge></p>
               <p className="small"><code>{f.id}</code> · suspected cause: {f.suspectedCause} (confidence: {f.confidence})</p>
               <p className="small">Suggested fix: {f.suggestedFix}</p>
               <ol className="repro">{f.reproSteps.map((s, i) => <li key={i}>{s}</li>)}</ol>
-              {f.evidence.screenshots.map((s) => (
-                <img key={s} className="shot" src={`/api/artifacts/${runId}/${s}`} alt={`${f.id} evidence ${s}`} />
-              ))}
+              {f.evidence.screenshots.map((s) => {
+                const boxes = boxesFor(f, s);
+                return boxes.length > 0 ? (
+                  <GroundedShot key={s} src={`/api/artifacts/${runId}/${s}`} alt={`${f.id} evidence ${s}`} boxes={boxes} />
+                ) : (
+                  <img key={s} className="shot" src={`/api/artifacts/${runId}/${s}`} alt={`${f.id} evidence ${s}`} />
+                );
+              })}
               <div className="row" style={{ marginTop: 6 }}>
                 {approvedIds.has(f.id)
-                  ? <span className="pill">fix instruction approved</span>
+                  ? <Badge tone="approved">fix instruction approved</Badge>
                   : <ApproveButton roomId={room.id} findingId={f.id} instruction={f.suggestedFix} />}
-                <a className="small" href={`/api/artifacts/${runId}/mcp-packets/${f.id}.md`}>fix packet</a>
+                <Link className="small" href={`/api/artifacts/${runId}/mcp-packets/${f.id}.md`}>fix packet</Link>
               </div>
             </div>
           ))}
+          <RedesignBriefs briefs={briefs} runId={runId} />
           {report && (
             <details style={{ marginTop: 10 }}>
               <summary className="small">Full report.md</summary>
@@ -87,8 +104,8 @@ async function RoomView({ ticketId }: { ticketId: string }) {
       ))}
 
       <div className="grid2">
-        <div className="panel">
-          <h2>Room discussion ({messages.length})</h2>
+        <div className="card">
+          <div className="card-title">Room discussion ({messages.length})</div>
           {messages.length === 0 && <p className="muted small">No messages yet.</p>}
           {messages.map((m) => (
             <div key={m.id} className={`msg ${m.authorType}`}>
@@ -98,14 +115,17 @@ async function RoomView({ ticketId }: { ticketId: string }) {
           ))}
           <MessageForm roomId={room.id} />
         </div>
-        <div className="panel">
-          <h2>Approved instructions ({approvals.length})</h2>
+        <div className="card">
+          <div className="card-title">Approved instructions ({approvals.length})</div>
           {approvals.length === 0 && <p className="muted small">Approve a finding’s fix above to queue it for the coding agent.</p>}
           {approvals.map((a) => (
             <div key={a.id} className="msg">
-              <div className="who">{a.approvedBy} · {a.createdAt.slice(0, 16).replace("T", " ")} · <span className="pill">{a.status}</span></div>
+              <div className="who">{a.approvedBy} · {a.createdAt.slice(0, 16).replace("T", " ")} · <Badge tone={a.status}>{a.status}</Badge></div>
               <div className="small"><code>{a.findingIds.join(", ")}</code></div>
               <div>{a.instruction}</div>
+              {a.status === "approved" && (
+                <div style={{ marginTop: 6 }}><DispatchButton approvalId={a.id} roomId={room.id} /></div>
+              )}
             </div>
           ))}
         </div>
