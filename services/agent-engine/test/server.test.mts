@@ -82,6 +82,24 @@ ok(
   (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://x/", verify: true, baselineRunId: "ghost" }))).code === 404,
   "unknown baseline 404",
 );
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://169.254.169.254/" }))).code === 400,
+  "metadata IP blocked",
+);
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://metadata.google.internal/" }))).code === 400,
+  "metadata host blocked",
+);
+
+const tri = await call("POST", "/triage", H, JSON.stringify({ subject: "Checkout broken", body: "500 on pay" }));
+const triBody = tri.json() as { goal: string; grade: string; source: string };
+ok(tri.code === 200 && triBody.goal.length > 0 && ["blocker", "major", "minor"].includes(triBody.grade), "triage answers");
+ok((await call("POST", "/triage", H, JSON.stringify({}))).code === 400, "triage needs subject/body");
+ok((await call("POST", "/transcribe", H, JSON.stringify({}))).code === 400, "transcribe needs blob");
+ok(
+  (await call("POST", "/transcribe", H, JSON.stringify({ blob: "uploads/nope.wav" }))).code === 404,
+  "transcribe unknown blob 404",
+);
 
 delete process.env.ENGINE_TOKEN;
 _clearSecretCache();

@@ -3,9 +3,9 @@
 // warning and local runs are unaffected.
 
 import { Storage } from "@google-cloud/storage";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { join, normalize, relative, sep } from "node:path";
 
 let storage: Storage | null = null;
 
@@ -42,6 +42,28 @@ export async function uploadRun(outDir: string): Promise<void> {
   } catch (e) {
     console.warn(`[storage] upload skipped: ${(e as Error).message}`);
   }
+}
+
+/**
+ * Fetch a voice-note blob (e.g. "uploads/uid-file") for transcription.
+ * GCS when GCS_BUCKET is set, else the portal's local .data dir
+ * (PORTAL_DATA_DIR overrides the default relative path). Null when missing.
+ */
+export async function fetchVoiceNote(rel: string): Promise<Buffer | null> {
+  if (!rel || rel.includes("..")) return null;
+  const bucket = bucketName();
+  if (bucket) {
+    try {
+      const [data] = await client().bucket(bucket).file(rel).download();
+      return data;
+    } catch {
+      return null;
+    }
+  }
+  const base = process.env.PORTAL_DATA_DIR ?? join(process.cwd(), "..", "..", "apps", "portal", ".data");
+  const full = normalize(join(base, ...rel.split("/")));
+  if (!full.startsWith(base + sep) || !existsSync(full)) return null;
+  return readFileSync(full);
 }
 
 /**

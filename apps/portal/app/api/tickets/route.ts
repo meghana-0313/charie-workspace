@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { saveVoiceNote } from "@/lib/blob";
+import { transcribeNote, triageTicket } from "@/lib/engine";
 import { extractGoal } from "@/lib/triage";
 
 export async function GET() {
@@ -11,14 +12,13 @@ const MAX_VOICE_BYTES = 25 * 1024 * 1024;
 
 export async function POST(req: Request) {
   const fd = await req.formData();
-  const subject = String(fd.get("subject") ?? "").trim();
-  const body = String(fd.get("body") ?? "").trim();
+  let subject = String(fd.get("subject") ?? "").trim();
+  let body = String(fd.get("body") ?? "").trim();
   const goalInput = String(fd.get("goal") ?? "").trim();
   const targetUrl = String(fd.get("targetUrl") ?? "").trim();
-  if (!subject || !body || !targetUrl) {
-    return NextResponse.json({ error: "subject, body, targetUrl required" }, { status: 400 });
+  if (!targetUrl) {
+    return NextResponse.json({ error: "targetUrl required" }, { status: 400 });
   }
-  const goal = goalInput || extractGoal(subject, body);
   try {
     new URL(targetUrl);
   } catch {
@@ -35,11 +35,26 @@ export async function POST(req: Request) {
     voiceNotePath = await saveVoiceNote(`uploads/${uid("voice")}-${safe}`, Buffer.from(await voice.arrayBuffer()));
   }
 
+  // Voice-first flow: transcribe when the text fields are empty.
+  if ((!subject || !body) && voiceNotePath) {
+    const t = await transcribeNote(voiceNotePath);
+    if (!t) {
+      return NextResponse.json({ error: "transcription failed - fill subject and body manually" }, { status: 400 });
+    }
+    subject = subject || t.subject;
+    body = body || t.body;
+  }
+  if (!subject || !body) {
+    return NextResponse.json({ error: "subject and body required (or attach a voice note)" }, { status: 400 });
+  }
+
+  const goal = goalInput || (await triageTicket(subject, body))?.goal || extractGoal(subject, body);
+
   const ticket = await store.createTicket({ subject, body, goal, targetUrl, voiceNotePath });
   await store.addMessage(ticket.roomId!, {
     authorType: "agent",
     authorName: "GhostQA",
-    body: `Room opened for “${subject}”. Press “Run investigation” to drive ${targetUrl} toward the goal.`,
+    body: `Room opened for "${subject}". Press "Run investigation" to drive ${targetUrl} toward the goal.`,
   });
   return NextResponse.json(ticket, { status: 201 });
 }

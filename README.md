@@ -65,13 +65,13 @@ used only after a real request succeeds, never from a stub.
 
 | Model | Job | Status |
 |---|---|---|
-| Muse Spark (`muse-spark-1.3`) | Enriches findings with cause/fix prose | Live when `META_API_KEY` is set |
-| Muse Wonder (`muse-wonder-1.0`) | Deep-dive tier for hard findings | Interface live, model call pending (M5) |
-| Muse Image (`muse-image-1.0`) | Evidence-linked UI redesigns | Written briefs live, images pending (M2) |
-| Muse Voice (`muse-voice-transcribe-1.0`) | Voice bug reports to tickets | Upload live, transcription pending (M4) |
-| SAM 3.1 (`sam-3-1`) | Screenshot grounding boxes | Interface live, model pending (M3) |
-| Muse Glimmer (open weights) | Ticket triage | Heuristic live, model pending (M6) |
-| Muse Spark Open (open weights) | Second-opinion analyst | Planned (M7), Baseten endpoint ready |
+| Muse Spark (`muse-spark-1.3`) | Enriches findings with cause/fix prose | Live with `META_API_KEY` (verified) |
+| Muse Wonder (`muse-wonder-1.0`) | Deep-dive tier for hard findings | Live (M5) |
+| Muse Image (`muse-image-1.0`) | Evidence-linked UI redesigns | Live: PNGs for first 2 usability findings (M2) |
+| Muse Voice (`muse-voice-transcribe-1.0`) | Voice bug reports to tickets | Live: voice-first tickets (M4) |
+| SAM 3.1 (`sam-3-1`) | Screenshot grounding boxes | Live in `findings[].grounding` (M3) |
+| Muse Glimmer (open weights) | Ticket triage | Live when reachable, heuristic fallback (M6) |
+| Muse Spark Open (open weights) | Second-opinion analyst | Live via Baseten (M7) |
 | Muse Code | Wrote this repo; consumes MCP fix packets | Live |
 
 Without keys the whole loop still runs end to end in heuristic mode, honestly

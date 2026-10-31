@@ -10,11 +10,27 @@
 // configured (local dev without GCP), auth is skipped with a one-time warning.
 
 import type { IncomingMessage, RequestListener, ServerResponse } from "node:http";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { timingSafeEqual } from "node:crypto";
+import { existsSync, readFileSync, statSync, writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, normalize, sep } from "node:path";
 import { GOAL } from "./explorer.js";
 import { executeRun } from "./job.js";
 import { secret } from "./secrets.js";
+import { fetchVoiceNote } from "./storage.js";
+import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
+import { transcribe } from "./voice.js";
+
+/** Hosts the engine must never drive (cloud metadata = credential theft). */
+function targetBlocked(targetUrl: string): boolean {
+  const host = new URL(targetUrl).hostname.toLowerCase();
+  return (
+    host === "169.254.169.254" ||
+    host === "metadata" ||
+    host === "metadata.google.internal" ||
+    host.endsWith(".google.internal")
+  );
+}
 
 export interface ServerOpts {
   reportsRoot: string;
@@ -52,6 +68,7 @@ export function createApp(opts: ServerOpts): RequestListener {
   const jobs = new Map<string, JobState>();
   const root = opts.reportsRoot;
   let warnedNoAuth = false;
+  let activeRuns = 0;
 
   function authorized(req: IncomingMessage): boolean {
     const expected = secret("ENGINE_TOKEN");
@@ -62,7 +79,10 @@ export function createApp(opts: ServerOpts): RequestListener {
       }
       return true;
     }
-    return req.headers["x-engine-token"] === expected;
+    const presented = req.headers["x-engine-token"];
+    const a = Buffer.from(Array.isArray(presented) ? (presented[0] ?? "") : (presented ?? ""));
+    const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
   }
 
   function runStatus(runId: string): "running" | "done" | "failed" {
@@ -106,6 +126,14 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 400, { error: "targetUrl must be a valid URL" });
             return;
           }
+          if (targetBlocked(targetUrl)) {
+            send(res, 400, { error: "target blocked" });
+            return;
+          }
+          if (activeRuns >= 1) {
+            send(res, 429, { error: "engine busy, retry shortly" });
+            return;
+          }
           if (verifyMode && !baselineRunId) {
             send(res, 400, { error: "verify needs baselineRunId" });
             return;
@@ -117,6 +145,7 @@ export function createApp(opts: ServerOpts): RequestListener {
           const stamp = new Date().toISOString().replace(/[:.]/g, "-");
           const runId = verifyMode ? `${stamp}-verify` : stamp;
           jobs.set(runId, { status: "running" });
+          activeRuns++;
           executeRun({
             targetUrl,
             goal: goal?.trim() || GOAL,
@@ -125,10 +154,78 @@ export function createApp(opts: ServerOpts): RequestListener {
             outDir: join(root, runId),
             reportsRoot: root,
           }).then(
-            () => jobs.set(runId, { status: "done" }),
-            (e: Error) => jobs.set(runId, { status: "failed", error: e.message }),
+            () => {
+              activeRuns--;
+              jobs.set(runId, { status: "done" });
+            },
+            (e: Error) => {
+              activeRuns--;
+              jobs.set(runId, { status: "failed", error: e.message });
+            },
           );
           send(res, 201, { runId, status: "running" });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/triage") {
+          let body: { subject?: string; body?: string };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          if (!body.subject || !body.body) {
+            send(res, 400, { error: "subject and body required" });
+            return;
+          }
+          const g = await glimmerTriage(body.subject, body.body);
+          if (g) {
+            send(res, 200, { goal: g.goal, grade: g.grade, source: "muse-glimmer" });
+            return;
+          }
+          send(res, 200, {
+            goal: extractGoal(body.subject, body.body),
+            grade: preGrade(body.subject, body.body),
+            source: "heuristic",
+          });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/transcribe") {
+          let body: { blob?: string };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          if (!body.blob) {
+            send(res, 400, { error: "blob required" });
+            return;
+          }
+          const bytes = await fetchVoiceNote(body.blob);
+          if (!bytes) {
+            send(res, 404, { error: "unknown blob" });
+            return;
+          }
+          const ext = body.blob.split(".").pop()?.toLowerCase() ?? "bin";
+          const tmp = join(tmpdir(), `ghostqa-tr-${Date.now()}.${ext}`);
+          writeFileSync(tmp, bytes);
+          try {
+            const out = await transcribe(tmp);
+            if (!out) {
+              send(res, 422, { error: "transcription unavailable" });
+              return;
+            }
+            send(res, 200, out);
+          } finally {
+            try {
+              unlinkSync(tmp);
+            } catch {
+              /* already gone */
+            }
+          }
           return;
         }
 

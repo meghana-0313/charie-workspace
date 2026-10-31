@@ -31,15 +31,15 @@ export function NewTicketForm() {
   }
   return (
     <form onSubmit={onSubmit}>
-      <label htmlFor="subject">Subject</label>
-      <input id="subject" name="subject" required placeholder="Checkout button does nothing" />
+      <label htmlFor="subject">Subject (or attach a voice note below instead)</label>
+      <input id="subject" name="subject" placeholder="Checkout button does nothing" />
       <label htmlFor="body">Customer description</label>
-      <textarea id="body" name="body" required placeholder="Customer tried 3 times, gave up. Order lost." />
+      <textarea id="body" name="body" placeholder="Customer tried 3 times, gave up. Order lost." />
       <label htmlFor="goal">User task to verify (goal - blank auto-extracts from above)</label>
       <input id="goal" name="goal" placeholder="Buy 3 different travel passes and complete checkout without assistance" />
       <label htmlFor="targetUrl">App URL to test</label>
       <input id="targetUrl" name="targetUrl" required defaultValue="http://localhost:3101" />
-      <label htmlFor="voice">Voice note (optional, stored for M4 transcription)</label>
+      <label htmlFor="voice">Voice note (optional, transcribed into subject + description)</label>
       <input id="voice" name="voice" type="file" accept="audio/*" />
       <div className="row" style={{ marginTop: 12 }}>
         <button disabled={busy}>{busy ? "Filing…" : "File ticket + open room"}</button>
