@@ -77,26 +77,23 @@ jobs:
           service: ghostqa-engine
           region: ${{ env.REGION }}
           image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/engine:${{ github.sha }}
-          service_account: ${{ env.SERVICE_ACCOUNT }}
           env_vars: |
             GCP_PROJECT_ID=${{ env.PROJECT_ID }}
             GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
             PORTAL_URL=https://ghostqa-portal-ehfuotlisq-uc.a.run.app
             ENGINE_PUBLIC_URL=${{ env.ENGINE_URL }}
-          flags: --memory=4Gi --cpu=2 --concurrency=1 --timeout=3600 --max-instances=2 --allow-unauthenticated
+          flags: --memory=4Gi --cpu=2 --concurrency=1 --timeout=3600 --max-instances=2 --allow-unauthenticated --service-account=${{ env.SERVICE_ACCOUNT }}
       - uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ghostqa-demo
           region: ${{ env.REGION }}
           image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/demo:${{ github.sha }}
-          service_account: ${{ env.SERVICE_ACCOUNT }}
-          flags: --memory=512Mi --cpu=1 --timeout=300 --allow-unauthenticated
+          flags: --memory=512Mi --cpu=1 --timeout=300 --allow-unauthenticated --service-account=${{ env.SERVICE_ACCOUNT }}
       - uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ghostqa-portal
           region: ${{ env.REGION }}
           image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }}
-          service_account: ${{ env.SERVICE_ACCOUNT }}
           env_vars: |
             GCP_PROJECT_ID=${{ env.PROJECT_ID }}
             GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
@@ -109,4 +106,4 @@ jobs:
             SESSION_KEY=SESSION_KEY:latest
             VAPID_PUBLIC=VAPID_PUBLIC:latest
             VAPID_PRIVATE=VAPID_PRIVATE:latest
-          flags: --memory=1Gi --cpu=1 --timeout=300 --allow-unauthenticated
+          flags: --memory=1Gi --cpu=1 --timeout=300 --allow-unauthenticated --service-account=${{ env.SERVICE_ACCOUNT }}
