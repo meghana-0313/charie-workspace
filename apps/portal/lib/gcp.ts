@@ -112,13 +112,14 @@ export async function runDeployApp(name: string, image: string): Promise<string>
     if (status !== 200) throw new Error(`Cloud Run patch failed: ${status}`);
     url = (await runGetService(name)).url;
   } else {
+    // Create returns a long-running Operation, not the service: read back.
     const created = await call(`${runBase()}?service_id=${name}`, {
       method: "POST",
       token: t,
       body: { template: { containers: [container] } },
     });
     if (created.status !== 200) throw new Error(`Cloud Run create failed: ${created.status}`);
-    url = (created.json as { uri?: string }).uri;
+    url = (await runGetService(name)).url;
   }
   if (!url) throw new Error("Cloud Run gave no URL");
   // Public invoker so GhostQA (and the user) can drive it.
@@ -131,5 +132,15 @@ export async function runDeployApp(name: string, image: string): Promise<string>
       },
     },
   });
-  return url;
+  // Wait until the app actually serves (cold revision + IAM propagation).
+  for (let i = 0; i < 18; i++) {
+    await new Promise((r) => setTimeout(r, 10000));
+    try {
+      const probe = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (probe.status < 500) return url;
+    } catch {
+      /* not up yet */
+    }
+  }
+  throw new Error("Deployed app never served traffic");
 }
