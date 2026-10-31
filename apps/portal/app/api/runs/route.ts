@@ -9,17 +9,22 @@ export async function POST(req: Request) {
   if (!ticketId || !roomId || (kind !== "investigate" && kind !== "verify") || !targetUrl || !goal) {
     return NextResponse.json({ error: "ticketId, roomId, kind=investigate|verify, targetUrl, goal required" }, { status: 400 });
   }
-  if (!store.getTicket(ticketId) || !store.getRoom(roomId)) {
+  if (!(await store.getTicket(ticketId)) || !(await store.getRoom(roomId))) {
     return NextResponse.json({ error: "unknown ticket or room" }, { status: 404 });
   }
   if (kind === "verify" && !baselineRunId) {
     return NextResponse.json({ error: "verify needs baselineRunId" }, { status: 400 });
   }
-  const runId = spawnEngineRun({ targetUrl, goal, verify: kind === "verify", baseline: baselineRunId });
-  store.createRun({ id: runId, ticketId, roomId, kind, targetUrl, baselineRunId });
-  store.addRunToRoom(roomId, runId);
-  store.setTicketStatus(ticketId, "investigating");
-  store.addMessage(roomId, {
+  let runId: string;
+  try {
+    runId = await spawnEngineRun({ targetUrl, goal, verify: kind === "verify", baseline: baselineRunId });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+  }
+  await store.createRun({ id: runId, ticketId, roomId, kind, targetUrl, baselineRunId });
+  await store.addRunToRoom(roomId, runId);
+  await store.setTicketStatus(ticketId, "investigating");
+  await store.addMessage(roomId, {
     authorType: "agent",
     authorName: "GhostQA",
     body: kind === "verify" ? `Verification started against baseline ${baselineRunId}.` : "Investigation started — driving the app now.",
@@ -30,13 +35,13 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const runId = new URL(req.url).searchParams.get("runId");
   if (!runId) return NextResponse.json({ error: "runId required" }, { status: 400 });
-  const rec = store.getRun(runId);
+  const rec = await store.getRun(runId);
   if (!rec) return NextResponse.json({ error: "unknown run" }, { status: 404 });
-  const status = runStatus(runId);
+  const status = await runStatus(runId);
   if (rec.status === "running" && status !== "running") {
-    store.setRunStatus(runId, status);
-    if (status === "done" && rec.kind === "verify") store.setTicketStatus(rec.ticketId, "verified");
-    else if (status === "done") store.setTicketStatus(rec.ticketId, "in-room");
+    await store.setRunStatus(runId, status);
+    if (status === "done" && rec.kind === "verify") await store.setTicketStatus(rec.ticketId, "verified");
+    else if (status === "done") await store.setTicketStatus(rec.ticketId, "in-room");
   }
-  return NextResponse.json({ ...store.getRun(runId), live: status });
+  return NextResponse.json({ ...(await store.getRun(runId)), live: status });
 }

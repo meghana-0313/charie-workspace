@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { store, uid } from "@/lib/store";
+import { saveVoiceNote } from "@/lib/blob";
 import { extractGoal } from "@/lib/triage";
 
 export async function GET() {
-  return NextResponse.json(store.listTickets());
+  return NextResponse.json(await store.listTickets());
 }
 
 const MAX_VOICE_BYTES = 25 * 1024 * 1024;
@@ -32,15 +31,12 @@ export async function POST(req: Request) {
     if (voice.size > MAX_VOICE_BYTES) {
       return NextResponse.json({ error: "voice note over 25MB" }, { status: 400 });
     }
-    const dir = join(process.cwd(), ".data", "uploads");
-    mkdirSync(dir, { recursive: true });
     const safe = voice.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    voiceNotePath = `uploads/${uid("voice")}-${safe}`;
-    writeFileSync(join(process.cwd(), ".data", voiceNotePath), Buffer.from(await voice.arrayBuffer()));
+    voiceNotePath = await saveVoiceNote(`uploads/${uid("voice")}-${safe}`, Buffer.from(await voice.arrayBuffer()));
   }
 
-  const ticket = store.createTicket({ subject, body, goal, targetUrl, voiceNotePath });
-  store.addMessage(ticket.roomId!, {
+  const ticket = await store.createTicket({ subject, body, goal, targetUrl, voiceNotePath });
+  await store.addMessage(ticket.roomId!, {
     authorType: "agent",
     authorName: "GhostQA",
     body: `Room opened for “${subject}”. Press “Run investigation” to drive ${targetUrl} toward the goal.`,

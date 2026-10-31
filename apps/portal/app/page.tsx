@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
-import { listReportDirs } from "@/lib/engine";
 import { NewTicketForm } from "@/components/forms";
 
 export const dynamic = "force-dynamic";
 
-export default function Dashboard() {
-  const tickets = store.listTickets();
-  const reportDirs = listReportDirs();
+export default async function Dashboard() {
+  const tickets = await store.listTickets();
+  const runs = await store.listRuns(10);
   return (
     <>
       <div className="panel">
@@ -39,11 +38,9 @@ export default function Dashboard() {
         )}
       </div>
       <div className="panel">
-        <h2>Engine runs on disk ({reportDirs.length})</h2>
-        <p className="muted small">
-          Raw report directories from <code>services/agent-engine/reports</code>, including CLI runs.
-        </p>
-        <p className="small">{reportDirs.length === 0 ? "None yet." : reportDirs.join(" · ")}</p>
+        <h2>Recent engine runs ({runs.length})</h2>
+        <p className="muted small">Latest investigations and verifications across all tickets.</p>
+        <p className="small">{runs.length === 0 ? "None yet." : runs.map((r) => `${r.id.slice(0, 19)} (${r.kind}/${r.status})`).join(" · ")}</p>
       </div>
     </>
   );

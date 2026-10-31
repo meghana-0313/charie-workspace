@@ -6,29 +6,30 @@ import { ApproveButton, MessageForm, RunButtons } from "@/components/forms";
 
 export const dynamic = "force-dynamic";
 
-export default function TicketPage({ params }: { params: Promise<{ id: string }> }) {
-  return params.then(({ id }) => <RoomView ticketId={id} />);
+export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <RoomView ticketId={id} />;
 }
 
-function RoomView({ ticketId }: { ticketId: string }) {
-  const ticket = store.getTicket(ticketId);
+async function RoomView({ ticketId }: { ticketId: string }) {
+  const ticket = await store.getTicket(ticketId);
   if (!ticket) notFound();
-  const room = ticket.roomId ? store.getRoom(ticket.roomId) : null;
+  const room = ticket.roomId ? await store.getRoom(ticket.roomId) : null;
   if (!room) notFound();
 
-  // Refresh run statuses from disk.
+  // Refresh run statuses from the engine service.
   for (const runId of room.runIds) {
-    const st = runStatus(runId);
-    const rec = store.getRun(runId);
-    if (rec && rec.status === "running" && st !== "running") store.setRunStatus(runId, st);
+    const st = await runStatus(runId);
+    const rec = await store.getRun(runId);
+    if (rec && rec.status === "running" && st !== "running") await store.setRunStatus(runId, st);
   }
-  const runViews = room.runIds.map((runId) => {
-    const rec = store.getRun(runId);
-    return { runId, rec, status: runStatus(runId), findings: readFindings(runId) ?? [], verification: readVerification(runId), report: readReportMd(runId) };
-  });
+  const runViews = await Promise.all(room.runIds.map(async (runId) => {
+    const rec = await store.getRun(runId);
+    return { runId, rec, status: await runStatus(runId), findings: (await readFindings(runId)) ?? [], verification: await readVerification(runId), report: await readReportMd(runId) };
+  }));
   const baseline = runViews.find((r) => r.rec?.kind === "investigate" && r.status === "done");
-  const messages = store.listMessages(room.id);
-  const approvals = store.listApprovals(room.id);
+  const messages = await store.listMessages(room.id);
+  const approvals = await store.listApprovals(room.id);
   const approvedIds = new Set(approvals.flatMap((a) => a.findingIds));
 
   return (

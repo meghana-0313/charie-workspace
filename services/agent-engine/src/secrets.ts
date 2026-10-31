@@ -23,6 +23,7 @@ export const SECRET_NAMES = [
   "SPARK_OPEN_MODEL_ID",
   "SPARK_OPEN_ENDPOINT",
   "GLIMMER_ENDPOINT",
+  "ENGINE_TOKEN",
 ] as const;
 
 const cache = new Map<string, string>();
