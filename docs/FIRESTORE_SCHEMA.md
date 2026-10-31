@@ -24,7 +24,20 @@ rooms/{roomId}/messages/{msgId}
   body, findingIds: string[], createdAt
 
 rooms/{roomId}/approvals/{approvalId}
-  findingIds, instruction: string, approvedBy, approvedAt, status
+  findingIds, instruction: string, approvedBy, approvedAt,
+  status: "approved"|"sent-to-agent"
+
+guardian-events/{eventId}
+  ts, kind: "auth"|"api"|"traffic"|"infra",
+  actor?, ip?, endpoint?, outcome?, country?, bytes?, records?
+
+incidents/{incidentId}          # Runtime Guardian; simulated: true always
+  title, severity, status: "open"|"contained"|"resolved",
+  signals[], investigation?, mode, baselineSuspicious,
+  voiceBrief?, actions[], createdAt, updatedAt
+
+push_subscriptions/{sha256(endpoint)}
+  endpoint, keys: { p256dh, auth }, createdAt
 
 runs/{runId}
   ticketId|roomId, kind: "investigate"|"verify",

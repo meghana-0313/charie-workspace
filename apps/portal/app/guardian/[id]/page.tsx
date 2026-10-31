@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
 import { RespondForm, VerifyButton } from "@/components/guardian-forms";
+import { IncidentVoiceForm, ProposeWorkOrderButton, RollbackButton } from "@/components/suite";
+import { SuiteNav } from "@/components/suite-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <p><Link href="/guardian">← All incidents</Link></p>
+      <SuiteNav current="/guardian" />
       <div className="panel">
         <h2>{inc.title} <span className="pill">{inc.severity}</span> <span className="pill">{inc.status}</span></h2>
         <p className="small muted">
@@ -52,6 +55,25 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
             <p className="small muted">actors: {s.actors.join(", ") || "unknown"} · ips: {s.ips.join(", ") || "unknown"}</p>
           </div>
         ))}
+        <div style={{ marginTop: 12 }}>
+          <ProposeWorkOrderButton
+            title={`Contain incident: ${inc.title}`}
+            source="guardian"
+            sourceRef={inc.id}
+            plan={[
+              { kind: "re-analyze", label: `Re-scan services after containment of ${inc.id}`, ref: inc.id },
+              { kind: "docs-note", label: "Draft post-incident remediation note", ref: inc.id },
+              { kind: "evidence-pack", label: "Assemble evidence pack", ref: inc.id },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="panel">
+        <h2>Voice briefs</h2>
+        <p className="small muted">Report incident details by voice. Transcribed via Muse Voice and pinned here.</p>
+        {inc.voiceBrief && <pre className="report">{inc.voiceBrief}</pre>}
+        <div style={{ marginTop: 8 }}><IncidentVoiceForm incidentId={inc.id} /></div>
       </div>
 
       <div className="grid2">
@@ -66,6 +88,9 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
             <div key={a.id} className="msg">
               <div className="who">{a.action} on {a.target} · {a.at.slice(0, 16).replace("T", " ")} · <span className="pill">{a.status}</span></div>
               <div className="small">{a.detail}</div>
+              {a.status !== "rolled-back" && (
+                <div style={{ marginTop: 6 }}><RollbackButton incidentId={inc.id} actionId={a.id} /></div>
+              )}
             </div>
           ))}
         </div>

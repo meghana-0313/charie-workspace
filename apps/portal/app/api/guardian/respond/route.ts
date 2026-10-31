@@ -18,12 +18,22 @@ export async function POST(req: Request) {
   return NextResponse.json(done, { status: 201 });
 }
 
-// POST /api/guardian/verify {incidentId} - check the fresh window vs baseline.
+// PUT /api/guardian/respond - verify containment, or roll back one action.
 export async function PUT(req: Request) {
-  const { incidentId } = (await req.json().catch(() => ({}))) as { incidentId?: string };
+  const { incidentId, rollbackId } = (await req.json().catch(() => ({}))) as {
+    incidentId?: string; rollbackId?: string;
+  };
   if (!incidentId) return NextResponse.json({ error: "incidentId required" }, { status: 400 });
   const inc = await store.getIncident(incidentId);
   if (!inc) return NextResponse.json({ error: "unknown incident" }, { status: 404 });
+  if (rollbackId) {
+    if (!inc.actions.some((a) => a.id === rollbackId)) {
+      return NextResponse.json({ error: "unknown action" }, { status: 404 });
+    }
+    const actions = inc.actions.map((a) => (a.id === rollbackId ? { ...a, status: "rolled-back" } : a));
+    await store.updateIncident(incidentId, { actions, status: "open" });
+    return NextResponse.json({ ok: true, rollbackId });
+  }
   const events = await store.listRecentEvents(200);
   const out = await guardianVerify(inc.baselineSuspicious, events);
   if (!out) return NextResponse.json({ error: "engine unreachable" }, { status: 502 });

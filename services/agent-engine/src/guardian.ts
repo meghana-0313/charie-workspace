@@ -23,7 +23,9 @@ export interface GuardEvent {
   records?: number;
 }
 
-export type SignalType = "credential-stuffing" | "account-takeover" | "api-abuse" | "exfiltration";
+export type SignalType =
+  | "credential-stuffing" | "account-takeover" | "api-abuse" | "exfiltration"
+  | "privilege-escalation" | "traffic-spike";
 
 export interface GuardSignal {
   type: SignalType;
@@ -137,11 +139,70 @@ function detectExfil(events: GuardEvent[]): GuardSignal | null {
   return null;
 }
 
+const PRIVILEGED = /admin|role|permission|privilege|acl|policy/i;
+
+function detectPrivEsc(events: GuardEvent[]): GuardSignal | null {
+  for (const actor of uniq(events.map((e) => e.actor))) {
+    const mine = events.filter((e) => e.actor === actor);
+    const authed = mine.some((e) => e.kind === "auth" && e.outcome === "success");
+    if (!authed) continue;
+    const priv = mine.filter((e) => e.endpoint && PRIVILEGED.test(e.endpoint));
+    if (priv.length >= 3) {
+      return {
+        type: "privilege-escalation",
+        severity: "blocker",
+        title: `Possible privilege escalation: ${actor}`,
+        evidence: [
+          `${actor} authenticated, then hit ${priv.length} privileged endpoints`,
+          `endpoints: ${uniq(priv.map((e) => e.endpoint)).slice(0, 5).join(", ")}`,
+        ],
+        eventIds: mine.map((e) => e.id),
+        actors: [actor],
+        ips: uniq(mine.map((e) => e.ip)),
+      };
+    }
+  }
+  return null;
+}
+
+function detectTrafficSpike(events: GuardEvent[]): GuardSignal | null {
+  if (events.length < 40) return null;
+  const times = events.map((e) => Date.parse(e.ts)).filter((t) => !Number.isNaN(t));
+  if (times.length < 40) return null;
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+  if (max - min < 60_000) return null; // window under a minute: no baseline to surge from
+  const tail = events.filter((e) => Date.parse(e.ts) >= max - (max - min) / 4);
+  // Latest time-quarter carrying over 60% of the window means a sudden surge.
+  if (tail.length / events.length > 0.6) {
+    const kinds = uniq(tail.map((e) => e.kind));
+    return {
+      type: "traffic-spike",
+      severity: "major",
+      title: `Traffic spike: ${tail.length} of ${events.length} events in the latest quarter`,
+      evidence: [
+        `${tail.length} events in the latest quarter vs ${events.length - tail.length} before`,
+        `kinds: ${kinds.join(", ")}`,
+        `top ips: ${uniq(tail.map((e) => e.ip)).slice(0, 5).join(", ") || "unknown"}`,
+      ],
+      eventIds: tail.map((e) => e.id),
+      actors: uniq(tail.map((e) => e.actor)),
+      ips: uniq(tail.map((e) => e.ip)),
+    };
+  }
+  return null;
+}
+
 /** Run all deterministic detectors over an event window. Pure function. */
 export function detectSignals(events: GuardEvent[]): GuardSignal[] {
-  return [detectStuffing(events), detectTakeover(events), detectApiAbuse(events), detectExfil(events)].filter(
-    (s): s is GuardSignal => s !== null,
-  );
+  return [
+    detectStuffing(events),
+    detectTakeover(events),
+    detectApiAbuse(events),
+    detectExfil(events),
+    detectPrivEsc(events),
+    detectTrafficSpike(events),
+  ].filter((s): s is GuardSignal => s !== null);
 }
 
 export interface Investigation {

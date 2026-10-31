@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Approval, GuardEventView, Incident, PortalRun, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, Room, RoomMessage, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -34,6 +34,7 @@ const approvals = file<Record<string, Approval[]>>("approvals", {});
 const runs = file<Record<string, PortalRun>>("runs", {});
 const gevents = file<GuardEventView[]>("guardian-events", []);
 const incidents = file<Record<string, Incident>>("incidents", {});
+const pushSubs = file<Record<string, PushSubscription>>("push", {});
 
 const now = () => new Date().toISOString();
 
@@ -106,6 +107,16 @@ export const fileStore = {
     approvals.write(all);
     return a;
   },
+  async setApprovalStatus(roomId: string, approvalId: string, status: Approval["status"]): Promise<Approval | null> {
+    const all = approvals.read();
+    const list = all[roomId] ?? [];
+    const i = list.findIndex((a) => a.id === approvalId);
+    if (i < 0) return null;
+    list[i] = { ...list[i], status };
+    all[roomId] = list;
+    approvals.write(all);
+    return list[i];
+  },
 
   async getRun(id: string): Promise<PortalRun | null> {
     return runs.read()[id] ?? null;
@@ -153,5 +164,19 @@ export const fileStore = {
       all[id] = { ...all[id], ...patch, updatedAt: now() };
       incidents.write(all);
     }
+  },
+
+  async savePushSubscription(sub: Omit<PushSubscription, "createdAt">): Promise<void> {
+    const all = pushSubs.read();
+    all[sub.endpoint] = { ...sub, createdAt: now() };
+    pushSubs.write(all);
+  },
+  async listPushSubscriptions(): Promise<PushSubscription[]> {
+    return Object.values(pushSubs.read());
+  },
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    const all = pushSubs.read();
+    delete all[endpoint];
+    pushSubs.write(all);
   },
 };

@@ -5,22 +5,39 @@
 //   GET  /runs/:id                {runId, status, findings?, verification?, report?, error?}
 //   GET  /runs/:id/artifacts/<..> report file bytes (screenshots, packets, …)
 //   GET  /health                  {ok: true}
+//   Guardian suite:
+//   POST /guardian/analyze  POST /guardian/respond  POST /guardian/verify
+//   POST /guardian/sweep  GET /guardian/sweeps
+//   GET+POST /workorders  GET /workorders/:id  POST :id/approve  POST :id/schedule
+//   POST /nightshift/run  GET /nightshift/digests
+//   POST /signals/ingest  GET /signals/clusters  POST /signals/seed
+//   POST /pentest/run  GET /zoom/status  POST /zoom/join
 //
 // Auth: x-engine-token must equal the ENGINE_TOKEN secret. When no token is
 // configured (local dev without GCP), auth is skipped with a one-time warning.
 
 import type { IncomingMessage, RequestListener, ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { existsSync, readFileSync, statSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, normalize, sep } from "node:path";
 import { GOAL } from "./explorer.js";
 import { detectSignals, investigate, simulateResponse, verifyContainment } from "./guardian.js";
 import { executeRun } from "./job.js";
+import { loadDigests, runNightShift } from "./nightshift.js";
+import { runPentest } from "./pentest.js";
 import { secret } from "./secrets.js";
+import { appendMessages, clusterMessages, gradeMessage, loadMessages, seedMessages } from "./signals.js";
+import type { SignalMessage } from "./signals.js";
 import { fetchVoiceNote } from "./storage.js";
+import { loadSweeps, runSweep } from "./sweep.js";
 import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
 import { transcribe } from "./voice.js";
+import {
+  approveWorkOrder, createWorkOrder, getWorkOrder, loadWorkOrders, updateWorkOrder,
+} from "./workorders.js";
+import type { WorkOrderStep } from "./workorders.js";
+import { joinMeeting, zoomStatus } from "./zoom.js";
 
 /** Hosts the engine must never drive (cloud metadata = credential theft). */
 function targetBlocked(targetUrl: string): boolean {
@@ -68,8 +85,25 @@ function mimeOf(path: string): string {
 export function createApp(opts: ServerOpts): RequestListener {
   const jobs = new Map<string, JobState>();
   const root = opts.reportsRoot;
+  const dataRoot = join(root, "_guardian");
   let warnedNoAuth = false;
   let activeRuns = 0;
+  let shiftRunning = false;
+
+  function liveTargets(body: { portalUrl?: string; engineUrl?: string }): { portalUrl: string; engineUrl: string } {
+    return {
+      portalUrl: body.portalUrl ?? process.env.PORTAL_URL ?? "",
+      engineUrl: body.engineUrl ?? process.env.ENGINE_PUBLIC_URL ?? "",
+    };
+  }
+
+  async function jsonBody(req: IncomingMessage): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false }> {
+    try {
+      return { ok: true, body: JSON.parse(await readBody(req)) as Record<string, unknown> };
+    } catch {
+      return { ok: false };
+    }
+  }
 
   function authorized(req: IncomingMessage): boolean {
     const expected = secret("ENGINE_TOKEN");
@@ -285,6 +319,216 @@ export function createApp(opts: ServerOpts): RequestListener {
             return;
           }
           send(res, 200, verifyContainment(body.baselineSuspicious, body.events as Parameters<typeof verifyContainment>[1]));
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/guardian/sweeps") {
+          send(res, 200, { sweeps: loadSweeps(dataRoot).slice(-50) });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/guardian/sweep") {
+          const parsed = await jsonBody(req);
+          const t = liveTargets((parsed.ok ? parsed.body : {}) as { portalUrl?: string; engineUrl?: string });
+          if (!t.portalUrl || !t.engineUrl) {
+            send(res, 400, { error: "portalUrl + engineUrl required (body or PORTAL_URL/ENGINE_PUBLIC_URL env)" });
+            return;
+          }
+          send(res, 200, await runSweep(t, dataRoot));
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/workorders") {
+          send(res, 200, { workorders: loadWorkOrders(dataRoot) });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/workorders") {
+          const parsed = await jsonBody(req);
+          if (!parsed.ok) {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          const b = parsed.body as { title?: string; source?: string; sourceRef?: string; plan?: WorkOrderStep[] };
+          const kinds = ["verify-fix", "re-analyze", "evidence-pack", "docs-note"];
+          if (!b.title || !["guardian", "signals", "pentest", "manual"].includes(b.source ?? "") || !b.sourceRef ||
+            !Array.isArray(b.plan) || b.plan.length === 0 || b.plan.length > 10 ||
+            b.plan.some((p) => !kinds.includes(p.kind) || !p.label || !p.ref)) {
+            send(res, 400, { error: "title, source guardian|signals|pentest|manual, sourceRef, plan[1..10] with kind/label/ref required" });
+            return;
+          }
+          send(res, 201, createWorkOrder(dataRoot, {
+            title: b.title,
+            source: b.source as "guardian",
+            sourceRef: b.sourceRef,
+            plan: b.plan,
+          }));
+          return;
+        }
+
+        const woMatch = url.pathname.match(/^\/workorders\/([^/]+)(\/(approve|schedule))?$/);
+        if (woMatch && ((req.method === "GET" && !woMatch[2]) || (req.method === "POST" && woMatch[2]))) {
+          const wo = getWorkOrder(dataRoot, decodeURIComponent(woMatch[1]));
+          if (!wo) {
+            send(res, 404, { error: "unknown work order" });
+            return;
+          }
+          if (req.method === "GET") {
+            send(res, 200, wo);
+            return;
+          }
+          try {
+            if (woMatch[3] === "approve") {
+              const parsed = await jsonBody(req);
+              const by = (parsed.ok ? parsed.body.by : null) as string | undefined;
+              send(res, 200, approveWorkOrder(dataRoot, wo.id, by?.trim() || "reviewer"));
+            } else {
+              const parsed = await jsonBody(req);
+              const forRaw = (parsed.ok ? parsed.body.scheduledFor : null) as string | undefined;
+              const scheduledFor = forRaw ?? new Date(Date.now() + 8 * 3600 * 1000).toISOString();
+              send(res, 200, updateWorkOrder(dataRoot, wo.id, { status: "scheduled", scheduledFor }));
+            }
+          } catch (e) {
+            send(res, 409, { error: (e as Error).message });
+          }
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/nightshift/run") {
+          if (shiftRunning) {
+            send(res, 429, { error: "a shift is already running" });
+            return;
+          }
+          const parsed = await jsonBody(req);
+          const b = (parsed.ok ? parsed.body : {}) as { orderIds?: string[]; portalUrl?: string; engineUrl?: string };
+          const t = liveTargets(b);
+          shiftRunning = true;
+          try {
+            const report = await runNightShift({
+              dataRoot,
+              reportsRoot: root,
+              portalUrl: t.portalUrl,
+              engineUrl: t.engineUrl,
+              engineToken: secret("ENGINE_TOKEN") ?? undefined,
+              orderIds: Array.isArray(b.orderIds) ? b.orderIds.map(String) : undefined,
+              claimHeavy: () => {
+                if (activeRuns >= 1) return false;
+                activeRuns++;
+                return true;
+              },
+              releaseHeavy: () => {
+                activeRuns = Math.max(0, activeRuns - 1);
+              },
+            });
+            send(res, 200, report);
+          } catch (e) {
+            send(res, 500, { error: (e as Error).message });
+          } finally {
+            shiftRunning = false;
+          }
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/nightshift/digests") {
+          send(res, 200, { digests: loadDigests(dataRoot).slice(-10) });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/signals/ingest") {
+          const parsed = await jsonBody(req);
+          const msgs = (parsed.ok ? parsed.body.messages : null) as Array<{ channel?: string; author?: string; text?: string }> | null;
+          if (!parsed.ok || !Array.isArray(msgs) || msgs.length === 0 || msgs.length > 100 ||
+            msgs.some((m) => !m.text || m.text.length > 4000)) {
+            send(res, 400, { error: "messages[1..100] with text (max 4000 chars) required" });
+            return;
+          }
+          const stamped: SignalMessage[] = msgs.map((m, i) => ({
+            id: `sig_${Date.now().toString(36)}_${i}`,
+            channel: (["support", "chat", "call", "review"].includes(m.channel ?? "") ? m.channel : "support") as SignalMessage["channel"],
+            author: (m.author ?? "anonymous").slice(0, 120),
+            text: m.text as string,
+            ts: new Date().toISOString(),
+          }));
+          for (const m of stamped) {
+            const g = await gradeMessage(m);
+            m.sentiment = g.sentiment;
+            if (g.theme) m.theme = g.theme;
+          }
+          const all = appendMessages(dataRoot, stamped);
+          send(res, 201, { ingested: stamped.length, total: all.length, clusters: clusterMessages(all).slice(0, 12) });
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/signals/clusters") {
+          const all = loadMessages(dataRoot);
+          send(res, 200, { total: all.length, clusters: clusterMessages(all).slice(0, 12) });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/signals/seed") {
+          const stamped: SignalMessage[] = seedMessages().map((m, i) => ({
+            ...m, id: `seed_${Date.now().toString(36)}_${i}`, ts: new Date().toISOString(),
+          }));
+          for (const m of stamped) {
+            const g = await gradeMessage(m);
+            m.sentiment = g.sentiment;
+            if (g.theme) m.theme = g.theme;
+          }
+          const all = appendMessages(dataRoot, stamped);
+          send(res, 201, { ingested: stamped.length, total: all.length, clusters: clusterMessages(all).slice(0, 12) });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/pentest/run") {
+          const parsed = await jsonBody(req);
+          const t = liveTargets((parsed.ok ? parsed.body : {}) as { portalUrl?: string; engineUrl?: string });
+          if (!t.portalUrl || !t.engineUrl) {
+            send(res, 400, { error: "portalUrl + engineUrl required (body or PORTAL_URL/ENGINE_PUBLIC_URL env)" });
+            return;
+          }
+          const report = await runPentest({ ...t, engineToken: secret("ENGINE_TOKEN") ?? undefined });
+          const pf = join(dataRoot, "pentest.json");
+          let prior: unknown[] = [];
+          try {
+            prior = JSON.parse(readFileSync(pf, "utf8")) as unknown[];
+          } catch {
+            /* first report */
+          }
+          mkdirSync(dataRoot, { recursive: true });
+          writeFileSync(pf, JSON.stringify([...prior, report].slice(-10), null, 2));
+          send(res, 200, report);
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/pentest/reports") {
+          let reports: unknown[] = [];
+          try {
+            reports = JSON.parse(readFileSync(join(dataRoot, "pentest.json"), "utf8")) as unknown[];
+          } catch {
+            /* none yet */
+          }
+          send(res, 200, { reports });
+          return;
+        }
+
+        if (req.method === "GET" && url.pathname === "/zoom/status") {
+          send(res, 200, await zoomStatus());
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/zoom/join") {
+          const parsed = await jsonBody(req);
+          const meetingUrl = (parsed.ok ? parsed.body.meetingUrl : null) as string | undefined;
+          if (!meetingUrl) {
+            send(res, 400, { error: "meetingUrl required" });
+            return;
+          }
+          try {
+            send(res, 201, await joinMeeting(meetingUrl));
+          } catch (e) {
+            const msg = (e as Error).message;
+            send(res, msg.includes("not configured") ? 501 : 400, { error: msg });
+          }
           return;
         }
 
