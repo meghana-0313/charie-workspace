@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Sidebar, Topbar } from "@/components/shell";
 
-export const metadata: Metadata = { title: "GhostQA Portal", description: "Tickets, issue rooms, runs and evidence." };
+export const metadata: Metadata = { title: "Agent CB · GhostQA Suite", description: "Build and Runtime Intelligence: tickets, evidence, fixes, proof." };
 
-export const viewport = { themeColor: "#111827" };
+export const viewport = { themeColor: "#0b0c0f" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const env = process.env.PORTAL_STORE === "firestore" ? "Production" : "Development";
   return (
     <html lang="en">
       <head>
@@ -13,11 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
       </head>
       <body>
-        <header className="topbar">
-          <a className="brand" href="/">GhostQA</a>
-          <span className="tagline">ticket → evidence → fix → proof</span>
-        </header>
-        <main className="wrap">{children}</main>
+        <div className="shell">
+          <Sidebar env={env} />
+          <div className="main">
+            <Topbar />
+            <main className="content">{children}</main>
+          </div>
+        </div>
       </body>
     </html>
   );

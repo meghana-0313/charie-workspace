@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -37,7 +37,7 @@ export const firestoreStore = {
     const d = await firestore().collection("tickets").doc(id).get();
     return d.exists ? (d.data() as Ticket) : null;
   },
-  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string }): Promise<Ticket> {
+  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string }): Promise<Ticket> {
     const fs = firestore();
     const ticket: Ticket = { ...input, id: uid("tkt"), status: "new", createdAt: now(), updatedAt: now() };
     const room: Room = {
@@ -148,5 +148,41 @@ export const firestoreStore = {
   },
   async deletePushSubscription(endpoint: string): Promise<void> {
     await firestore().collection("push_subscriptions").doc(subId(endpoint)).delete().catch(() => {});
+  },
+
+  async listRepos(): Promise<RepoConnection[]> {
+    const snap = await firestore().collection("repos").orderBy("createdAt", "desc").get();
+    return snap.docs.map((d) => d.data() as RepoConnection);
+  },
+  async getRepo(id: string): Promise<RepoConnection | null> {
+    const d = await firestore().collection("repos").doc(id).get();
+    return d.exists ? (d.data() as RepoConnection) : null;
+  },
+  async saveRepo(repo: RepoConnection): Promise<void> {
+    await firestore().collection("repos").doc(repo.id).set(clean({ ...repo }));
+  },
+  async updateRepo(id: string, patch: Partial<RepoConnection>): Promise<void> {
+    await firestore().collection("repos").doc(id).update(clean({ ...patch, updatedAt: now() }));
+  },
+  async deleteRepo(id: string): Promise<void> {
+    await firestore().collection("repos").doc(id).delete().catch(() => {});
+  },
+
+  async listBuilds(repoId: string): Promise<RepoBuild[]> {
+    // No orderBy: where+orderBy needs a composite index. Sort in memory.
+    const snap = await firestore().collection("builds").where("repoId", "==", repoId).get();
+    return snap.docs
+      .map((d) => d.data() as RepoBuild)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getBuild(id: string): Promise<RepoBuild | null> {
+    const d = await firestore().collection("builds").doc(id).get();
+    return d.exists ? (d.data() as RepoBuild) : null;
+  },
+  async saveBuild(build: RepoBuild): Promise<void> {
+    await firestore().collection("builds").doc(build.id).set(clean({ ...build }));
+  },
+  async updateBuild(id: string, patch: Partial<RepoBuild>): Promise<void> {
+    await firestore().collection("builds").doc(id).update(clean({ ...patch, updatedAt: now() }));
   },
 };

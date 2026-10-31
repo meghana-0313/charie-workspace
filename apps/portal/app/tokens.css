@@ -1,0 +1,93 @@
+/* Agent CB design tokens. Dark charcoal enterprise theme, violet accent.
+   Single source of truth: every component below references these. */
+
+:root {
+  /* Surfaces (dark charcoal, layered by elevation) */
+  --bg: #0b0c0f;
+  --bg-sunken: #08090c;
+  --surface: #12141a;
+  --surface-raised: #181b23;
+  --surface-overlay: #1f232d;
+  --line: #242832;
+  --line-strong: #31363f;
+
+  /* Text */
+  --ink: #e9ebf1;
+  --ink-muted: #a2a9bb;
+  --ink-faint: #69707f;
+
+  /* Brand accent: violet, used sparingly for primary actions + active states */
+  --accent: #8b7cf6;
+  --accent-hover: #9c8ff7;
+  --accent-dim: rgba(139, 124, 246, 0.14);
+  --accent-ink: #cfc8ff;
+
+  /* Status */
+  --ok: #3ddc97;
+  --ok-dim: rgba(61, 220, 151, 0.12);
+  --warn: #f5b544;
+  --warn-dim: rgba(245, 181, 68, 0.12);
+  --danger: #f26d6d;
+  --danger-dim: rgba(242, 109, 109, 0.12);
+  --info: #6cb2f5;
+  --info-dim: rgba(108, 178, 245, 0.12);
+
+  /* Type */
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+
+  /* Shape + space */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Layout */
+  --sidebar-w: 236px;
+  --content-w: 1120px;
+  --topbar-h: 52px;
+
+  /* Elevation */
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent-ink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::selection { background: rgba(139, 124, 246, 0.35); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Scrollbars stay quiet and dark. */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #2c313c; border-radius: 8px; border: 2px solid var(--bg); }
+*::-webkit-scrollbar-track { background: transparent; }

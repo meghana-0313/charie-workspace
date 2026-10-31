@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, Room, RoomMessage, Ticket } from "./types";
+import type { Approval, GuardEventView, Incident, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -35,6 +35,8 @@ const runs = file<Record<string, PortalRun>>("runs", {});
 const gevents = file<GuardEventView[]>("guardian-events", []);
 const incidents = file<Record<string, Incident>>("incidents", {});
 const pushSubs = file<Record<string, PushSubscription>>("push", {});
+const repos = file<Record<string, RepoConnection>>("repos", {});
+const builds = file<Record<string, RepoBuild>>("builds", {});
 
 const now = () => new Date().toISOString();
 
@@ -45,7 +47,7 @@ export const fileStore = {
   async getTicket(id: string): Promise<Ticket | null> {
     return tickets.read()[id] ?? null;
   },
-  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string }): Promise<Ticket> {
+  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string }): Promise<Ticket> {
     const all = tickets.read();
     const ticket: Ticket = { ...input, id: uid("tkt"), status: "new", createdAt: now(), updatedAt: now() };
     all[ticket.id] = ticket;
@@ -178,5 +180,50 @@ export const fileStore = {
     const all = pushSubs.read();
     delete all[endpoint];
     pushSubs.write(all);
+  },
+
+  async listRepos(): Promise<RepoConnection[]> {
+    return Object.values(repos.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getRepo(id: string): Promise<RepoConnection | null> {
+    return repos.read()[id] ?? null;
+  },
+  async saveRepo(repo: RepoConnection): Promise<void> {
+    const all = repos.read();
+    all[repo.id] = repo;
+    repos.write(all);
+  },
+  async updateRepo(id: string, patch: Partial<RepoConnection>): Promise<void> {
+    const all = repos.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      repos.write(all);
+    }
+  },
+  async deleteRepo(id: string): Promise<void> {
+    const all = repos.read();
+    delete all[id];
+    repos.write(all);
+  },
+
+  async listBuilds(repoId: string): Promise<RepoBuild[]> {
+    return Object.values(builds.read())
+      .filter((b) => b.repoId === repoId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async getBuild(id: string): Promise<RepoBuild | null> {
+    return builds.read()[id] ?? null;
+  },
+  async saveBuild(build: RepoBuild): Promise<void> {
+    const all = builds.read();
+    all[build.id] = build;
+    builds.write(all);
+  },
+  async updateBuild(id: string, patch: Partial<RepoBuild>): Promise<void> {
+    const all = builds.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      builds.write(all);
+    }
   },
 };

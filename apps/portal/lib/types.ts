@@ -10,6 +10,7 @@ export interface Ticket {
   goal: string;
   targetUrl: string;
   voiceNotePath?: string; // uploaded audio; transcription wires up in M4
+  sourceRepo?: string; // owner/repo when auto-filed from a connected repo build
   status: TicketStatus;
   roomId?: string;
   createdAt: string;
@@ -208,4 +209,38 @@ export interface PushSubscription {
   endpoint: string;
   keys: { p256dh: string; auth: string };
   createdAt: string;
+}
+
+export interface RepoConnection {
+  id: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  subdir: string; // build context inside the repo, "" = root
+  startCommand: string; // used by generated Dockerfiles
+  visibility: "public" | "private";
+  hasToken: boolean;
+  token?: string; // PAT for private repos (v1: same trust boundary as Firestore data)
+  status: "connected" | "building" | "live" | "failed";
+  lastSha?: string;
+  appUrl?: string;
+  ticketId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RepoBuildStatus = "queued" | "working" | "success" | "failure" | "deployed" | "error";
+
+export interface RepoBuild {
+  id: string;
+  repoId: string;
+  sha: string;
+  cloudBuildId: string;
+  strategy: "dockerfile" | "node" | "python";
+  status: RepoBuildStatus;
+  appUrl?: string;
+  ticketId?: string;
+  detail?: string;
+  createdAt: string;
+  updatedAt: string;
 }

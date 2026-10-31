@@ -1,27 +1,69 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
+import { listSweeps } from "@/lib/guardian";
 import { NewTicketForm } from "@/components/forms";
+import { Badge, EmptyState, PageHead, Stat } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const tickets = await store.listTickets();
-  const runs = await store.listRuns(10);
+  const runs = await store.listRuns(8);
+  const incidents = await store.listIncidents();
+  const sweeps = await listSweeps();
+  const openTickets = tickets.filter((t) => t.status !== "closed" && t.status !== "verified").length;
+  const openIncidents = incidents.filter((i) => i.status === "open").length;
+  const lastSweep = sweeps.at(-1);
+
   return (
     <>
-      <p><Link href="/guardian">Runtime Guardian: post-deploy threat monitoring →</Link></p>
-      <div className="panel">
-        <h2>New ticket</h2>
-        <p className="muted small">
-          Describe the customer problem. A room opens immediately; run the investigation from the ticket page.
-          Voice notes are stored as-is - transcription wires up in M4.
-        </p>
-        <NewTicketForm />
+      <PageHead
+        title="Overview"
+        sub="Build Intelligence on the left, Runtime Intelligence in the sidebar. File a ticket, run the investigation, verify the fix."
+      />
+      <div className="stats">
+        <Stat num={openTickets} label="open tickets" />
+        <Stat num={runs.length} label="recent engine runs" />
+        <Stat num={openIncidents} label="open incidents" />
+        <Stat
+          num={lastSweep ? (lastSweep.pass ? "PASS" : "FAIL") : "-"}
+          label={lastSweep ? `last sweep ${lastSweep.at.slice(5, 16).replace("T", " ")}` : "no sweeps yet"}
+        />
       </div>
-      <div className="panel">
-        <h2>Tickets ({tickets.length})</h2>
+
+      <div className="grid2">
+        <div className="card" id="new-ticket">
+          <div className="card-title">New ticket</div>
+          <p className="muted small">
+            Describe the customer problem. A room opens immediately; run the investigation from the ticket page.
+          </p>
+          <NewTicketForm />
+        </div>
+        <div className="card">
+          <div className="card-title">Recent engine runs</div>
+          {runs.length === 0 ? (
+            <EmptyState title="No runs yet" body="Runs appear here after the first investigation." />
+          ) : (
+            <table>
+              <thead><tr><th>Run</th><th>Kind</th><th>Status</th></tr></thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.id}>
+                    <td className="mono"><Link href={`/tickets/${r.ticketId}`}>{r.id.slice(0, 19)}</Link></td>
+                    <td><Badge>{r.kind}</Badge></td>
+                    <td><Badge tone={r.status}>{r.status}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Tickets ({tickets.length})</div>
         {tickets.length === 0 ? (
-          <p className="muted">No tickets yet. File one above - e.g. “Checkout button does nothing”.</p>
+          <EmptyState title="No tickets yet" body="File one above - e.g. Checkout button does nothing." />
         ) : (
           <table>
             <thead><tr><th>Subject</th><th>Goal</th><th>Status</th><th>Opened</th></tr></thead>
@@ -30,18 +72,13 @@ export default async function Dashboard() {
                 <tr key={t.id}>
                   <td><Link href={`/tickets/${t.id}`}>{t.subject}</Link></td>
                   <td className="small muted">{t.goal}</td>
-                  <td><span className="pill">{t.status}</span></td>
+                  <td><Badge tone={t.status}>{t.status}</Badge></td>
                   <td className="small muted">{t.createdAt.slice(0, 16).replace("T", " ")}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-      </div>
-      <div className="panel">
-        <h2>Recent engine runs ({runs.length})</h2>
-        <p className="muted small">Latest investigations and verifications across all tickets.</p>
-        <p className="small">{runs.length === 0 ? "None yet." : runs.map((r) => `${r.id.slice(0, 19)} (${r.kind}/${r.status})`).join(" · ")}</p>
       </div>
     </>
   );

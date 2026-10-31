@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listWorkOrders } from "@/lib/guardian";
-import { SuiteNav } from "@/components/suite-nav";
+import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -9,16 +9,14 @@ export default async function WorkOrdersPage() {
   const open = orders.filter((o) => !["done", "failed", "rolledback"].includes(o.status));
   return (
     <>
-      <p><Link href="/guardian">← Guardian</Link></p>
-      <SuiteNav current="/guardian/work" />
-      <div className="panel">
-        <h2>Work Orders ({orders.length})</h2>
-        <p className="muted small">
-          Approved units of autonomous remediation. Propose one from an incident, a signal cluster,
-          or a pen-test check; approve it; Night Shift executes overnight and reports proofs.
-        </p>
+      <PageHead
+        crumbs={[["/", "Overview"], ["/guardian/work", "Work Orders"]]}
+        title={`Work Orders (${orders.length})`}
+        sub="Approved units of autonomous remediation. Propose one from an incident, a signal cluster, or a pen-test check; approve it; Night Shift executes overnight and reports proofs."
+      />
+      <div className="card">
         {orders.length === 0 ? (
-          <p className="muted">None yet. Open an incident and press Propose work order.</p>
+          <EmptyState title="No work orders" body="Open an incident and press Propose work order." />
         ) : (
           <table>
             <thead><tr><th>Title</th><th>Source</th><th>Status</th><th>Risk</th><th>Updated</th></tr></thead>
@@ -27,8 +25,8 @@ export default async function WorkOrdersPage() {
                 <tr key={o.id}>
                   <td><Link href={`/guardian/work/${o.id}`}>{o.title}</Link></td>
                   <td className="small muted">{o.source} {o.sourceRef}</td>
-                  <td><span className="pill">{o.status}</span></td>
-                  <td><span className="pill">{o.risk}</span></td>
+                  <td><Badge tone={o.status}>{o.status}</Badge></td>
+                  <td><Badge tone={o.risk}>{o.risk}</Badge></td>
                   <td className="small muted">{o.updatedAt.slice(0, 16).replace("T", " ")}</td>
                 </tr>
               ))}
