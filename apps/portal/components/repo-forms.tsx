@@ -22,6 +22,7 @@ export function ConnectForm() {
         token: String(fd.get("token") ?? "") || undefined,
         subdir: String(fd.get("subdir") ?? "") || undefined,
         startCommand: String(fd.get("startCommand") ?? "") || undefined,
+        branch: String(fd.get("branch") ?? "") || undefined,
       }),
     });
     const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
@@ -42,6 +43,8 @@ export function ConnectForm() {
       </div>
       {advanced && (
         <>
+          <label htmlFor="repo-branch">Branch (blank = default)</label>
+          <input id="repo-branch" name="branch" placeholder="main" />
           <label htmlFor="repo-subdir">Subdirectory (app lives in a subfolder)</label>
           <input id="repo-subdir" name="subdir" placeholder="apps/demo-target" />
           <label htmlFor="repo-start">Start command (generated Dockerfiles only)</label>

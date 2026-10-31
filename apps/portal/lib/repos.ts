@@ -49,18 +49,21 @@ function pythonDockerfile(startCommand: string): string {
   ].join("\n");
 }
 
-export async function connectRepo(input: { url: string; token?: string; subdir?: string; startCommand?: string }): Promise<RepoConnection> {
+export async function connectRepo(input: { url: string; token?: string; subdir?: string; startCommand?: string; branch?: string }): Promise<RepoConnection> {
   const parsed = parseRepoUrl(input.url);
   if (!parsed) throw new Error("Use a github.com URL or owner/repo");
   const meta = await getRepo(parsed.owner, parsed.repo, input.token);
   if (!meta) throw new Error("Repo not found or token rejected");
   if (meta.visibility === "private" && !input.token) throw new Error("Private repo needs a token");
+  const branch = input.branch?.trim() || meta.defaultBranch;
+  const sha = await getBranchSha(parsed.owner, parsed.repo, branch, input.token);
+  if (!sha) throw new Error(`Branch ${branch} not found`);
   const now = new Date().toISOString();
   const repo: RepoConnection = {
     id: uid("repo"),
     owner: parsed.owner,
     repo: parsed.repo,
-    branch: meta.defaultBranch,
+    branch,
     subdir: (input.subdir ?? "").trim().replace(/^\//, "").replace(/\/$/, ""),
     startCommand: input.startCommand?.trim() || "npm start",
     visibility: meta.visibility,
@@ -84,7 +87,7 @@ export async function planBuild(repo: RepoConnection, sha: string): Promise<Buil
   if (scoped.some((p) => p === "Dockerfile" || p === "dockerfile")) return { strategy: "dockerfile", dockerfile: null };
   if (scoped.some((p) => p === "package.json")) return { strategy: "node", dockerfile: nodeDockerfile(repo.startCommand) };
   if (scoped.some((p) => p === "requirements.txt")) return { strategy: "python", dockerfile: pythonDockerfile(repo.startCommand) };
-  throw new Error("No Dockerfile, package.json, or requirements.txt in scope - add one");
+  throw new Error(`No Dockerfile, package.json, or requirements.txt under ${repo.subdir || "root"} on branch ${repo.branch}`);
 }
 
 /** Trigger: tarball to GCS, generated Dockerfile if needed, Cloud Build create. */
