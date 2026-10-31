@@ -1,4 +1,4 @@
-# ShopFast demo-target — seeded defect catalog (GROUND TRUTH)
+# ShopFast demo-target - seeded defect catalog (GROUND TRUTH)
 
 This app is intentionally broken. The agent-engine's regression test passes only if a run
 against the **buggy** build reports all six seeds, and a run against the **fixed**

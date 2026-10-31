@@ -13,14 +13,14 @@ export default async function Dashboard() {
         <h2>New ticket</h2>
         <p className="muted small">
           Describe the customer problem. A room opens immediately; run the investigation from the ticket page.
-          Voice notes are stored as-is — transcription wires up in M4.
+          Voice notes are stored as-is - transcription wires up in M4.
         </p>
         <NewTicketForm />
       </div>
       <div className="panel">
         <h2>Tickets ({tickets.length})</h2>
         {tickets.length === 0 ? (
-          <p className="muted">No tickets yet. File one above — e.g. “Checkout button does nothing”.</p>
+          <p className="muted">No tickets yet. File one above - e.g. “Checkout button does nothing”.</p>
         ) : (
           <table>
             <thead><tr><th>Subject</th><th>Goal</th><th>Status</th><th>Opened</th></tr></thead>

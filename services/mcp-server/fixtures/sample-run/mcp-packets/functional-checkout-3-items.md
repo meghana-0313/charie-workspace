@@ -1,4 +1,4 @@
-# Fix instruction — functional-checkout-3-items [blocker/functional]
+# Fix instruction - functional-checkout-3-items [blocker/functional]
 
 ## Problem
 Place order silently fails with 3+ items in cart

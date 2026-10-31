@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ShopFast — Checkout</title>
+<title>ShopFast - Checkout</title>
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -36,7 +36,7 @@
     <div id="order-summary" class="muted">Loading summary…</div>
     <input id="card" type="text" placeholder="Card number" style="margin-top:8px" />
     <div class="row">
-      <!-- SEEDED UX-1b: second identical "Continue" — goes BACK, not forward -->
+      <!-- SEEDED UX-1b: second identical "Continue" - goes BACK, not forward -->
       <button class="btn secondary" id="continue-2">Continue</button>
       <!-- SEEDED A11Y-1: place-order is a div: no keyboard focus, no role -->
       <div class="place-order-div" id="place-order">Place order</div>
@@ -98,7 +98,7 @@ async function renderSummary() {
   const cart = getCart();
   const total = cart.reduce((n, l) => n + products[l.id].price * l.qty, 0);
   document.getElementById("order-summary").textContent =
-    `${cart.reduce((n, l) => n + l.qty, 0)} items — total $${total.toFixed(2)}`;
+    `${cart.reduce((n, l) => n + l.qty, 0)} items - total $${total.toFixed(2)}`;
 }
 
 // SEEDED BUG-1 (client half): failed checkout is swallowed in the buggy build.

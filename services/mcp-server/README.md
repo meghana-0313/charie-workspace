@@ -33,7 +33,7 @@ npm run smoke --workspace services/mcp-server
 ```
 
 Speaks real JSON-RPC over stdio against `fixtures/sample-run` (a committed,
-labeled fixture — not a live investigation).
+labeled fixture - not a live investigation).
 
 ## Typical agent flow
 

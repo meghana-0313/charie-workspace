@@ -58,7 +58,7 @@ export function createApp(opts: ServerOpts): RequestListener {
     if (!expected) {
       if (!warnedNoAuth) {
         warnedNoAuth = true;
-        console.warn("[engine] ENGINE_TOKEN unset — API auth disabled (local dev only)");
+        console.warn("[engine] ENGINE_TOKEN unset - API auth disabled (local dev only)");
       }
       return true;
     }

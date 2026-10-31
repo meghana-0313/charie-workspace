@@ -1,5 +1,5 @@
 // JSON-file store: local stand-in for Firestore. Same async interface as
-// store-firestore.ts — see lib/store.ts for the selector.
+// store-firestore.ts - see lib/store.ts for the selector.
 // Data lives in apps/portal/.data (gitignored).
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";

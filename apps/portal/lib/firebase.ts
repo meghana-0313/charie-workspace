@@ -1,4 +1,4 @@
-// Shared firebase-admin app (single init — calling initializeApp twice throws).
+// Shared firebase-admin app (single init - calling initializeApp twice throws).
 // Credentials are ADC: attached service account on Cloud Run, user login locally.
 
 import { applicationDefault, getApps, initializeApp } from "firebase-admin/app";

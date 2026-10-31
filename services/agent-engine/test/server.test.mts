@@ -1,4 +1,4 @@
-// Server tests (offline, no browser, no sockets — the handler is invoked
+// Server tests (offline, no browser, no sockets - the handler is invoked
 // directly with mock req/res so this runs even in locked-down sandboxes).
 // Covers: health, auth gate, request validation, run/artifacts reads.
 import { strict as assert } from "node:assert";

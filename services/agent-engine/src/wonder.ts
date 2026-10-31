@@ -1,5 +1,5 @@
-// Deep-dive tier (M5). Selects findings that need Muse Wonder — multi-component
-// or low-confidence — and runs the deep root-cause analysis when configured.
+// Deep-dive tier (M5). Selects findings that need Muse Wonder - multi-component
+// or low-confidence - and runs the deep root-cause analysis when configured.
 
 import { secret } from "./secrets.js";
 import type { Finding } from "./types.js";

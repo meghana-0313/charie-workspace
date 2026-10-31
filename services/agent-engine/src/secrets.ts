@@ -4,7 +4,7 @@
 //
 // Auth is ADC (no key files): the attached service account on GCP, or
 // `gcloud auth application-default login` locally. The GCP project comes
-// from GCP_PROJECT_ID (GOOGLE_CLOUD_PROJECT also works — Cloud Run sets it).
+// from GCP_PROJECT_ID (GOOGLE_CLOUD_PROJECT also works - Cloud Run sets it).
 // Everything fails soft: no project / no credentials / no secret just means
 // that value stays undefined and the engine keeps running in heuristic mode.
 
@@ -50,7 +50,7 @@ export interface LoadResult {
 
 /**
  * Pull names missing from env out of Secret Manager into the memory cache.
- * Never throws and never prints values — callers log names/counts only.
+ * Never throws and never prints values - callers log names/counts only.
  */
 export async function loadSecrets(names: readonly string[] = SECRET_NAMES): Promise<LoadResult> {
   const loaded: string[] = [];
@@ -60,7 +60,7 @@ export async function loadSecrets(names: readonly string[] = SECRET_NAMES): Prom
 
   const project = projectId();
   if (!project) {
-    console.warn("[secrets] GCP_PROJECT_ID not set — Secret Manager skipped (env-only mode)");
+    console.warn("[secrets] GCP_PROJECT_ID not set - Secret Manager skipped (env-only mode)");
     missing.push(...pending);
     return { loaded, missing };
   }
@@ -70,7 +70,7 @@ export async function loadSecrets(names: readonly string[] = SECRET_NAMES): Prom
     client ??= new SecretManagerServiceClient();
     svc = client;
   } catch (e) {
-    console.warn(`[secrets] Secret Manager client failed (${(e as Error).message}) — continuing without GCP secrets`);
+    console.warn(`[secrets] Secret Manager client failed (${(e as Error).message}) - continuing without GCP secrets`);
     missing.push(...pending);
     return { loaded, missing };
   }

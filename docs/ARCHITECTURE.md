@@ -44,7 +44,7 @@
 | Machine tester / Explorer | `src/explorer.ts` | Drives the real app with Playwright toward a goal; records every action, screenshot, console error, failed request | deterministic script + Spark planner (later) |
 | First-time-user sim | `src/usability.ts` | Re-runs the goal *without* privileged knowledge of the UI; records hesitation signals: backtracks, repeated clicks, dwell, detours, abandonment | heuristics now; Spark vision-driven in v1 |
 | Evidence analyst | `src/analyst.ts` | Turns traces into findings: severity, likely cause, affected component, repro steps, confidence | Muse Spark (`META_TEXT_MODEL`) |
-| Design improver | `src/redesign.ts` | For usability findings: 2–3 alternative UI directions + trade-offs + component-level implementation plan | Muse Image + Spark |
+| Design improver | `src/redesign.ts` | For usability findings: 2-3 alternative UI directions + trade-offs + component-level implementation plan | Muse Image + Spark |
 | Fix proposer | (analyst output) | Machine-readable instruction packet for the coding agent via MCP | Spark |
 | Verifier | `src/verifier.ts` | Re-runs identical journeys against the fixed build; passes only if target finding is gone and no regressions | deterministic |
 
@@ -55,7 +55,7 @@
 3. Usability sim produces `usability.json` (confusion signals per step).
 4. Analyst produces `findings.json` (typed findings with severity/confidence/evidence links).
 5. Reporter writes `report.md` + static HTML + per-finding MCP packets.
-6. After a fix: verifier re-runs steps 2–4 against `fixedBuildUrl`, writes `verification.json`
+6. After a fix: verifier re-runs steps 2-4 against `fixedBuildUrl`, writes `verification.json`
    with a before/after diff. Finding state transitions `open → fix_proposed → verified|regressed`.
 
 ## Finding type
@@ -79,7 +79,7 @@ type Finding = {
 
 ## Environments
 
-- `apps/demo-target` — seeded-bug store used for the demo and for regression-testing
+- `apps/demo-target` - seeded-bug store used for the demo and for regression-testing
   the engine itself. The engine's own CI runs the loop against it; if the seeded bug
   is *not* found, the engine regressed.
 - Customer apps (post-hackathon): any scoped web URL + optional source upload.

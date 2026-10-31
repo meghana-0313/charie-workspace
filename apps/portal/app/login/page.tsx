@@ -17,7 +17,7 @@ export default function LoginPage() {
       body: JSON.stringify({ passphrase }),
     });
     if (res.ok) router.push("/");
-    else setError("Wrong passphrase — try again.");
+    else setError("Wrong passphrase - try again.");
   }
 
   return (

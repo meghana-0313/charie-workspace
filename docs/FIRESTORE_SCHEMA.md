@@ -1,9 +1,9 @@
-# Firestore schema (planned — portal milestone)
+# Firestore schema (planned - portal milestone)
 
 Database choice: **Cloud Firestore** (Firebase). Rationale: real-time rooms,
 generous free tier, Auth + Storage in one console, fastest to a working portal in
 the hackathon window. All collections work identically if we later move to
-self-hosted Postgres — access goes through a repository layer, never raw queries
+self-hosted Postgres - access goes through a repository layer, never raw queries
 in components.
 
 ## Collections

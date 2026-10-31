@@ -8,7 +8,7 @@ import type { Finding, JourneyTrace } from "./types.js";
 
 export function mcpPacket(f: Finding, trace: JourneyTrace): string {
   return [
-    `# Fix instruction — ${f.id} [${f.severity}/${f.category}]`,
+    `# Fix instruction - ${f.id} [${f.severity}/${f.category}]`,
     ``,
     `## Problem`,
     f.title,
@@ -48,7 +48,7 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
     `- **Target:** ${trace.targetUrl} (build: \`${trace.build}\`)`,
     `- **Ran:** ${trace.startedAt} → ${trace.finishedAt}`,
     `- **Goal reached:** ${trace.success ? "YES ✅" : "NO ❌"}`,
-    `- **Analysis:** ${spark}/${findings.length} findings enriched by Muse Spark${spark === 0 ? " (heuristic mode — set META_API_KEY to upgrade)" : ""}`,
+    `- **Analysis:** ${spark}/${findings.length} findings enriched by Muse Spark${spark === 0 ? " (heuristic mode - set META_API_KEY to upgrade)" : ""}`,
     ``,
     `> Usability results below are **AI simulation (heuristic v0)**, not human data.`,
     `> Human validation is a separate, optional step.`,
@@ -58,7 +58,7 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
   ];
   for (const [i, f] of findings.entries()) {
     lines.push(
-      `### ${i + 1}. ${f.title} — \`${f.id}\``,
+      `### ${i + 1}. ${f.title} - \`${f.id}\``,
       ``,
       `- Category: ${f.category} · Severity: **${f.severity}** · Confidence: ${f.confidence} · Source: ${f.analysisSource}`,
       `- Suspected cause: ${f.suspectedCause}`,
@@ -85,13 +85,13 @@ export async function writeReport(outDir: string, trace: JourneyTrace, findings:
     `## Action trace (${trace.actions.length} actions, ${trace.events.length} events)`,
     ``,
     ...trace.actions.map(
-      (a) => `- [+${a.t}ms] ${a.ok ? "✅" : "❌"} ${a.action}${a.detail ? ` — ${a.detail}` : ""}${a.screenshot ? ` (${a.screenshot})` : ""}`,
+      (a) => `- [+${a.t}ms] ${a.ok ? "✅" : "❌"} ${a.action}${a.detail ? ` - ${a.detail}` : ""}${a.screenshot ? ` (${a.screenshot})` : ""}`,
     ),
     ``,
     `## Confusion signals (${trace.confusionSignals.length})`,
     ``,
     ...(trace.confusionSignals.length === 0
-      ? ["None — the naive-user pass completed without hesitation signals."]
+      ? ["None - the naive-user pass completed without hesitation signals."]
       : trace.confusionSignals.map((s) => `- [${s.signal}] ${s.step}: ${s.detail}`)),
     ``,
   );

@@ -17,7 +17,7 @@ function firestore() {
 
 const now = () => new Date().toISOString();
 
-/** Firestore rejects `undefined` values — drop them (keeps optional fields safe). */
+/** Firestore rejects `undefined` values - drop them (keeps optional fields safe). */
 function clean<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
 }

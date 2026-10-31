@@ -52,7 +52,7 @@ export async function runStatus(runId: string): Promise<"running" | "done" | "fa
   try {
     return (await runState(runId))?.status ?? "failed";
   } catch {
-    return "running"; // transport blip — keep polling rather than fail the run
+    return "running"; // transport blip - keep polling rather than fail the run
   }
 }
 

@@ -1,20 +1,20 @@
 # Meta stack mapping
 
 Every required Meta model/API, the real job it does in GhostQA, and its status.
-Rule: **a model counts as "used" only after a real request/inference succeeds —
+Rule: **a model counts as "used" only after a real request/inference succeeds -
 never from a stub.** Judges can trace each one to a file.
 
-## Hosted — Meta Model API (spend: Meta Model API credits)
+## Hosted - Meta Model API (spend: Meta Model API credits)
 
 | Meta model | Real job in the product | Code | Status |
 |---|---|---|---|
 | **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; later, journey planner | `services/agent-engine/src/analyst.ts` via `meta-client.ts` | Wired, needs `META_API_KEY` |
 | **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Interface + selector live; model call pending (M5) |
-| **Muse Image** | Evidence-linked UI redesigns: 2–3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Written-brief fallback live; images pending (M2) |
+| **Muse Image** | Evidence-linked UI redesigns: 2-3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Written-brief fallback live; images pending (M2) |
 | **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` | Upload + storage live; transcription pending (M4) |
 | **SAM 3.1** | Screenshot grounding: segments cited UI controls → bounding boxes on failure screenshots, before/after diff regions | `services/agent-engine/src/grounding.ts` | Interface live, whole-shot fallback; model pending (M3) |
 
-## Open weights (spend: Baseten / Modal credits — NOT interchangeable with Model API credits)
+## Open weights (spend: Baseten / Modal credits - NOT interchangeable with Model API credits)
 
 | Meta model | Real job in the product | Runtime | Status |
 |---|---|---|---|
@@ -34,7 +34,7 @@ never from a stub.** Judges can trace each one to a file.
 
 No `.env` file: at startup the engine pulls secrets from Google Cloud Secret
 Manager (`versions/latest`, secret IDs below verbatim) into memory, using
-Application Default Credentials — the attached service account on GCP, or
+Application Default Credentials - the attached service account on GCP, or
 `gcloud auth application-default login` locally. `GCP_PROJECT_ID` selects the
 project (`GOOGLE_CLOUD_PROJECT` also works). Anything already set in the
 environment wins (tests, Cloud Run-mounted secrets); anything missing just
@@ -70,6 +70,6 @@ Local access needs the Secret Manager Secret Accessor role
 
 ## Why this mapping wins points
 
-- Eight Meta technologies, each doing the job it's best at — no disconnected demo buttons.
+- Eight Meta technologies, each doing the job it's best at - no disconnected demo buttons.
 - Every call degrades gracefully, so the demo never dies on a network/API failure.
-- GhostQA *feeds* Muse Code instead of competing with it — a Meta-ecosystem story.
+- GhostQA *feeds* Muse Code instead of competing with it - a Meta-ecosystem story.

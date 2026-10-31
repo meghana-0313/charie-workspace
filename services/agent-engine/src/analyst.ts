@@ -37,7 +37,7 @@ export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
         `Observe: no confirmation, no error message; ${checkoutErr.detail}`,
       ],
       evidence: { screenshots: shots(trace, "order-failed"), trace: "trace.json", logs },
-      suspectedCause: "Checkout API returns 500 for 3+ items (ORDER_SPLIT_FAILED) and the client swallows the failure — spinner hides with no toast or redirect.",
+      suspectedCause: "Checkout API returns 500 for 3+ items (ORDER_SPLIT_FAILED) and the client swallows the failure - spinner hides with no toast or redirect.",
       confidence: "high",
       suggestedFix:
         "Server: make POST /api/checkout handle multi-item carts (fix order splitting for 3+ items). Client: in checkout.html place-order handler, show an error toast on non-OK responses instead of failing silently.",
@@ -87,7 +87,7 @@ export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
       reproSteps: [
         "Open checkout, enter 'not-an-email' and a name",
         "Click Continue",
-        "Observe: nothing happens — no message, no advance",
+        "Observe: nothing happens - no message, no advance",
       ],
       evidence: { screenshots: shots(trace, "checkout-step1"), trace: "trace.json", logs: silent.map((s) => s.detail) },
       suspectedCause: "Step-1 validation returns early without rendering feedback.",
@@ -131,7 +131,7 @@ export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
       id: "security-headers-surface",
       category: "security",
       severity: "minor",
-      title: "Missing security headers/cookie flags (surface check — not a pentest)",
+      title: "Missing security headers/cookie flags (surface check - not a pentest)",
       goal: trace.goal,
       reproSteps: [
         "Open the app in a browser",
@@ -173,9 +173,9 @@ export async function analyze(trace: JourneyTrace): Promise<Finding[]> {
     });
   }
 
-  // Optional Muse Spark enrichment (cause/fix prose only — IDs and verdicts stay deterministic).
+  // Optional Muse Spark enrichment (cause/fix prose only - IDs and verdicts stay deterministic).
   if (hasMetaKey() && findings.length > 0) {
-    console.log("[analyst] META_API_KEY found — enriching with Muse Spark…");
+    console.log("[analyst] META_API_KEY found - enriching with Muse Spark…");
     await Promise.all(
       findings.map(async (f) => {
         const enriched = await enrichFinding({

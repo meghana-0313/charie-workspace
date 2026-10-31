@@ -12,7 +12,7 @@ function signingKey(): string {
   return process.env.SESSION_KEY ?? "dev-insecure-session-key";
 }
 
-/** False locally (no passphrase set) — the gate stays open for dev. */
+/** False locally (no passphrase set) - the gate stays open for dev. */
 export function authConfigured(): boolean {
   return (process.env.PORTAL_PASSPHRASE ?? "") !== "";
 }

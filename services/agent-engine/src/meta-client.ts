@@ -1,6 +1,6 @@
 // Minimal client for the Meta Model API (OpenAI-compatible chat surface).
 // Key, base URL and model IDs resolve via secrets.ts (env first, GCP Secret
-// Manager second — no .env file). Model IDs verified against dev.meta.ai docs.
+// Manager second - no .env file). Model IDs verified against dev.meta.ai docs.
 // When no key is present the engine falls back to heuristics.
 
 import { secret } from "./secrets.js";

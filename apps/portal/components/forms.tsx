@@ -35,7 +35,7 @@ export function NewTicketForm() {
       <input id="subject" name="subject" required placeholder="Checkout button does nothing" />
       <label htmlFor="body">Customer description</label>
       <textarea id="body" name="body" required placeholder="Customer tried 3 times, gave up. Order lost." />
-      <label htmlFor="goal">User task to verify (goal — blank auto-extracts from above)</label>
+      <label htmlFor="goal">User task to verify (goal - blank auto-extracts from above)</label>
       <input id="goal" name="goal" placeholder="Buy 3 different travel passes and complete checkout without assistance" />
       <label htmlFor="targetUrl">App URL to test</label>
       <input id="targetUrl" name="targetUrl" required defaultValue="http://localhost:3101" />
