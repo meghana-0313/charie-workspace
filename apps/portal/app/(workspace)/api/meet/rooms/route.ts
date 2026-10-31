@@ -9,6 +9,6 @@ export async function GET() {
 export async function POST(req: Request) {
   const { title } = (await req.json().catch(() => ({}))) as { title?: string };
   if (!title?.trim()) return NextResponse.json({ error: "title required" }, { status: 400 });
-  const room = await store.createMeetRoom({ title: title.trim().slice(0, 120), createdBy: await displayName() });
+  const room = await store.createMeetRoom({ title: title.trim().slice(0, 120), createdBy: await displayName(req) });
   return NextResponse.json(room, { status: 201 });
 }

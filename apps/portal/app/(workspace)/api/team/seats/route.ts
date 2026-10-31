@@ -4,14 +4,14 @@ import { hashSeatSecret } from "@/lib/auth";
 import { store, uid } from "@/lib/store";
 import { isAdmin } from "@/lib/who";
 
-export async function GET() {
-  if (!(await isAdmin(store))) return NextResponse.json({ error: "admin only" }, { status: 403 });
+export async function GET(req: Request) {
+  if (!(await isAdmin(store, req))) return NextResponse.json({ error: "admin only" }, { status: 403 });
   const seats = (await store.listSeats()).map(({ passHash, salt, ...rest }) => rest);
   return NextResponse.json({ seats });
 }
 
 export async function POST(req: Request) {
-  if (!(await isAdmin(store))) return NextResponse.json({ error: "admin only" }, { status: 403 });
+  if (!(await isAdmin(store, req))) return NextResponse.json({ error: "admin only" }, { status: 403 });
   const { name, role } = (await req.json().catch(() => ({}))) as { name?: string; role?: string };
   const clean = String(name ?? "").trim().slice(0, 40);
   if (!clean) return NextResponse.json({ error: "name required" }, { status: 400 });

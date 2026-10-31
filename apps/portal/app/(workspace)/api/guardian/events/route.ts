@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const key = req.headers.get("x-charie-key");
   if (key) {
     if (!(await verifyApiKey(key))) return NextResponse.json({ error: "bad key" }, { status: 403 });
-  } else if ((await seatName()) === null && process.env.PORTAL_PASSPHRASE) {
+  } else if ((await seatName(req)) === null && process.env.PORTAL_PASSPHRASE) {
     return NextResponse.json({ error: "login or key required" }, { status: 401 });
   }
   const { events } = (await req.json().catch(() => ({}))) as { events?: unknown };

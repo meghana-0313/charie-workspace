@@ -5,8 +5,8 @@ import { seatName } from "@/lib/who";
 
 // Mint a guest invite link for a room. Logged-in members only; the link
 // itself is public for 24h and opens just the guest lobby for this room.
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if ((await seatName()) === null && process.env.PORTAL_PASSPHRASE) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if ((await seatName(req)) === null && process.env.PORTAL_PASSPHRASE) {
     return NextResponse.json({ error: "login required" }, { status: 401 });
   }
   const { id: roomId } = await params;
