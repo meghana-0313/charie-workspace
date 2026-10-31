@@ -1,0 +1,12 @@
+node_modules
+.next
+.turbo
+.data
+reports
+.git
+*.log
+project-*.json
+meta hackathon idea discussion.txt
+coverage
+dist
+tsconfig.tsbuildinfo
