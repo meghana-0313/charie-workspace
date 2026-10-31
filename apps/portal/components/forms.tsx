@@ -33,7 +33,7 @@ export function NewTicketForm() {
     a11y: ["Screen reader stuck on the menu", "NVDA reads the nav twice and never reaches the content."],
     security: ["API returns other users data", "Changing the account id in the URL shows someone else's orders."],
   };
-  async function submit(runAfter: boolean) {
+  async function submit() {
     const form = formRef.current;
     if (!form || busy) return;
     if (!form.reportValidity()) return;
@@ -52,15 +52,12 @@ export function NewTicketForm() {
       setError(((await res.json().catch(() => ({ error: "failed" }))) as { error?: string }).error ?? "failed");
       return;
     }
-    const tkt = (await res.json()) as { id: string; roomId: string; targetUrl: string; goal: string };
-    if (runAfter) {
-      await post("/api/runs", { ticketId: tkt.id, roomId: tkt.roomId, kind: "investigate", targetUrl: tkt.targetUrl, goal: tkt.goal });
-    }
+    const tkt = (await res.json()) as { id: string };
     location.href = `/tickets/${tkt.id}`;
   }
   const [phSubject, phBody] = placeholders[kind] ?? placeholders.bug;
   return (
-    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void submit(false); }}>
+    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void submit(); }}>
       <label htmlFor="kind">What is this?</label>
       <select id="kind" value={kind} onChange={(e) => setKind(e.target.value)}>
         <option value="bug">Customer bug</option>
@@ -87,8 +84,7 @@ export function NewTicketForm() {
         </div>
       )}
       <div className="row" style={{ marginTop: 12 }}>
-        <button disabled={busy}>{busy ? "Filing…" : "File ticket"}</button>
-        <button disabled={busy} type="button" className="secondary" onClick={() => submit(true)}>File + run investigation</button>
+        <button disabled={busy}>{busy ? "Filing + investigating…" : "File ticket + investigate"}</button>
         {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
       </div>
     </form>

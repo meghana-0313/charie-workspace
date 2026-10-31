@@ -15,7 +15,7 @@
     "agent:build": "npm run build --workspace services/agent-engine",
     "portal:dev": "npm run dev --workspace apps/portal",
     "portal:build": "npm run build --workspace apps/portal",
-    "test": "npm run test --workspace services/agent-engine && npm run smoke --workspace services/mcp-server"
+    "test": "npm run test --workspace services/agent-engine && npm run smoke --workspace services/mcp-server && npm run test --workspace apps/portal"
   },
   "engines": {
     "node": ">=20"

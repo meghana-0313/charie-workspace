@@ -16,20 +16,38 @@ products:
 | Charie Guard | Runtime security and threat response | Threats, Fix tasks, Security tests |
 | Charie Ops | Production intelligence and reliability | Live signals, Night shift, Meet |
 
-Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (ask the team for the dashboard passphrase).
+Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google; ask the team for an invite if your account is new).
 
-## The core loop (the whole product in 6 steps)
+## How the suite fits together
 
-1. **Ticket in** - a customer problem arrives ("checkout button does nothing").
-2. **Investigate** - Charie reproduces it in the real app: functional run,
-   first-time-user simulation, accessibility and safe security checks.
-3. **Room** - evidence (screenshots, repro steps, logs, diagnosis) lands in a shared
-   issue room where the team discusses and approves one instruction.
-4. **Fix** - the approved instruction goes to the team's coding agent (via MCP) or a
-   manual patch.
-5. **Verify** - Charie re-runs the exact same journey and diffs before/after.
-6. **Proof** - the ticket gets a resolution package: what broke, what changed,
-   proof it works now.
+One spine runs through the whole workspace: **ticket → evidence → fix → proof**.
+Each product runs that spine in its own territory.
+
+**Charie Build: quality before release.**
+File a ticket and Charie investigates the real app: functional run,
+first-time-user simulation, accessibility, safe security checks. Evidence
+(screenshots, repro steps, logs, diagnosis) lands in a shared room, the team
+approves one instruction, the fix goes to your coding agent over MCP or lands
+as a patch, Charie re-runs the exact journey and diffs before/after, and the
+ticket closes with a proof package. UX analysis with generated redesigns,
+graded accessibility scans, and first-run scoring all feed the same room.
+
+**Charie Guard: threats answered while you sleep.**
+Threats arrive from log watch, SDK reports, continuous sweeps, and the 35
+check pentest with recon and OWASP coverage. Each becomes a triaged incident,
+the team approves a response, fix tasks execute with proofs attached, and
+night shift keeps the loop turning overnight with a morning digest.
+
+**Charie Ops: production that files its own tickets.**
+Live user complaints become tickets in one click. Connected GitHub repos
+build, deploy, and test themselves on Cloud Run and post results back to the
+commit. Meet rooms bring customers into support calls through consent first
+guest invites: no recording, no stored data, just the session.
+
+The connective tissue: a drop-in web SDK plus a documented mobile contract for
+prod apps, team seats with scoped logins, API keys for event ingest, and an
+MCP server so any coding agent can pull findings and push fixes back for
+verification.
 
 > A system that only produces insightful reports is another analysis tool.
 > A system that finds a problem, helps fix it, and independently verifies the
@@ -39,7 +57,7 @@ Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (ask the team for the d
 
 | Piece | Path | Job |
 |---|---|---|
-| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Login-gated in prod, open locally. |
+| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Google sign-in (Firebase Auth); one-click local owner for judges. |
 | Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. HTTP service in prod, same runs as the CLI. |
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
@@ -55,6 +73,8 @@ drive the demo store, review 6 seeded findings with screenshots and repro steps,
 approve a fix instruction, flip the demo to its fixed build, press Verify, and read
 the before/after proof. Then open UX and redesign for screen alternatives, run an
 accessibility scan and a first run test, and start a Meet room to talk it over.
+Recurring work lives on Autopilot: sweeps, security re-scans, night shifts, and log
+watch run on their own; pushed branches rebuild and retest via webhooks.
 
 ## Where things run (Firebase and Google Cloud)
 
@@ -114,10 +134,10 @@ npm run portal:dev
 
 Then click through the loop (about 5 minutes):
 
-1. First login shows a 3-step onboarding card. File a ticket: subject
+1. On the login page press Continue as local owner (dev only). File a ticket: subject
    `Checkout button does nothing`, body `Customer tried 3 times, gave up.`,
    target `http://localhost:3101`. A room opens immediately.
-2. On the ticket page press **Run investigation**, wait about a minute, refresh.
+2. The investigation starts by itself; open the ticket page, wait about a minute, refresh.
    Expect **6 findings**: 1 blocker (checkout 500), 2 usability, 2 accessibility,
    1 security surface note, each with repro steps and screenshots.
 3. Open **UX and redesign** in the sidebar: the usability findings appear with
@@ -135,7 +155,8 @@ Then click through the loop (about 5 minutes):
    watch autonomous execution with proofs and a morning digest.
 8. Open **Meet**, start a room, join from a second tab, and talk: camera, mic,
    and screen share run peer to peer with no third party.
-9. Prefer the CLI? `npm run agent:run -- --target http://localhost:3101`
+9. Open **Autopilot** to schedule sweeps and night shifts, and **Coding agents** to hand runs to your AI coding agent.
+10. Prefer the CLI? `npm run agent:run -- --target http://localhost:3101`
    writes the same report to `services/agent-engine/reports/<timestamp>/`.
 
 Tests: `npm test` (engine regression + server + guardian + accessibility suites),

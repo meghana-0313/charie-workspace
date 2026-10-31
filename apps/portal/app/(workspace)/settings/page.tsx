@@ -1,4 +1,5 @@
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
 import { Badge, PageHead } from "@/components/ui";
 
@@ -15,7 +16,8 @@ export default async function SettingsPage() {
   }
   const zoom = await zoomStatus();
   const subs = await store.listPushSubscriptions().catch(() => []);
-  const repos = await store.listRepos().catch(() => []);
+  const myUid = scopeUid(await identity());
+  const repos = await store.listRepos(myUid).catch(() => []);
   const env = process.env.PORTAL_STORE === "firestore" ? "Production" : "Development";
 
   const rows: Array<[string, React.ReactNode, string]> = [
@@ -26,7 +28,7 @@ export default async function SettingsPage() {
     ["Zoom fallback", zoom?.configured ? <Badge tone="minor">connected</Badge> : <Badge>not configured</Badge>, zoom?.configured ? `${zoom.bots.length} recent bot(s)` : "Add RECALL_API_KEY to light this up."],
     ["Push alerts", process.env.VAPID_PUBLIC ? <Badge tone="minor">enabled</Badge> : <Badge>off</Badge>, `${subs.length} subscriber(s)`],
     ["GitHub repos", <Badge tone={repos.length > 0 ? "minor" : undefined}>{repos.length} connected</Badge>, "Connect a repo to build and test it here."],
-    ["Scheduler", <Badge tone="minor">hourly + nightly</Badge>, "Sweep :07 past the hour, night shift 03:00 UTC."],
+    ["Autopilot", <Badge tone="minor">schedules + tick</Badge>, "Recurring runs on the Autopilot page; Cloud Scheduler ticks /api/cron/tick in prod."],
   ];
 
   return (

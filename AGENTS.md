@@ -10,8 +10,9 @@ See README.md for the product story; this file is working notes for the agent.
 
 - `apps/portal/` - Next.js workspace (tickets, rooms, scans, meet, guard, ops).
   File store locally (`.data/`), Firestore when `PORTAL_STORE=firestore`.
-  Passphrase login via middleware + `/api/session`; gate open when
-  `PORTAL_PASSPHRASE` unset. Session cookie: `charie_session`.
+  Firebase Google login via `/api/session` (ID token verify) + HMAC session
+  cookie `charie_session`; always-on middleware gate; local-owner dev login +
+  AUTOMATION_KEY fallback. Per-account data via `uid` scoping.
 - `services/agent-engine/` - Playwright loop + HTTP service (`src/serve.ts`, port
   3103). CLI (`src/run-loop.ts`) and server share `src/job.ts`. Reports to
   `./reports/<ts>/`, uploaded to GCS when `GCS_BUCKET` set. New checks:
@@ -61,11 +62,11 @@ See README.md for the product story; this file is working notes for the agent.
   `us-central1-docker.pkg.dev/.../charie`. Preview: `charie-preview`.
 - Firestore `(default)` in nam5, bucket `<project>-ghostqa` (historic name kept),
   registry `charie`.
-- Secrets (Engine reads directly; portal gets ENGINE_TOKEN/PORTAL_PASSPHRASE/
-  SESSION_KEY as mounted env): META_API_KEY, META_API_BASE_URL
+- Secrets (Engine reads directly; portal gets ENGINE_TOKEN/FIREBASE_WEB_CONFIG/
+  AUTOMATION_KEY/SESSION_KEY as mounted env): META_API_KEY, META_API_BASE_URL
   (https://api.meta.ai/v1), META_SPARK/WONDER/IMAGE/VOICE/SAM_MODEL,
   BASETEN_API_KEY, SPARK_OPEN_MODEL_ID/ENDPOINT, GLIMMER_ENDPOINT, ENGINE_TOKEN,
-  PORTAL_PASSPHRASE, SESSION_KEY.
+  FIREBASE_WEB_CONFIG, AUTOMATION_KEY, CRON_KEY, SESSION_KEY.
 - Runtime SA `circle-back-agent` currently has Owner (setup leftover). Harden
   later: Secret Accessor + Firestore User + Storage Object Admin, then delete
   the downloaded JSON key. Revoke the GitHub PAT after the hackathon.
@@ -73,9 +74,9 @@ See README.md for the product story; this file is working notes for the agent.
   starts failing on billing, that step belongs to the user.
 - CI: every push to dev runs `.github/workflows/deploy.yml` (test, build, roll
   all three services) via Workload Identity Federation. No stored GCP keys.
-- Firebase Auth is NOT enabled (initial provisioning needs one console click).
-  Portal auth is passphrase + HMAC sessions until then; keep the auth boundary
-  clean so Firebase Auth can drop in.
+- Firebase Auth is wired (Google provider). The one-time console click
+  (Authentication > Get started > enable Google) belongs to the user; the
+  login page shows the exact step until it is done.
 
 ## Meta model IDs (verified against dev.meta.ai)
 

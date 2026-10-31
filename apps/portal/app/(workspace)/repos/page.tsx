@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
-import { ConnectForm } from "@/components/repo-forms";
+import { identity, scopeUid } from "@/lib/who";
+import { ConnectForm, GithubConnect } from "@/components/repo-forms";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReposPage() {
-  const repos = await store.listRepos();
+  const myUid = scopeUid(await identity());
+  const repos = await store.listRepos(myUid);
   const buildsReady = Boolean(process.env.GCP_PROJECT_ID && process.env.GCS_BUCKET);
   return (
     <>
@@ -23,9 +25,11 @@ export default async function ReposPage() {
               Builds need GCP_PROJECT_ID + GCS_BUCKET on the portal. Connecting works anywhere; building needs prod (or ADC locally).
             </p>
           )}
+          <GithubConnect />
+          <div className="section-label">Or paste a URL</div>
           <ConnectForm />
           <p className="small muted" style={{ marginTop: 10 }}>
-            Public repos need no token. Private repos need a PAT (repo scope for code, commit-status scope for PR checks).
+            Connect with GitHub above for one-click access, or paste a URL: public repos need no token, private repos need a PAT.
             Strategy: repo Dockerfile wins, else a generated Node or Python image. Apps must honor $PORT.
           </p>
         </div>

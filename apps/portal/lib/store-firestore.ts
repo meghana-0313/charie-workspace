@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { ApiKey, Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, TeamSeat, Ticket } from "./types";
+import type { ApiKey, Approval, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, TeamSeat, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -28,16 +28,24 @@ function subId(endpoint: string): string {
   return createHash("sha256").update(endpoint).digest("hex");
 }
 
+/** Per-account visibility: no uid filter sees everything; legacy records
+ *  without uid stay visible to their whole team. In-memory filter: no
+ *  composite indexes needed. */
+function mine<T extends { uid?: string }>(rows: T[], filterUid?: string): T[] {
+  if (!filterUid) return rows;
+  return rows.filter((r) => !r.uid || r.uid === filterUid);
+}
+
 export const firestoreStore = {
-  async listTickets(): Promise<Ticket[]> {
+  async listTickets(filterUid?: string): Promise<Ticket[]> {
     const snap = await firestore().collection("tickets").orderBy("createdAt", "desc").get();
-    return snap.docs.map((d) => d.data() as Ticket);
+    return mine(snap.docs.map((d) => d.data() as Ticket), filterUid);
   },
   async getTicket(id: string): Promise<Ticket | null> {
     const d = await firestore().collection("tickets").doc(id).get();
     return d.exists ? (d.data() as Ticket) : null;
   },
-  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string }): Promise<Ticket> {
+  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string; uid?: string }): Promise<Ticket> {
     const fs = firestore();
     const ticket: Ticket = { ...input, id: uid("tkt"), status: "new", createdAt: now(), updatedAt: now() };
     const room: Room = {
@@ -109,9 +117,9 @@ export const firestoreStore = {
   async setRunStatus(id: string, status: PortalRun["status"]): Promise<void> {
     await firestore().collection("runs").doc(id).update({ status });
   },
-  async listRuns(limit = 20): Promise<PortalRun[]> {
+  async listRuns(limit = 20, filterUid?: string): Promise<PortalRun[]> {
     const snap = await firestore().collection("runs").orderBy("createdAt", "desc").limit(limit).get();
-    return snap.docs.map((d) => d.data() as PortalRun);
+    return mine(snap.docs.map((d) => d.data() as PortalRun), filterUid);
   },
 
   async saveEvents(events: GuardEventView[]): Promise<void> {
@@ -150,9 +158,9 @@ export const firestoreStore = {
     await firestore().collection("push_subscriptions").doc(subId(endpoint)).delete().catch(() => {});
   },
 
-  async listRepos(): Promise<RepoConnection[]> {
+  async listRepos(filterUid?: string): Promise<RepoConnection[]> {
     const snap = await firestore().collection("repos").orderBy("createdAt", "desc").get();
-    return snap.docs.map((d) => d.data() as RepoConnection);
+    return mine(snap.docs.map((d) => d.data() as RepoConnection), filterUid);
   },
   async getRepo(id: string): Promise<RepoConnection | null> {
     const d = await firestore().collection("repos").doc(id).get();
@@ -186,17 +194,17 @@ export const firestoreStore = {
     await firestore().collection("builds").doc(id).update(clean({ ...patch, updatedAt: now() }));
   },
 
-  async listMeetRooms(): Promise<MeetRoom[]> {
+  async listMeetRooms(filterUid?: string): Promise<MeetRoom[]> {
     const snap = await firestore().collection("meet_rooms").orderBy("createdAt", "desc").get();
-    return snap.docs.map((d) => d.data() as MeetRoom);
+    return mine(snap.docs.map((d) => d.data() as MeetRoom), filterUid);
   },
   async getMeetRoom(id: string): Promise<MeetRoom | null> {
     const d = await firestore().collection("meet_rooms").doc(id).get();
     return d.exists ? (d.data() as MeetRoom) : null;
   },
-  async createMeetRoom(input: { title: string; createdBy: string }): Promise<MeetRoom> {
+  async createMeetRoom(input: { title: string; createdBy: string; uid?: string }): Promise<MeetRoom> {
     const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };
-    await firestore().collection("meet_rooms").doc(room.id).set(room);
+    await firestore().collection("meet_rooms").doc(room.id).set(clean({ ...room }));
     return room;
   },
   async postMeetSignal(roomId: string, input: { from: string; to: string; kind: MeetSignal["kind"]; payload: string }): Promise<MeetSignal> {
@@ -229,23 +237,23 @@ export const firestoreStore = {
     const snap = await firestore().collection("team_seats").orderBy("createdAt").get();
     return snap.docs.map((d) => d.data() as TeamSeat);
   },
-  async getSeatByName(name: string): Promise<TeamSeat | null> {
-    const snap = await firestore().collection("team_seats").where("nameLower", "==", name.toLowerCase()).limit(1).get();
+  async getSeatByEmail(email: string): Promise<TeamSeat | null> {
+    const snap = await firestore().collection("team_seats").where("emailLower", "==", email.toLowerCase()).limit(1).get();
     return snap.empty ? null : (snap.docs[0].data() as TeamSeat);
   },
   async saveSeat(seat: TeamSeat): Promise<void> {
-    await firestore().collection("team_seats").doc(seat.id).set({ ...seat, nameLower: seat.name.toLowerCase() });
+    await firestore().collection("team_seats").doc(seat.id).set({ ...seat, emailLower: seat.email.toLowerCase() });
   },
   async deleteSeat(id: string): Promise<void> {
     await firestore().collection("team_seats").doc(id).delete().catch(() => {});
   },
-  async touchSeatLogin(id: string): Promise<void> {
-    await firestore().collection("team_seats").doc(id).update({ lastLoginAt: now() }).catch(() => {});
+  async linkSeatLogin(id: string, link: { uid: string; name: string }): Promise<void> {
+    await firestore().collection("team_seats").doc(id).update({ uid: link.uid, name: link.name, lastLoginAt: now() }).catch(() => {});
   },
 
-  async listApiKeys(): Promise<ApiKey[]> {
+  async listApiKeys(filterUid?: string): Promise<ApiKey[]> {
     const snap = await firestore().collection("api_keys").orderBy("createdAt", "desc").get();
-    return snap.docs.map((d) => d.data() as ApiKey);
+    return mine(snap.docs.map((d) => d.data() as ApiKey), filterUid);
   },
   async getApiKeyByPrefix(prefix: string): Promise<ApiKey | null> {
     const snap = await firestore().collection("api_keys").where("prefix", "==", prefix).limit(1).get();
@@ -258,6 +266,32 @@ export const firestoreStore = {
   },
   async touchApiKey(id: string): Promise<void> {
     await firestore().collection("api_keys").doc(id).update({ lastUsedAt: now() }).catch(() => {});
+  },
+
+  async listSchedules(filterUid?: string): Promise<Schedule[]> {
+    const snap = await firestore().collection("schedules").orderBy("createdAt").get();
+    return mine(snap.docs.map((d) => d.data() as Schedule), filterUid);
+  },
+  async getSchedule(id: string): Promise<Schedule | null> {
+    const d = await firestore().collection("schedules").doc(id).get();
+    return d.exists ? (d.data() as Schedule) : null;
+  },
+  async saveSchedule(s: Schedule): Promise<void> {
+    await firestore().collection("schedules").doc(s.id).set(clean({ ...s }));
+  },
+  async deleteSchedule(id: string): Promise<void> {
+    await firestore().collection("schedules").doc(id).delete().catch(() => {});
+  },
+
+  async getGithubToken(filterUid: string): Promise<GithubToken | null> {
+    const d = await firestore().collection("github_tokens").doc(filterUid).get();
+    return d.exists ? (d.data() as GithubToken) : null;
+  },
+  async saveGithubToken(t: GithubToken): Promise<void> {
+    await firestore().collection("github_tokens").doc(t.uid).set(t);
+  },
+  async deleteGithubToken(filterUid: string): Promise<void> {
+    await firestore().collection("github_tokens").doc(filterUid).delete().catch(() => {});
   },
 
   async getSetting(key: string): Promise<string | null> {

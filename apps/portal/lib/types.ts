@@ -1,10 +1,13 @@
 // Portal domain types. Mirrors docs/FIRESTORE_SCHEMA.md so the JSON-file store
 // swaps for Firestore without touching components.
+// uid = Firebase user id that owns the record. Records without uid predate
+// accounts (or were made by local owner mode) and stay visible to the team.
 
 export type TicketStatus = "new" | "investigating" | "in-room" | "fix-proposed" | "verified" | "closed";
 
 export interface Ticket {
   id: string;
+  uid?: string;
   subject: string;
   body: string;
   goal: string;
@@ -46,6 +49,7 @@ export interface Room {
 
 export interface PortalRun {
   id: string; // = engine report dir name
+  uid?: string;
   ticketId: string;
   roomId: string;
   kind: "investigate" | "verify";
@@ -239,6 +243,7 @@ export interface FirstRunView {
 
 export interface MeetRoom {
   id: string;
+  uid?: string;
   title: string;
   createdBy: string;
   seq: number; // last signal sequence number
@@ -248,16 +253,18 @@ export interface MeetRoom {
 
 export interface TeamSeat {
   id: string;
-  name: string;
+  email: string; // Google account; invites match on this
+  name?: string;
   role: "admin" | "member";
-  salt: string;
-  passHash: string;
+  owner?: boolean; // first seat bootstraps as owner
+  uid?: string; // linked Firebase uid after first login
   createdAt: string;
   lastLoginAt?: string;
 }
 
 export interface ApiKey {
   id: string;
+  uid?: string;
   prefix: string;
   name: string;
   salt: string;
@@ -287,6 +294,7 @@ export interface PushSubscription {
 
 export interface RepoConnection {
   id: string;
+  uid?: string;
   owner: string;
   repo: string;
   branch: string;
@@ -295,6 +303,8 @@ export interface RepoConnection {
   visibility: "public" | "private";
   hasToken: boolean;
   token?: string; // PAT for private repos (v1: same trust boundary as Firestore data)
+  webhookSecret?: string; // HMAC secret for push webhooks
+  autoTestOnPush?: boolean; // default true: push to branch rebuilds + retests
   status: "connected" | "building" | "live" | "failed";
   lastSha?: string;
   appUrl?: string;
@@ -315,6 +325,32 @@ export interface RepoBuild {
   appUrl?: string;
   ticketId?: string;
   detail?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Autopilot: recurring autonomous runs. /api/cron/tick executes due ones.
+export type ScheduleKind = "sweep" | "pentest" | "nightshift" | "logwatch";
+export type SchedulePreset = "hourly" | "daily" | "weekly";
+
+export interface Schedule {
+  id: string;
+  uid?: string;
+  kind: ScheduleKind;
+  preset: SchedulePreset;
+  target?: string; // pentest target URL
+  enabled: boolean;
+  lastRunAt?: string;
+  lastStatus?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// GitHub OAuth token per user (one-click connect). Same trust boundary as repo PATs.
+export interface GithubToken {
+  uid: string;
+  token: string;
+  login?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,34 +1,77 @@
 import { NextResponse } from "next/server";
-import {
-  authConfigured, checkPassphrase, checkSeatSecret, mintSession, SESSION_COOKIE,
-} from "@/lib/auth";
-import { store } from "@/lib/store";
+import { getAuth } from "firebase-admin/auth";
+import { adminApp } from "@/lib/firebase";
+import { automationKeyOk, devLoginAllowed, mintSession, SESSION_COOKIE } from "@/lib/auth";
+import { identity } from "@/lib/who";
+import { store, uid } from "@/lib/store";
 
-export async function POST(req: Request) {
-  if (!authConfigured()) return NextResponse.json({ error: "auth not configured" }, { status: 400 });
-  const { passphrase, name } = (await req.json().catch(() => ({}))) as { passphrase?: string; name?: string };
-  if (!passphrase) return NextResponse.json({ error: "passphrase required" }, { status: 400 });
-  const seat = String(name ?? "").trim();
-  let who = "";
-  if (seat) {
-    const rec = await store.getSeatByName(seat).catch(() => null);
-    if (!rec || !checkSeatSecret(passphrase, rec.salt, rec.passHash)) {
-      return NextResponse.json({ error: "wrong name or passphrase" }, { status: 401 });
-    }
-    who = rec.name;
-    await store.touchSeatLogin(rec.id).catch(() => {});
-  } else if (!checkPassphrase(passphrase)) {
-    return NextResponse.json({ error: "wrong passphrase" }, { status: 401 });
-  }
-  const res = NextResponse.json({ ok: true, name: who || "Owner" });
-  res.cookies.set(SESSION_COOKIE, mintSession(who), {
+const WEEK = 7 * 24 * 3600;
+
+function setSession(res: NextResponse, value: string, maxAge: number): void {
+  res.cookies.set(SESSION_COOKIE, value, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 7 * 24 * 3600,
+    maxAge,
   });
-  return res;
+}
+
+export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as {
+    idToken?: string; localOwner?: boolean; key?: string;
+  };
+
+  // 1. Firebase ID token (Google sign-in from the login page).
+  if (typeof body.idToken === "string" && body.idToken) {
+    let decoded: { uid: string; email?: string; name?: string };
+    try {
+      decoded = await getAuth(adminApp()).verifyIdToken(body.idToken);
+    } catch {
+      return NextResponse.json({ error: "bad id token" }, { status: 401 });
+    }
+    const email = String(decoded.email ?? "").toLowerCase();
+    if (!email) return NextResponse.json({ error: "email required" }, { status: 401 });
+    const name = String(decoded.name ?? email.split("@")[0]);
+    const seat = await store.getSeatByEmail(email).catch(() => null);
+    if (!seat) {
+      const all = await store.listSeats().catch(() => []);
+      if (all.length > 0) return NextResponse.json({ error: "not invited" }, { status: 403 });
+      // First ever login bootstraps the owner seat.
+      await store.saveSeat({
+        id: uid("seat"), email, name, role: "admin", owner: true,
+        uid: decoded.uid, createdAt: new Date().toISOString(),
+      });
+    } else {
+      await store.linkSeatLogin(seat.id, { uid: decoded.uid, name }).catch(() => {});
+    }
+    const res = NextResponse.json({ ok: true, name });
+    setSession(res, mintSession({ uid: decoded.uid, email, name }), WEEK);
+    return res;
+  }
+
+  // 2. Local owner (file-store mode only: judges, local dev).
+  if (body.localOwner === true) {
+    if (!devLoginAllowed()) return NextResponse.json({ error: "dev login disabled" }, { status: 403 });
+    const res = NextResponse.json({ ok: true, name: "Local owner" });
+    setSession(res, mintSession({ uid: "local-owner", email: "owner@localhost", name: "Local owner" }), WEEK);
+    return res;
+  }
+
+  // 3. Automation key (CI/verify, AUTOMATION_KEY secret).
+  if (typeof body.key === "string" && automationKeyOk(body.key)) {
+    const res = NextResponse.json({ ok: true, name: "Automation" });
+    setSession(res, mintSession({ uid: "automation", email: "automation@localhost", name: "Automation" }), WEEK);
+    return res;
+  }
+
+  return NextResponse.json({ error: "idToken, localOwner, or key required" }, { status: 400 });
+}
+
+export async function GET(req: Request) {
+  const id = await identity(req);
+  if (!id) return NextResponse.json({ ok: false }, { status: 401 });
+  return NextResponse.json({ ok: true, name: id.name || id.email });
 }
 
 export async function DELETE() {

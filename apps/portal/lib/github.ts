@@ -133,3 +133,94 @@ export async function postCommitStatus(opts: {
     return false;
   }
 }
+
+/** Create a push webhook (needs a token with repo-hook scope). False on any failure. */
+export async function createWebhook(opts: {
+  owner: string; repo: string; url: string; secret: string; token: string;
+}): Promise<boolean> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${opts.owner}/${opts.repo}/hooks`, {
+      method: "POST",
+      headers: headers(opts.token),
+      body: JSON.stringify({
+        name: "web",
+        active: true,
+        events: ["push"],
+        config: { url: opts.url, content_type: "json", secret: opts.secret, insecure_ssl: "0" },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function getViewer(token: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://api.github.com/user", {
+      headers: headers(token),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    return ((await res.json()) as { login?: string }).login ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export interface GhMine {
+  owner: string;
+  repo: string;
+  visibility: "public" | "private";
+  defaultBranch: string;
+  pushedAt: string;
+}
+
+/** Repos the token can see (owner + collaborator + org member, newest push first). */
+export async function listMyRepos(token: string): Promise<GhMine[] | null> {
+  try {
+    const res = await fetch("https://api.github.com/user/repos?per_page=50&sort=pushed&affiliation=owner,collaborator,organization_member", {
+      headers: headers(token),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as Array<{ full_name?: string; private?: boolean; default_branch?: string; pushed_at?: string }>;
+    return j
+      .map((r) => {
+        const [owner, repo] = String(r.full_name ?? "/").split("/");
+        return {
+          owner, repo,
+          visibility: (r.private ? "private" : "public") as "public" | "private",
+          defaultBranch: r.default_branch ?? "main",
+          pushedAt: r.pushed_at ?? "",
+        };
+      })
+      .filter((r) => r.owner && r.repo);
+  } catch {
+    return null;
+  }
+}
+
+/** Exchange an OAuth authorize code for a user token. */
+export async function exchangeOAuthCode(opts: {
+  clientId: string; clientSecret: string; code: string; redirectUri: string;
+}): Promise<string | null> {
+  try {
+    const res = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json", "user-agent": "charie-portal" },
+      body: JSON.stringify({
+        client_id: opts.clientId,
+        client_secret: opts.clientSecret,
+        code: opts.code,
+        redirect_uri: opts.redirectUri,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    return ((await res.json()) as { access_token?: string }).access_token ?? null;
+  } catch {
+    return null;
+  }
+}

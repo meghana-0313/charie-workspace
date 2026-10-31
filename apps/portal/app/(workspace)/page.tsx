@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { listSweeps } from "@/lib/guardian";
 import { NewTicketForm } from "@/components/forms";
 import { Badge, EmptyState, PageHead, Stat } from "@/components/ui";
@@ -7,8 +8,9 @@ import { Badge, EmptyState, PageHead, Stat } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const tickets = await store.listTickets();
-  const runs = await store.listRuns(8);
+  const myUid = scopeUid(await identity());
+  const tickets = await store.listTickets(myUid);
+  const runs = await store.listRuns(8, myUid);
   const incidents = await store.listIncidents();
   const sweeps = await listSweeps();
   const openTickets = tickets.filter((t) => t.status !== "closed" && t.status !== "verified").length;
@@ -27,7 +29,7 @@ export default async function Dashboard() {
           <ol className="onboard">
             <li><span className="step">1</span><span><Link href="/repos"><strong>Test a repo</strong></Link>. Connect GitHub; Charie builds, deploys, and files the first ticket itself.</span></li>
             <li><span className="step">2</span><span><a href="#new-ticket"><strong>File a ticket</strong></a>. Describe a customer problem, or run an <Link href="/a11y">accessibility scan</Link> or <Link href="/firstrun">first run test</Link> on any URL.</span></li>
-            <li><span className="step">3</span><span><strong>Approve the fix</strong>. Open the ticket, run the investigation, approve findings in <Link href="/guardian/work">Fix tasks</Link>.</span></li>
+            <li><span className="step">3</span><span><strong>Approve the fix</strong>. Open the ticket (it investigates itself), approve findings, dispatch to your coding agent.</span></li>
           </ol>
         </div>
       )}
@@ -45,7 +47,7 @@ export default async function Dashboard() {
         <div className="card" id="new-ticket">
           <div className="card-title">New ticket</div>
           <p className="muted small">
-            Describe the customer problem. A room opens immediately; run the investigation from the ticket page.
+            Describe the customer problem. A room opens immediately and the investigation starts by itself.
           </p>
           <NewTicketForm />
         </div>

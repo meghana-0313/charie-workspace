@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
 import { InviteButton, MeetCreateForm } from "@/components/meet";
 import { ZoomJoinForm } from "@/components/suite";
@@ -8,7 +9,8 @@ import { Badge, EmptyState, PageHead } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function MeetPage() {
-  const [rooms, status] = await Promise.all([store.listMeetRooms(), zoomStatus()]);
+  const myUid = scopeUid(await identity());
+  const [rooms, status] = await Promise.all([store.listMeetRooms(myUid), zoomStatus()]);
   return (
     <>
       <PageHead

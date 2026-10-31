@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { saveVoiceNote } from "@/lib/blob";
-import { transcribeNote, triageTicket } from "@/lib/engine";
+import { spawnEngineRun, transcribeNote, triageTicket } from "@/lib/engine";
 import { extractGoal } from "@/lib/triage";
+import { identity, scopeUid } from "@/lib/who";
 
-export async function GET() {
-  return NextResponse.json(await store.listTickets());
+export async function GET(req: Request) {
+  return NextResponse.json(await store.listTickets(scopeUid(await identity(req))));
 }
 
 const MAX_VOICE_BYTES = 25 * 1024 * 1024;
@@ -49,12 +50,26 @@ export async function POST(req: Request) {
   }
 
   const goal = goalInput || (await triageTicket(subject, body))?.goal || extractGoal(subject, body);
+  const ownerUid = scopeUid(await identity(req));
 
-  const ticket = await store.createTicket({ subject, body, goal, targetUrl, voiceNotePath });
-  await store.addMessage(ticket.roomId!, {
-    authorType: "agent",
-    authorName: "Charie",
-    body: `Room opened for "${subject}". Press "Run investigation" to drive ${targetUrl} toward the goal.`,
-  });
+  const ticket = await store.createTicket({ subject, body, goal, targetUrl, voiceNotePath, uid: ownerUid });
+  // Autopilot: start the investigation immediately when the engine answers.
+  try {
+    const runId = await spawnEngineRun({ targetUrl, goal, verify: false });
+    await store.createRun({ id: runId, ticketId: ticket.id, roomId: ticket.roomId!, kind: "investigate", targetUrl, uid: ownerUid });
+    await store.addRunToRoom(ticket.roomId!, runId);
+    await store.setTicketStatus(ticket.id, "investigating");
+    await store.addMessage(ticket.roomId!, {
+      authorType: "agent",
+      authorName: "Charie",
+      body: `Room opened for "${subject}". Investigation started automatically - driving ${targetUrl} toward the goal.`,
+    });
+  } catch {
+    await store.addMessage(ticket.roomId!, {
+      authorType: "agent",
+      authorName: "Charie",
+      body: `Room opened for "${subject}". The engine is unreachable right now - press "Run investigation" once it is back.`,
+    });
+  }
   return NextResponse.json(ticket, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { readFindings, readReportMd, readVerification, runStatus } from "@/lib/engine";
 import { readBriefs } from "@/lib/guardian";
 import { boxesFor, GroundedShot, RedesignBriefs } from "@/components/evidence";
@@ -18,6 +19,8 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
 async function RoomView({ ticketId }: { ticketId: string }) {
   const ticket = await store.getTicket(ticketId);
   if (!ticket) notFound();
+  const myUid = scopeUid(await identity());
+  if (myUid && ticket.uid && ticket.uid !== myUid) notFound();
   const room = ticket.roomId ? await store.getRoom(ticket.roomId) : null;
   if (!room) notFound();
 

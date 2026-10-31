@@ -1,5 +1,5 @@
 import { store } from "@/lib/store";
-import { isAdmin } from "@/lib/who";
+import { identity, isAdmin, scopeUid } from "@/lib/who";
 import { ApiKeyForm, ApiKeyRow, SeatForm, SeatRow } from "@/components/team";
 import { EmptyState, PageHead } from "@/components/ui";
 
@@ -7,14 +7,15 @@ export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
   const admin = await isAdmin(store);
+  const myUid = scopeUid(await identity());
   const seats = admin ? await store.listSeats() : [];
-  const keys = admin ? await store.listApiKeys() : [];
+  const keys = admin ? await store.listApiKeys(myUid) : [];
   return (
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/team", "Team"]]}
         title="Team"
-        sub="Named seats for teammates. Each seat signs in with its own name plus passphrase; owners keep the shared passphrase with a blank name."
+        sub="Google seats for teammates. Invite by email; invited people sign in with Google and land in their own account."
       />
       {!admin ? (
         <div className="card">
@@ -29,13 +30,13 @@ export default async function TeamPage() {
           <div className="card">
             <div className="card-title">Seats ({seats.length})</div>
             {seats.length === 0 ? (
-              <EmptyState title="No seats yet" body="Invite above. The passphrase shows once, send it to your teammate." />
+              <EmptyState title="No seats yet" body="Invite above. Teammates sign in with Google and link automatically." />
             ) : (
               <table>
-                <thead><tr><th>Name</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+                <thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr></thead>
                 <tbody>
                   {seats.map((s) => (
-                    <SeatRow key={s.id} id={s.id} name={s.name} role={s.role} lastLoginAt={s.lastLoginAt} />
+                    <SeatRow key={s.id} id={s.id} email={s.email} name={s.name} role={s.role} owner={s.owner} linked={Boolean(s.uid)} lastLoginAt={s.lastLoginAt} />
                   ))}
                 </tbody>
               </table>

@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ApiKey, Approval, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, TeamSeat, Ticket } from "./types";
+import type { ApiKey, Approval, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, TeamSeat, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -41,18 +41,28 @@ const meetRooms = file<Record<string, MeetRoom>>("meet-rooms", {});
 const meetSignals = file<Record<string, MeetSignal[]>>("meet-signals", {});
 const seats = file<Record<string, TeamSeat>>("team-seats", {});
 const apiKeys = file<Record<string, ApiKey>>("api-keys", {});
+const schedules = file<Record<string, Schedule>>("schedules", {});
+const ghTokens = file<Record<string, GithubToken>>("github-tokens", {});
 const settings = file<Record<string, string>>("settings", {});
 
 const now = () => new Date().toISOString();
 
+/** Per-account visibility: no uid filter sees everything; legacy records
+ *  without uid stay visible to their whole team. */
+function mine<T extends { uid?: string }>(rows: T[], filterUid?: string): T[] {
+  if (!filterUid) return rows;
+  return rows.filter((r) => !r.uid || r.uid === filterUid);
+}
+
 export const fileStore = {
-  async listTickets(): Promise<Ticket[]> {
-    return Object.values(tickets.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listTickets(filterUid?: string): Promise<Ticket[]> {
+    return mine(Object.values(tickets.read()), filterUid)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async getTicket(id: string): Promise<Ticket | null> {
     return tickets.read()[id] ?? null;
   },
-  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string }): Promise<Ticket> {
+  async createTicket(input: { subject: string; body: string; goal: string; targetUrl: string; voiceNotePath?: string; sourceRepo?: string; uid?: string }): Promise<Ticket> {
     const all = tickets.read();
     const ticket: Ticket = { ...input, id: uid("tkt"), status: "new", createdAt: now(), updatedAt: now() };
     all[ticket.id] = ticket;
@@ -142,8 +152,8 @@ export const fileStore = {
       runs.write(all);
     }
   },
-  async listRuns(limit = 20): Promise<PortalRun[]> {
-    return Object.values(runs.read())
+  async listRuns(limit = 20, filterUid?: string): Promise<PortalRun[]> {
+    return mine(Object.values(runs.read()), filterUid)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
   },
@@ -187,8 +197,9 @@ export const fileStore = {
     pushSubs.write(all);
   },
 
-  async listRepos(): Promise<RepoConnection[]> {
-    return Object.values(repos.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listRepos(filterUid?: string): Promise<RepoConnection[]> {
+    return mine(Object.values(repos.read()), filterUid)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async getRepo(id: string): Promise<RepoConnection | null> {
     return repos.read()[id] ?? null;
@@ -232,13 +243,14 @@ export const fileStore = {
     }
   },
 
-  async listMeetRooms(): Promise<MeetRoom[]> {
-    return Object.values(meetRooms.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listMeetRooms(filterUid?: string): Promise<MeetRoom[]> {
+    return mine(Object.values(meetRooms.read()), filterUid)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async getMeetRoom(id: string): Promise<MeetRoom | null> {
     return meetRooms.read()[id] ?? null;
   },
-  async createMeetRoom(input: { title: string; createdBy: string }): Promise<MeetRoom> {
+  async createMeetRoom(input: { title: string; createdBy: string; uid?: string }): Promise<MeetRoom> {
     const all = meetRooms.read();
     const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };
     all[room.id] = room;
@@ -266,8 +278,8 @@ export const fileStore = {
   async listSeats(): Promise<TeamSeat[]> {
     return Object.values(seats.read()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
-  async getSeatByName(name: string): Promise<TeamSeat | null> {
-    return Object.values(seats.read()).find((s) => s.name.toLowerCase() === name.toLowerCase()) ?? null;
+  async getSeatByEmail(email: string): Promise<TeamSeat | null> {
+    return Object.values(seats.read()).find((s) => s.email.toLowerCase() === email.toLowerCase()) ?? null;
   },
   async saveSeat(seat: TeamSeat): Promise<void> {
     const all = seats.read();
@@ -279,16 +291,19 @@ export const fileStore = {
     delete all[id];
     seats.write(all);
   },
-  async touchSeatLogin(id: string): Promise<void> {
+  async linkSeatLogin(id: string, link: { uid: string; name: string }): Promise<void> {
     const all = seats.read();
     if (all[id]) {
+      all[id].uid = link.uid;
+      all[id].name = link.name;
       all[id].lastLoginAt = now();
       seats.write(all);
     }
   },
 
-  async listApiKeys(): Promise<ApiKey[]> {
-    return Object.values(apiKeys.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listApiKeys(filterUid?: string): Promise<ApiKey[]> {
+    return mine(Object.values(apiKeys.read()), filterUid)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async getApiKeyByPrefix(prefix: string): Promise<ApiKey | null> {
     return Object.values(apiKeys.read()).find((k) => k.prefix === prefix && !k.revoked) ?? null;
@@ -304,6 +319,38 @@ export const fileStore = {
       all[id].lastUsedAt = now();
       apiKeys.write(all);
     }
+  },
+
+  async listSchedules(filterUid?: string): Promise<Schedule[]> {
+    return mine(Object.values(schedules.read()), filterUid)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+  async getSchedule(id: string): Promise<Schedule | null> {
+    return schedules.read()[id] ?? null;
+  },
+  async saveSchedule(s: Schedule): Promise<void> {
+    const all = schedules.read();
+    all[s.id] = s;
+    schedules.write(all);
+  },
+  async deleteSchedule(id: string): Promise<void> {
+    const all = schedules.read();
+    delete all[id];
+    schedules.write(all);
+  },
+
+  async getGithubToken(filterUid: string): Promise<GithubToken | null> {
+    return ghTokens.read()[filterUid] ?? null;
+  },
+  async saveGithubToken(t: GithubToken): Promise<void> {
+    const all = ghTokens.read();
+    all[t.uid] = t;
+    ghTokens.write(all);
+  },
+  async deleteGithubToken(filterUid: string): Promise<void> {
+    const all = ghTokens.read();
+    delete all[filterUid];
+    ghTokens.write(all);
   },
 
   async getSetting(key: string): Promise<string | null> {

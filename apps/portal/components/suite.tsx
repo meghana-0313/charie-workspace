@@ -83,24 +83,40 @@ export function VoiceRecorder({ onFile }: { onFile: (f: File | null) => void }) 
   );
 }
 
-/** Mark an approval dispatched and reveal the agent handoff command. */
+/** Mark an approval dispatched and reveal the agent handoff prompt. */
 export function DispatchButton({ approvalId, roomId }: { approvalId: string; roomId: string }) {
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
-  const [cmd, setCmd] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [packets, setPackets] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
   async function run() {
     setState("busy");
     const r = await post(`/api/approvals/${approvalId}/dispatch`, { roomId });
     if (r.ok) {
       setState("done");
-      setCmd(String(r.data.command ?? ""));
+      setPrompt(String((r.data as { prompt?: string }).prompt ?? ""));
+      setPackets(Array.isArray((r.data as { packets?: string[] }).packets) ? (r.data as { packets: string[] }).packets : []);
     } else {
       setState("idle");
+    }
+  }
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
     }
   }
   if (state === "done") {
     return (
       <span className="small">
-        <span className="pill">sent-to-agent</span> <code>{cmd}</code>
+        <span className="pill">sent-to-agent</span>{" "}
+        <button className="secondary sm" onClick={copy}>{copied ? "Copied" : "Copy agent prompt"}</button>
+        {packets.map((u) => (
+          <span key={u}> <a href={u} target="_blank" rel="noreferrer">packet</a></span>
+        ))}
       </span>
     );
   }

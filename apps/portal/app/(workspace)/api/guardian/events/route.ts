@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { verifyApiKey } from "@/lib/keys";
-import { seatName } from "@/lib/who";
+import { identity } from "@/lib/who";
 import type { GuardEventView } from "@/lib/types";
 
 function validEvent(e: unknown): e is GuardEventView {
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const key = req.headers.get("x-charie-key");
   if (key) {
     if (!(await verifyApiKey(key))) return NextResponse.json({ error: "bad key" }, { status: 403 });
-  } else if ((await seatName(req)) === null && process.env.PORTAL_PASSPHRASE) {
+  } else if ((await identity(req)) === null) {
     return NextResponse.json({ error: "login or key required" }, { status: 401 });
   }
   const { events } = (await req.json().catch(() => ({}))) as { events?: unknown };

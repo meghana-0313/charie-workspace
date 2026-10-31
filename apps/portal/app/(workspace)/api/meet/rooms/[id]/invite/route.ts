@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { mintInvite } from "@/lib/auth";
 import { store } from "@/lib/store";
-import { seatName } from "@/lib/who";
+import { identity } from "@/lib/who";
 
 // Mint a guest invite link for a room. Logged-in members only; the link
 // itself is public for 24h and opens just the guest lobby for this room.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if ((await seatName(req)) === null && process.env.PORTAL_PASSPHRASE) {
+  if ((await identity(req)) === null) {
     return NextResponse.json({ error: "login required" }, { status: 401 });
   }
   const { id: roomId } = await params;
