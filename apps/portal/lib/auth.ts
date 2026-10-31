@@ -1,5 +1,8 @@
-// Portal auth: team seats + shared passphrase, HMAC-signed sessions.
-// Sessions: "exp.nameHex.sig" (named seat) or legacy "exp.sig" (owner).
+// Portal auth: Firebase Google sign-in, HMAC-signed session cookies.
+// The browser signs in with Firebase (Google), POSTs the ID token to
+// /api/session, and gets an httpOnly session cookie: "exp.payloadHex.sig"
+// where payload is JSON {uid, email, name}. The edge middleware re-checks
+// the HMAC without needing Firebase Admin.
 // Meet guest invites: "roomId.exp.sig", verified at the edge and in routes.
 
 import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
@@ -7,73 +10,60 @@ import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
 export const SESSION_COOKIE = "charie_session";
 const TTL_MS = 7 * 24 * 3600 * 1000;
 
+export interface SessionIdentity {
+  uid: string;
+  email: string;
+  name: string;
+}
+
 function signingKey(): string {
   return process.env.SESSION_KEY ?? "dev-insecure-session-key";
 }
 
-/** False locally (no passphrase set) - the gate stays open for dev. */
-export function authConfigured(): boolean {
-  return (process.env.PORTAL_PASSPHRASE ?? "") !== "";
+/** Local file-store mode allows one-click local owner login (judges, dev). */
+export function devLoginAllowed(): boolean {
+  return process.env.PORTAL_STORE !== "firestore";
 }
 
-export function checkPassphrase(input: string): boolean {
-  const expected = process.env.PORTAL_PASSPHRASE ?? "";
-  if (!expected) return false;
-  const a = Buffer.from(input);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-export function hashSeatSecret(secret: string, salt: string): string {
+/** scrypt hash for stored secrets (API keys). Salted hex. */
+export function hashSecret(secret: string, salt: string): string {
   return scryptSync(secret, salt, 32).toString("hex");
 }
 
-export function checkSeatSecret(secret: string, salt: string, hash: string): boolean {
-  try {
-    const a = Buffer.from(hash);
-    const b = Buffer.from(hashSeatSecret(secret, salt), "utf8");
-    return a.length === b.length && timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
-}
-
-/** Mint a session. Name "" = owner (legacy shared passphrase). */
-export function mintSession(name = ""): string {
+export function mintSession(id: SessionIdentity): string {
   const exp = Date.now() + TTL_MS;
-  if (!name) {
-    const sig = createHmac("sha256", signingKey()).update(String(exp)).digest("base64url");
-    return `${exp}.${sig}`;
-  }
-  const nameHex = Buffer.from(name, "utf8").toString("hex");
-  const sig = createHmac("sha256", signingKey()).update(`${exp}.${nameHex}`).digest("base64url");
-  return `${exp}.${nameHex}.${sig}`;
+  const payloadHex = Buffer.from(JSON.stringify(id), "utf8").toString("hex");
+  const sig = createHmac("sha256", signingKey()).update(`${exp}.${payloadHex}`).digest("base64url");
+  return `${exp}.${payloadHex}.${sig}`;
 }
 
-/** Returns the seat name ("" for owner) or null when invalid. */
-export function checkSession(cookieValue: string | undefined): string | null {
+/** Returns the identity or null when missing, expired, or tampered. */
+export function sessionIdentity(cookieValue: string | undefined): SessionIdentity | null {
   if (!cookieValue) return null;
   const parts = cookieValue.split(".");
-  let exp = "";
-  let nameHex = "";
-  let sig = "";
-  if (parts.length === 3) {
-    [exp, nameHex, sig] = parts;
-  } else if (parts.length === 2) {
-    [exp, sig] = parts;
-  } else {
-    return null;
-  }
-  if (!exp || !sig || Number(exp) < Date.now()) return null;
-  const want = createHmac("sha256", signingKey()).update(parts.length === 3 ? `${exp}.${nameHex}` : exp).digest("base64url");
+  if (parts.length !== 3) return null;
+  const [exp, payloadHex, sig] = parts;
+  if (!exp || !payloadHex || !sig || Number(exp) < Date.now()) return null;
+  const want = createHmac("sha256", signingKey()).update(`${exp}.${payloadHex}`).digest("base64url");
   const a = Buffer.from(sig);
   const b = Buffer.from(want);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    return parts.length === 3 ? Buffer.from(nameHex, "hex").toString("utf8") : "";
+    const id = JSON.parse(Buffer.from(payloadHex, "hex").toString("utf8")) as SessionIdentity;
+    if (!id || typeof id.uid !== "string" || !id.uid) return null;
+    return { uid: id.uid, email: String(id.email ?? ""), name: String(id.name ?? "") };
   } catch {
     return null;
   }
+}
+
+/** CI/automation key (AUTOMATION_KEY secret). False when unset. */
+export function automationKeyOk(key: string | undefined | null): boolean {
+  const expected = process.env.AUTOMATION_KEY ?? "";
+  if (!key || !expected) return false;
+  const a = Buffer.from(String(key));
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 const INVITE_TTL_MS = 24 * 3600 * 1000;

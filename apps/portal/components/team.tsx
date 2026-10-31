@@ -6,49 +6,48 @@ import { useState } from "react";
 import { Badge } from "./ui";
 
 export function SeatForm() {
-  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [created, setCreated] = useState<{ name: string; passphrase: string } | null>(null);
+  const [created, setCreated] = useState("");
   async function run(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || busy) return;
+    if (!email.trim() || busy) return;
     setBusy(true);
     setError("");
-    setCreated(null);
+    setCreated("");
     const res = await fetch("/api/team/seats", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), role }),
+      body: JSON.stringify({ email: email.trim(), role }),
     });
-    const j = (await res.json().catch(() => ({}))) as { error?: string; name?: string; passphrase?: string };
+    const j = (await res.json().catch(() => ({}))) as { error?: string; email?: string };
     setBusy(false);
-    if (!res.ok || !j.passphrase) {
+    if (!res.ok || !j.email) {
       setError(j.error ?? "invite failed");
       return;
     }
-    setCreated({ name: j.name ?? name, passphrase: j.passphrase });
-    setName("");
-    setTimeout(() => location.reload(), 8000);
+    setCreated(j.email);
+    setEmail("");
+    setTimeout(() => location.reload(), 3000);
   }
   return (
     <div>
       <form onSubmit={run}>
         <div className="row">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Teammate name" aria-label="Teammate name" style={{ flex: 1, minWidth: 160 }} />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@company.com" aria-label="Teammate email" style={{ flex: 1, minWidth: 160 }} />
           <select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role">
             <option value="member">member</option>
             <option value="admin">admin</option>
           </select>
-          <button type="submit" disabled={busy}>{busy ? "Inviting…" : "Create seat"}</button>
+          <button type="submit" disabled={busy}>{busy ? "Inviting…" : "Invite"}</button>
         </div>
       </form>
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       {created && (
         <p className="small" style={{ marginTop: 8 }}>
-          Seat <strong>{created.name}</strong> ready. Send this passphrase once (never shown again):{" "}
-          <code>{created.passphrase}</code>
+          Invited <strong>{created}</strong>. They sign in with Google and link automatically.
         </p>
       )}
     </div>
@@ -126,26 +125,29 @@ export function ApiKeyRow({ id, prefix, name, createdAt, lastUsedAt, revoked }: 
   );
 }
 
-export function SeatRow({ id, name, role, lastLoginAt }: { id: string; name: string; role: string; lastLoginAt?: string }) {
+export function SeatRow({ id, email, name, role, owner, linked, lastLoginAt }: { id: string; email: string; name?: string; role: string; owner?: boolean; linked: boolean; lastLoginAt?: string }) {
   const [busy, setBusy] = useState(false);
   return (
     <tr>
-      <td>{name}</td>
-      <td><Badge>{role}</Badge></td>
+      <td>{email}{name ? <><br /><span className="small muted">{name}</span></> : null}</td>
+      <td><Badge>{owner ? "owner" : role}</Badge></td>
+      <td className="small muted">{linked ? "linked" : "invited"}</td>
       <td className="small muted">{lastLoginAt ? lastLoginAt.slice(0, 16).replace("T", " ") : "never"}</td>
       <td>
-        <button
-          className="secondary"
-          disabled={busy}
-          onClick={async () => {
-            if (!confirm(`Remove ${name}'s seat?`)) return;
-            setBusy(true);
-            await fetch(`/api/team/seats/${id}`, { method: "DELETE" });
-            location.reload();
-          }}
-        >
-          Remove
-        </button>
+        {!owner && (
+          <button
+            className="secondary"
+            disabled={busy}
+            onClick={async () => {
+              if (!confirm(`Remove ${email}'s seat?`)) return;
+              setBusy(true);
+              await fetch(`/api/team/seats/${id}`, { method: "DELETE" });
+              location.reload();
+            }}
+          >
+            Remove
+          </button>
+        )}
       </td>
     </tr>
   );

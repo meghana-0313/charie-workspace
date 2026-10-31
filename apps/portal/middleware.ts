@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Edge-safe checks (Web Crypto - node:crypto is unavailable here).
+// Always-on gate: every page and API needs a session except the public
+// list below. Edge-safe checks (Web Crypto - node:crypto is unavailable).
 async function hmacOk(secret: string, message: string, sig: string): Promise<boolean> {
   if (!secret || !sig) return false;
   const key = await crypto.subtle.importKey(
@@ -16,20 +17,14 @@ async function hmacOk(secret: string, message: string, sig: string): Promise<boo
   return sig === want;
 }
 
+/** Session cookie "exp.payloadHex.sig" (minted by /api/session). */
 async function validSession(cookie: string | undefined, secret: string): Promise<boolean> {
   if (!cookie || !secret) return false;
   const parts = cookie.split(".");
-  if (parts.length === 3) {
-    const [exp, nameHex] = parts;
-    if (!exp || Number(exp) < Date.now()) return false;
-    return hmacOk(secret, `${exp}.${nameHex}`, parts[2]);
-  }
-  if (parts.length === 2) {
-    const [exp, sig] = parts;
-    if (!exp || !sig || Number(exp) < Date.now()) return false;
-    return hmacOk(secret, exp, sig);
-  }
-  return false;
+  if (parts.length !== 3) return false;
+  const [exp, payloadHex, sig] = parts;
+  if (!exp || !payloadHex || !sig || Number(exp) < Date.now()) return false;
+  return hmacOk(secret, `${exp}.${payloadHex}`, sig);
 }
 
 /** Guest invite links: /meet/guest/<room>?token=<room>.<exp>.<sig>. */
@@ -45,7 +40,6 @@ async function validGuest(path: string, token: string | null, secret: string): P
 }
 
 export async function middleware(req: NextRequest) {
-  if (!process.env.PORTAL_PASSPHRASE) return NextResponse.next(); // local dev, no gate
   const secret = process.env.SESSION_KEY ?? "";
   if (await validSession(req.cookies.get("charie_session")?.value, secret)) return NextResponse.next();
   const path = req.nextUrl.pathname;
@@ -62,5 +56,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/session|_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|icon\\.svg|charie\\.js).*)"],
+  matcher: ["/((?!login|api/session|api/auth/config|api/github/webhook|api/cron/tick|_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|icon\\.svg|charie\\.js).*)"],
 };

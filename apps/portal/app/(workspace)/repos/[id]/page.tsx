@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { BuildButton, BuildPoller, DisconnectButton } from "@/components/repo-forms";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
@@ -10,6 +11,8 @@ export default async function RepoPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const repo = await store.getRepo(id);
   if (!repo) notFound();
+  const myUid = scopeUid(await identity());
+  if (myUid && repo.uid && repo.uid !== myUid) notFound();
   const builds = await store.listBuilds(id);
   const latest = builds[0];
 

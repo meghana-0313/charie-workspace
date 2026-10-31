@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { readFindings } from "@/lib/engine";
 import { readBriefs } from "@/lib/guardian";
 import { RedesignBriefs } from "@/components/evidence";
@@ -9,7 +10,8 @@ import { Badge, EmptyState, PageHead } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function UxPage() {
-  const runs = await store.listRuns(20);
+  const myUid = scopeUid(await identity());
+  const runs = await store.listRuns(20, myUid);
   const withBriefs = (
     await Promise.all(
       runs.map(async (r) => {

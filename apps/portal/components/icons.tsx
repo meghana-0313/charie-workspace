@@ -18,6 +18,8 @@ const P: Record<string, string> = {
   eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
   access: '<circle cx="12" cy="5" r="2"/><path d="M4 9.5h16M12 9.5V14m0 0l-3.5 7M12 14l3.5 7"/>',
   play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  agent: '<rect x="4" y="4" width="16" height="12" rx="2"/><path d="M9 9.5h.01M15 9.5h.01M9 13h6"/><path d="M12 16v2.5M8.5 21h7"/>',
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof P & string; size?: number }) {

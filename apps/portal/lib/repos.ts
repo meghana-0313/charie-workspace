@@ -5,7 +5,8 @@
 
 import { spawnEngineRun } from "./engine";
 import { cloudBuildCreate, cloudBuildStatus, gcpProject, gcsBucket, gcsUpload, runDeployApp } from "./gcp";
-import { downloadTarball, getBranchSha, getRepo, getTreePaths, parseRepoUrl, postCommitStatus } from "./github";
+import { randomBytes } from "node:crypto";
+import { createWebhook, downloadTarball, getBranchSha, getRepo, getTreePaths, parseRepoUrl, postCommitStatus } from "./github";
 import { pushToAll } from "./push";
 import { store, uid } from "./store";
 import type { RepoBuild, RepoConnection } from "./types";
@@ -49,7 +50,7 @@ function pythonDockerfile(startCommand: string): string {
   ].join("\n");
 }
 
-export async function connectRepo(input: { url: string; token?: string; subdir?: string; startCommand?: string; branch?: string }): Promise<RepoConnection> {
+export async function connectRepo(input: { url: string; token?: string; subdir?: string; startCommand?: string; branch?: string; uid?: string }): Promise<RepoConnection> {
   const parsed = parseRepoUrl(input.url);
   if (!parsed) throw new Error("Use a github.com URL or owner/repo");
   const meta = await getRepo(parsed.owner, parsed.repo, input.token);
@@ -61,6 +62,7 @@ export async function connectRepo(input: { url: string; token?: string; subdir?:
   const now = new Date().toISOString();
   const repo: RepoConnection = {
     id: uid("repo"),
+    uid: input.uid,
     owner: parsed.owner,
     repo: parsed.repo,
     branch,
@@ -69,11 +71,26 @@ export async function connectRepo(input: { url: string; token?: string; subdir?:
     visibility: meta.visibility,
     hasToken: Boolean(input.token),
     token: input.token || undefined,
+    autoTestOnPush: true,
     status: "connected",
     createdAt: now,
     updatedAt: now,
   };
   await store.saveRepo(repo);
+  // Best-effort push webhook: pushes to the tracked branch rebuild + retest.
+  // Needs a token with repo-hook scope; failures just leave the repo without
+  // a webhook (the UI reports webhook state honestly).
+  if (repo.token && portalBase()) {
+    const secret = randomBytes(20).toString("hex");
+    const ok = await createWebhook({
+      owner: repo.owner, repo: repo.repo, url: `${portalBase()}/api/github/webhook`,
+      secret, token: repo.token,
+    }).catch(() => false);
+    if (ok) {
+      repo.webhookSecret = secret;
+      await store.updateRepo(repo.id, { webhookSecret: secret });
+    }
+  }
   return repo;
 }
 
@@ -208,6 +225,7 @@ export async function pollBuild(buildId: string): Promise<RepoBuild> {
       goal,
       targetUrl: appUrl,
       sourceRepo: `${repo.owner}/${repo.repo}`,
+      uid: repo.uid,
     });
     await store.addMessage(ticket.roomId!, {
       authorType: "agent",
@@ -215,7 +233,7 @@ export async function pollBuild(buildId: string): Promise<RepoBuild> {
       body: `Build ${build.id} deployed. Starting investigation of ${appUrl}.`,
     });
     const runId = await spawnEngineRun({ targetUrl: appUrl, goal, verify: false });
-    await store.createRun({ id: runId, ticketId: ticket.id, roomId: ticket.roomId!, kind: "investigate", targetUrl: appUrl });
+    await store.createRun({ id: runId, ticketId: ticket.id, roomId: ticket.roomId!, kind: "investigate", targetUrl: appUrl, uid: repo.uid });
     await store.addRunToRoom(ticket.roomId!, runId);
     await store.updateBuild(build.id, { status: "deployed", appUrl, ticketId: ticket.id, detail: "live and under test" });
     await store.updateRepo(repo.id, { status: "live", appUrl, ticketId: ticket.id });
@@ -233,4 +251,38 @@ export async function pollBuild(buildId: string): Promise<RepoBuild> {
     await store.updateRepo(repo.id, { status: "failed" });
     return (await store.getBuild(build.id)) as RepoBuild;
   }
+}
+
+/** Server-side settle: advance one build toward deployed/failure, polling
+ *  Cloud Build about every 20s. Used by webhooks and the cron tick so
+ *  autonomous builds finish without an open browser. Returns the last state. */
+export async function settleBuild(buildId: string, budgetMs = 240000): Promise<RepoBuild> {
+  const started = Date.now();
+  let build = await store.getBuild(buildId);
+  if (!build) throw new Error("Unknown build");
+  for (;;) {
+    const next = await pollBuild(build.id);
+    if (next.status === "deployed" || next.status === "failure" || next.status === "error") return next;
+    if (Date.now() - started > budgetMs) return (await store.getBuild(build.id)) as RepoBuild;
+    await new Promise((r) => setTimeout(r, 20000));
+    const cur = await store.getBuild(build.id);
+    if (!cur) throw new Error("Build deleted");
+    build = cur;
+  }
+}
+
+/** Advance every unfinished build once (cron tick helper). Best effort. */
+export async function advanceStuckBuilds(): Promise<number> {
+  const allRepos = await store.listRepos();
+  let n = 0;
+  for (const r of allRepos) {
+    const builds = await store.listBuilds(r.id);
+    for (const b of builds) {
+      if (b.status === "working" || b.status === "queued" || b.status === "success") {
+        await pollBuild(b.id).catch(() => null);
+        n++;
+      }
+    }
+  }
+  return n;
 }

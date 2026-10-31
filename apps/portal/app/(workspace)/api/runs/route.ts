@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import { runStatus, spawnEngineRun } from "@/lib/engine";
+import { identity, scopeUid } from "@/lib/who";
 
 export async function POST(req: Request) {
   const { ticketId, roomId, kind, targetUrl, goal, baselineRunId } = (await req.json().catch(() => ({}))) as {
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
-  await store.createRun({ id: runId, ticketId, roomId, kind, targetUrl, baselineRunId });
+  await store.createRun({ id: runId, ticketId, roomId, kind, targetUrl, baselineRunId, uid: scopeUid(await identity(req)) });
   await store.addRunToRoom(roomId, runId);
   await store.setTicketStatus(ticketId, "investigating");
   await store.addMessage(roomId, {

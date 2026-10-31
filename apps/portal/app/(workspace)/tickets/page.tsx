@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function TicketsPage() {
-  const tickets = await store.listTickets();
+  const myUid = scopeUid(await identity());
+  const tickets = await store.listTickets(myUid);
   const open = tickets.filter((t) => t.status !== "closed" && t.status !== "verified").length;
   return (
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/tickets", "Tickets and fixes"]]}
         title={<>Tickets and fixes <span className="small muted">{open} open</span></>}
-        sub="Every issue from customer report to verified fix. Open one to run the investigation, read findings, and approve fixes."
+        sub="Every issue from customer report to verified fix. Open one to watch the investigation, read findings, and approve fixes."
       />
       <div className="card">
         {tickets.length === 0 ? (

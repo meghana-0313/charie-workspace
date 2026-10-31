@@ -17,6 +17,7 @@ const BUILD: Array<[string, string, string, string]> = [
   ["/ux", "UX and redesign", "eye", "UI analysis, new screens"],
   ["/a11y", "Accessibility", "access", "Checks with grades"],
   ["/firstrun", "First run", "play", "New user experience"],
+  ["/agents", "Coding agents", "agent", "Hand fixes to AI"],
 ];
 
 const GUARD: Array<[string, string, string, string]> = [
@@ -29,6 +30,7 @@ const OPS: Array<[string, string, string, string]> = [
   ["/guardian/signals", "Live signals", "signal", "Production complaints"],
   ["/guardian/night", "Night shift", "moon", "Overnight agent runs"],
   ["/guardian/zoom", "Meet", "video", "Built in video calls"],
+  ["/autopilot", "Autopilot", "clock", "Schedules that run"],
 ];
 
 function active(path: string, href: string): boolean {
@@ -93,7 +95,6 @@ export function Topbar() {
           <span className="kbd">⌘K</span>
         </button>
         <div className="topbar-right">
-          <span className="small muted">ticket → evidence → fix → proof</span>
           <ThemeToggle />
         </div>
       </div>

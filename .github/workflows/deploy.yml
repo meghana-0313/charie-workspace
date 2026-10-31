@@ -102,7 +102,9 @@ jobs:
             PORTAL_PUBLIC_URL=https://charie-portal-ehfuotlisq-uc.a.run.app
           secrets: |
             ENGINE_TOKEN=ENGINE_TOKEN:latest
-            PORTAL_PASSPHRASE=PORTAL_PASSPHRASE:latest
+            FIREBASE_WEB_CONFIG=FIREBASE_WEB_CONFIG:latest
+            AUTOMATION_KEY=AUTOMATION_KEY:latest
+            CRON_KEY=CRON_KEY:latest
             SESSION_KEY=SESSION_KEY:latest
             VAPID_PUBLIC=VAPID_PUBLIC:latest
             VAPID_PRIVATE=VAPID_PRIVATE:latest

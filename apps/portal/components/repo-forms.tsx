@@ -136,3 +136,91 @@ export function DisconnectButton({ repoId }: { repoId: string }) {
     </button>
   );
 }
+
+export function GithubConnect() {
+  const [status, setStatus] = useState<null | { configured: boolean; connected: boolean; login: string | null }>(null);
+  const [repos, setRepos] = useState<null | Array<{ owner: string; repo: string; visibility: string; defaultBranch: string }>>(null);
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    fetch("/api/github/status").then((r) => r.json()).then(setStatus).catch(() => setStatus(null));
+  }, []);
+  async function load() {
+    setMsg("");
+    const res = await fetch("/api/github/repos");
+    const j = (await res.json().catch(() => ({}))) as { repos?: typeof repos; error?: string };
+    if (res.ok && j.repos) setRepos(j.repos);
+    else setMsg(j.error ?? "could not list repos");
+  }
+  async function disconnect() {
+    await fetch("/api/github/disconnect", { method: "DELETE" });
+    location.reload();
+  }
+  async function connect(full: string) {
+    setBusy(full);
+    setMsg("");
+    const res = await fetch("/api/repos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: full }),
+    });
+    const j = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+    if (res.ok && j.id) {
+      location.href = `/repos/${j.id}`;
+      return;
+    }
+    setBusy("");
+    setMsg(j.error ?? "connect failed");
+  }
+  if (!status) return <p className="small muted">Checking GitHub…</p>;
+  if (!status.configured) {
+    return (
+      <p className="small muted">
+        One-click GitHub connect needs an OAuth App on the server (client id + secret).
+        Paste a repo URL + PAT below meanwhile; nothing else changes.
+      </p>
+    );
+  }
+  if (!status.connected) {
+    return (
+      <div className="row">
+        <button onClick={() => { location.href = "/api/github/oauth/start"; }}>Connect with GitHub</button>
+        <span className="small muted">One click, no tokens to paste.</span>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <p className="small">
+        Connected as <strong>{status.login ?? "you"}</strong>.{" "}
+        <button type="button" className="ghost sm" onClick={disconnect}>Disconnect</button>
+      </p>
+      {!repos ? (
+        <button type="button" className="secondary" onClick={load}>List my repos</button>
+      ) : repos.length === 0 ? (
+        <p className="small muted">No repos visible to this connection.</p>
+      ) : (
+        <table>
+          <thead><tr><th>Repo</th><th>Visibility</th><th></th></tr></thead>
+          <tbody>
+            {repos.slice(0, 20).map((r) => {
+              const full = `${r.owner}/${r.repo}`;
+              return (
+                <tr key={full}>
+                  <td className="small">{full}<br /><span className="muted">{r.defaultBranch}</span></td>
+                  <td className="small muted">{r.visibility}</td>
+                  <td>
+                    <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => connect(full)}>
+                      {busy === full ? "Connecting…" : "Connect"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+      {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
+    </div>
+  );
+}
