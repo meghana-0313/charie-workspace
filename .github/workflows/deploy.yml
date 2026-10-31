@@ -1,0 +1,102 @@
+name: Deploy prod
+
+# Every push to dev: test, build images, roll all three Cloud Run services.
+# Auth is Workload Identity Federation: no stored GCP keys anywhere.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch: {}
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: project-8b9ab843-d0d6-4ea4-a11
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev
+  SERVICE_ACCOUNT: circle-back-agent@project-8b9ab843-d0d6-4ea4-a11.iam.gserviceaccount.com
+  ENGINE_URL: https://ghostqa-engine-ehfuotlisq-uc.a.run.app
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run typecheck --workspace services/agent-engine
+      - run: npm run typecheck --workspace apps/portal
+      - run: npm run portal:build
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/591747902299/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: circle-back-agent@project-8b9ab843-d0d6-4ea4-a11.iam.gserviceaccount.com
+      - run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+      - run: |
+          docker build -f deploy/Dockerfile.engine -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/engine:${{ github.sha }} .
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/engine:${{ github.sha }}
+      - run: |
+          docker build -f deploy/Dockerfile.portal -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }} .
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }}
+      - run: |
+          docker build -f deploy/Dockerfile.demo -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/demo:${{ github.sha }} .
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/demo:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/591747902299/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: circle-back-agent@project-8b9ab843-d0d6-4ea4-a11.iam.gserviceaccount.com
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ghostqa-engine
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/engine:${{ github.sha }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          env_vars: |
+            GCP_PROJECT_ID=${{ env.PROJECT_ID }}
+            GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
+          flags: --memory=4Gi --cpu=2 --concurrency=1 --timeout=3600 --max-instances=2 --allow-unauthenticated
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ghostqa-demo
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/demo:${{ github.sha }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          flags: --memory=512Mi --cpu=1 --timeout=300 --allow-unauthenticated
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ghostqa-portal
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/ghostqa/portal:${{ github.sha }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          env_vars: |
+            GCP_PROJECT_ID=${{ env.PROJECT_ID }}
+            GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
+            PORTAL_STORE=firestore
+            ENGINE_URL=${{ env.ENGINE_URL }}
+          secrets: |
+            ENGINE_TOKEN=ENGINE_TOKEN:latest
+            PORTAL_PASSPHRASE=PORTAL_PASSPHRASE:latest
+            SESSION_KEY=SESSION_KEY:latest
+          flags: --memory=1Gi --cpu=1 --timeout=300 --allow-unauthenticated

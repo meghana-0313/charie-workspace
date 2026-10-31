@@ -61,6 +61,8 @@ for the product story; this file is working notes for the coding agent.
   the downloaded JSON key. Revoke the GitHub PAT after the hackathon.
 - Billing shows disabled; everything currently runs on free tiers. If a deploy
   starts failing on billing, that step belongs to the user.
+- CI: every push to dev runs `.github/workflows/deploy.yml` (test, build, roll
+  all three services) via Workload Identity Federation. No stored GCP keys.
 - Firebase Auth is NOT enabled (initial provisioning needs one console click).
   Portal auth is passphrase + HMAC sessions until then; keep the auth boundary
   clean so Firebase Auth can drop in.
