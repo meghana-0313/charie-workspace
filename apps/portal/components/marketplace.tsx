@@ -98,7 +98,7 @@ export function RuleForm({ connectors }: { connectors: Array<{ id: string; name:
     }
     location.reload();
   }
-  if (connectors.length === 0) return <p className="small muted">Connect Jira first.</p>;
+  if (connectors.length === 0) return <p className="small muted">Connect Jira first with the <a href="#connect-jira">Jira form above</a>, then add a pull rule here.</p>;
   return (
     <form onSubmit={run}>
       <div className="row">
@@ -109,13 +109,18 @@ export function RuleForm({ connectors }: { connectors: Array<{ id: string; name:
         </select>
         <input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Project KEY (blank = all)" aria-label="Project key" style={{ maxWidth: 160 }} />
         <select value={preset} onChange={(e) => setPreset(e.target.value)} aria-label="How often">
-          <option value="hourly">hourly</option>
-          <option value="daily">daily</option>
-          <option value="weekly">weekly</option>
+          <option value="hourly">Pull every hour</option>
+          <option value="daily">Pull daily</option>
+          <option value="weekly">Pull weekly</option>
         </select>
       </div>
       <label htmlFor="rule-jql">JQL (optional, overrides project)</label>
       <input id="rule-jql" value={jql} onChange={(e) => setJql(e.target.value)} placeholder="project = SHOP AND status = To Do ORDER BY created DESC" />
+      <p className="small muted">
+        JQL picks which issues to pull. Examples:{" "}
+        <button type="button" className="ghost sm" onClick={() => setJql("project = SHOP AND status = To Do ORDER BY created DESC")}>open issues in a project</button>{" "}
+        <button type="button" className="ghost sm" onClick={() => setJql("labels = customer-reported AND created >= -7d ORDER BY created DESC")}>recent customer reports</button>
+      </p>
       <label htmlFor="rule-target">App URL to test pulled issues against</label>
       <input id="rule-target" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} placeholder="https://your-app.example.com" required />
       <div className="row" style={{ marginTop: 10 }}>

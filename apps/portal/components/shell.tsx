@@ -8,51 +8,56 @@ import { Icon } from "./icons";
 import { CharieMark } from "./mark";
 import { Palette } from "./palette";
 import { LogoutButton, ThemeToggle } from "./theme";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const BUILD: Array<[string, string, string, string]> = [
+type NavLink = [string, string, string, string];
+
+// The five jobs a first-time user comes for; everything else lives in More.
+const PRIMARY: NavLink[] = [
   ["/", "Home", "grid", "Tickets, runs, status"],
   ["/chat", "Chat", "chat", "Talk to Charie"],
   ["/repos", "Test a repo", "repo", "Connect GitHub, build, deploy"],
   ["/tickets", "Tickets and fixes", "ticket", "Report to verified fix"],
+  ["/guardian/zoom", "Meet", "video", "Built in video calls"],
+];
+
+const MORE: NavLink[] = [
   ["/ux", "UX and redesign", "eye", "UI analysis, new screens"],
   ["/a11y", "Accessibility", "access", "Checks with grades"],
   ["/firstrun", "First run", "play", "New user experience"],
   ["/agents", "Coding agents", "agent", "Hand fixes to AI"],
-];
-
-const GUARD: Array<[string, string, string, string]> = [
-  ["/guardian", "Threats", "shield", "Incidents and response"],
+  ["/guardian", "Incidents", "shield", "Live threats and response"],
   ["/guardian/work", "Fix tasks", "order", "Approve agent fixes"],
   ["/guardian/security", "Security tests", "lock", "Pen tests and sweeps"],
+  ["/guardian/signals", "Production signals", "signal", "What users report live"],
+  ["/guardian/night", "Overnight runs", "moon", "Agents work while you sleep"],
+  ["/autopilot", "Autopilot", "clock", "Schedules that run alone"],
+  ["/marketplace", "Integrations", "plug", "Jira, rules, context"],
 ];
 
-const OPS: Array<[string, string, string, string]> = [
-  ["/guardian/signals", "Live signals", "signal", "Production complaints"],
-  ["/guardian/night", "Night shift", "moon", "Overnight agent runs"],
-  ["/guardian/zoom", "Meet", "video", "Built in video calls"],
-  ["/autopilot", "Autopilot", "clock", "Schedules that run"],
-  ["/marketplace", "Marketplace", "plug", "Jira and context"],
-];
+const GUARDIAN_SECTIONS = ["work", "security", "signals", "night", "zoom"];
 
 function active(path: string, href: string): boolean {
   if (href === "/") return path === "/";
-  if (href === "/guardian") return path === "/guardian" || /^\/guardian\/[^/]+$/.test(path);
+  if (href === "/guardian") {
+    if (path === "/guardian") return true;
+    const m = path.match(/^\/guardian\/([^/]+)$/);
+    return Boolean(m && !GUARDIAN_SECTIONS.includes(m[1]));
+  }
   return path === href || path.startsWith(`${href}/`);
 }
 
 export function Sidebar({ env }: { env: string }) {
   const path = usePathname();
-  const section = (label: string, links: Array<[string, string, string, string]>) => (
-    <>
-      <div className="side-section">{label}</div>
-      {links.map(([href, label2, icon, desc]) => (
-        <Link key={href} href={href} className={`side-link${active(path, href) ? " on" : ""}`}>
-          <Icon name={icon} />
-          <span>{label2}<span className="side-desc">{desc}</span></span>
-        </Link>
-      ))}
-    </>
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    if (MORE.some(([href]) => active(path, href))) setMoreOpen(true);
+  }, [path]);
+  const link = ([href, label, icon, desc]: NavLink) => (
+    <Link key={href} href={href} className={`side-link${active(path, href) ? " on" : ""}`}>
+      <Icon name={icon} />
+      <span>{label}<span className="side-desc">{desc}</span></span>
+    </Link>
   );
   return (
     <aside className="sidebar">
@@ -63,9 +68,11 @@ export function Sidebar({ env }: { env: string }) {
           <div className="side-sub">Autonomous engineering intelligence</div>
         </span>
       </Link>
-      {section("Charie Build", BUILD)}
-      {section("Charie Guard", GUARD)}
-      {section("Charie Ops", OPS)}
+      {PRIMARY.map(link)}
+      <details className="nav-more" open={moreOpen} onToggle={(e) => setMoreOpen(e.currentTarget.open)}>
+        <summary className="side-section">More tools</summary>
+        {MORE.map(link)}
+      </details>
       <div className="side-foot">
         <Link href="/team" className={`side-link${active(path, "/team") ? " on" : ""}`}>
           <Icon name="access" />

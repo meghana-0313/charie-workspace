@@ -46,15 +46,28 @@ import {
 import type { WorkOrderStep } from "./workorders.js";
 import { joinMeeting, zoomStatus } from "./zoom.js";
 
-/** Hosts the engine must never drive (cloud metadata = credential theft). */
+/** Hosts the engine must never drive: cloud metadata (credential theft),
+ *  loopback, and private or link-local ranges (SSRF into internal services). */
 function targetBlocked(targetUrl: string): boolean {
-  const host = new URL(targetUrl).hostname.toLowerCase();
-  return (
-    host === "169.254.169.254" ||
-    host === "metadata" ||
-    host === "metadata.google.internal" ||
-    host.endsWith(".google.internal")
-  );
+  let host: string;
+  try {
+    host = new URL(targetUrl).hostname.toLowerCase();
+  } catch {
+    return true;
+  }
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return true;
+  if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
+  if (host.includes(":")) {
+    // IPv6 literal: block loopback, unspecified, link-local, and unique-local.
+    if (host === "::1" || host === "::" || host.startsWith("fe8") || host.startsWith("fe9") || host.startsWith("fea") || host.startsWith("feb") || host.startsWith("fc") || host.startsWith("fd")) return true;
+  }
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (v4) {
+    const a = Number(v4[1]);
+    const b = Number(v4[2]);
+    if (a === 0 || a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a >= 224) return true;
+  }
+  return host === "metadata" || host === "metadata.google.internal";
 }
 
 export interface ServerOpts {

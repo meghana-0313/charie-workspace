@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
+import { signingKey } from "@/lib/auth";
 import { identity } from "@/lib/who";
 
 // Start one-click GitHub connect: redirect to the OAuth App authorize page.
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   }
   const origin = new URL(req.url).origin;
   const exp = Date.now() + 10 * 60 * 1000;
-  const sig = createHmac("sha256", process.env.SESSION_KEY ?? "dev-insecure-session-key")
+  const sig = createHmac("sha256", signingKey())
     .update(`${id.uid}.${exp}`).digest("base64url");
   const params = new URLSearchParams({
     client_id: clientId,

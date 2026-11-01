@@ -19,8 +19,8 @@ export default async function MarketplacePage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Home"], ["/marketplace", "Marketplace"]]}
-        title="Marketplace"
+        crumbs={[["/", "Home"], ["/marketplace", "Integrations"]]}
+        title="Integrations"
         sub="Connect the systems Charie works with. Jira issues flow in as investigated tickets; verified fixes flow back as comments and transitions."
       />
       <div className="grid2">
@@ -40,7 +40,7 @@ export default async function MarketplacePage() {
           </p>
         </div>
       </div>
-      <div className="card">
+      <div className="card" id="connect-jira">
         <div className="card-title">Jira</div>
         {jiraConns.length === 0 ? (
           <JiraConnectForm />

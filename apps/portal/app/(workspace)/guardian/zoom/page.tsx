@@ -32,6 +32,7 @@ export default async function MeetPage() {
                 <tr key={r.id}>
                   <td><Link href={`/guardian/zoom/rooms/${r.id}`}>{r.title}</Link></td>
                   <td className="small muted">{r.createdAt.slice(0, 16).replace("T", " ")}</td>
+                  <td><InviteButton roomId={r.id} /></td>
                 </tr>
               ))}
             </tbody>
@@ -40,7 +41,7 @@ export default async function MeetPage() {
       </div>
       <div className="card">
         <div className="card-title">Privacy</div>
-        <p className="muted small">Rooms are never recorded, transcribed, or stored. The portal only relays connection setup; media flows peer to peer. Guest links expire after 24 hours and open just one room.</p>
+        <p className="muted small">Calls are private by default: media flows peer to peer, and the portal only relays connection setup. Nothing is recorded. Live notes and transcription are optional, stay off unless someone in the call turns them on, and guests are told before they join. Guest links expire after 24 hours and open just one room.</p>
       </div>
       <div className="card">
         <div className="card-title">

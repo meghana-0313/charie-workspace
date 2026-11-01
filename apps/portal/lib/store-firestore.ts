@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
+import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetCheckin, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -234,6 +234,13 @@ export const firestoreStore = {
     const snap = await firestore().collection("meet_rooms").doc(roomId).collection("signals")
       .where("seq", ">", since).orderBy("seq").limit(200).get();
     return snap.docs.map((d) => d.data() as MeetSignal);
+  },
+  async saveMeetCheckin(checkin: MeetCheckin): Promise<void> {
+    await firestore().collection("meet_checkins").doc(checkin.roomId).set({ ...checkin }).catch(() => {});
+  },
+  async hasMeetCheckin(roomId: string): Promise<boolean> {
+    const d = await firestore().collection("meet_checkins").doc(roomId).get().catch(() => null);
+    return Boolean(d?.exists);
   },
 
   async listSeats(): Promise<TeamSeat[]> {

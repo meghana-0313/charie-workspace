@@ -30,7 +30,6 @@ export function SeatForm() {
     }
     setCreated(j.email);
     setEmail("");
-    setTimeout(() => location.reload(), 3000);
   }
   return (
     <div>
@@ -44,10 +43,12 @@ export function SeatForm() {
           <button type="submit" disabled={busy}>{busy ? "Inviting…" : "Invite"}</button>
         </div>
       </form>
+      <p className="small muted" style={{ marginTop: 6 }}>Members use the workspace. Admins can also invite people and manage keys.</p>
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       {created && (
         <p className="small" style={{ marginTop: 8 }}>
-          Invited <strong>{created}</strong>. They sign in with Google and link automatically.
+          Invited <strong>{created}</strong>. They sign in with Google and link automatically.{" "}
+          <button type="button" className="ghost sm" onClick={() => location.reload()}>Refresh the list</button>
         </p>
       )}
     </div>
@@ -59,6 +60,7 @@ export function ApiKeyForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [secret, setSecret] = useState("");
+  const [copied, setCopied] = useState(false);
   async function run(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || busy) return;
@@ -77,8 +79,8 @@ export function ApiKeyForm() {
       return;
     }
     setSecret(j.secret);
+    setCopied(false);
     setName("");
-    setTimeout(() => location.reload(), 12000);
   }
   return (
     <div>
@@ -90,9 +92,16 @@ export function ApiKeyForm() {
       </form>
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       {secret && (
-        <p className="small" style={{ marginTop: 8 }}>
-          Key created. Copy it now (never shown again): <code>{secret}</code>
-        </p>
+        <div className="small" style={{ marginTop: 8 }}>
+          <p>Key created. This is the only time it is shown, so copy it into your app now:</p>
+          <p><code>{secret}</code></p>
+          <p className="row">
+            <button type="button" className="secondary sm" onClick={async () => { try { await navigator.clipboard.writeText(secret); setCopied(true); } catch { /* clipboard blocked */ } }}>
+              {copied ? "Copied" : "Copy key"}
+            </button>
+            <button type="button" className="ghost sm" onClick={() => location.reload()}>I saved it, refresh the list</button>
+          </p>
+        </div>
       )}
     </div>
   );

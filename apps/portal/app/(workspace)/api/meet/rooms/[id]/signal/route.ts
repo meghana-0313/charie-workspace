@@ -12,14 +12,19 @@ function guestOk(req: Request, roomId: string): boolean {
   return checkInvite(roomId, token);
 }
 
+/** Token guests must hold a valid invite AND a completed consent check-in. */
+async function guestAllowed(req: Request, roomId: string): Promise<boolean> {
+  if (!new URL(req.url).searchParams.get("token")) return true;
+  return guestOk(req, roomId) && (await store.hasMeetCheckin(roomId));
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: roomId } = await params;
   if (!(await store.getMeetRoom(roomId))) return NextResponse.json({ error: "no such room" }, { status: 404 });
   const since = Number(new URL(req.url).searchParams.get("since") ?? "0");
   if (!Number.isFinite(since) || since < 0) return NextResponse.json({ error: "bad since" }, { status: 400 });
-  const u = new URL(req.url);
-  if (u.searchParams.get("token") && !guestOk(req, roomId)) {
-    return NextResponse.json({ error: "bad invite" }, { status: 403 });
+  if (!(await guestAllowed(req, roomId))) {
+    return NextResponse.json({ error: "check in with consent first" }, { status: 403 });
   }
   return NextResponse.json({ signals: await store.listMeetSignals(roomId, since) });
 }
@@ -27,9 +32,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: roomId } = await params;
   if (!(await store.getMeetRoom(roomId))) return NextResponse.json({ error: "no such room" }, { status: 404 });
-  const u = new URL(req.url);
-  if (u.searchParams.get("token") && !guestOk(req, roomId)) {
-    return NextResponse.json({ error: "bad invite" }, { status: 403 });
+  if (!(await guestAllowed(req, roomId))) {
+    return NextResponse.json({ error: "check in with consent first" }, { status: 403 });
   }
   const b = (await req.json().catch(() => ({}))) as { from?: string; to?: string; kind?: string; payload?: string };
   if (!b.from?.trim() || !b.to?.trim() || !KINDS.includes(b.kind as MeetSignalKind)) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { signingKey } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { exchangeOAuthCode, getViewer } from "@/lib/github";
 
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const fail = (msg: string) => NextResponse.redirect(`${base}/repos?github=${encodeURIComponent(msg)}`);
   const [uid, exp, sig] = state.split(".");
   if (!uid || !exp || !sig || Number(exp) < Date.now()) return fail("expired");
-  const want = createHmac("sha256", process.env.SESSION_KEY ?? "dev-insecure-session-key")
+  const want = createHmac("sha256", signingKey())
     .update(`${uid}.${exp}`).digest("base64url");
   const a = Buffer.from(sig);
   const b = Buffer.from(want);
