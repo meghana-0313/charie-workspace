@@ -59,10 +59,11 @@ export function MeetCreateForm() {
 interface Peer {
   id: string;
   name: string;
+  role: string;
   stream: MediaStream | null;
 }
 
-export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { roomId: string; roomTitle: string; token?: string; initialName?: string }) {
+export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean }) {
   const [name, setName] = useState(initialName);
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
   const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
@@ -98,19 +99,19 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { 
     });
   };
 
-  const ensurePeer = (id: string, peerName: string): RTCPeerConnection => {
+  const ensurePeer = (id: string, peerName: string, peerRole = "member"): RTCPeerConnection => {
     const existing = pcs.current[id];
     if (existing) return existing;
     const pc = new RTCPeerConnection(ICE);
     pcs.current[id] = pc;
-    setPeers((p) => (p[id] ? p : { ...p, [id]: { id, name: peerName, stream: null } }));
+    setPeers((p) => (p[id] ? p : { ...p, [id]: { id, name: peerName, role: peerRole, stream: null } }));
     for (const track of streamRef.current?.getTracks() ?? []) pc.addTrack(track, streamRef.current!);
     pc.onicecandidate = (e) => {
       if (e.candidate) send(id, "candidate", JSON.stringify(e.candidate.toJSON()));
     };
     pc.ontrack = (e) => {
       const [stream] = e.streams;
-      setPeers((p) => ({ ...p, [id]: { id, name: p[id]?.name ?? peerName, stream } }));
+      setPeers((p) => ({ ...p, [id]: { id, name: p[id]?.name ?? peerName, role: p[id]?.role ?? 'member', stream } }));
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "failed" || pc.connectionState === "closed") closePeer(id);
@@ -123,8 +124,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { 
     if (s.to !== "*" && s.to !== me.current) return;
     try {
       if (s.kind === "join") {
-        const { name: peerName } = JSON.parse(s.payload || "{}") as { name?: string };
-        const pc = ensurePeer(s.from, peerName || "Guest");
+        const { name: peerName, role: peerRole } = JSON.parse(s.payload || "{}") as { name?: string; role?: string };
+        const pc = ensurePeer(s.from, peerName || "Guest", peerRole === "guest" ? "guest" : "member");
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         await send(s.from, "offer", JSON.stringify(offer));
@@ -193,7 +194,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { 
       streamRef.current = stream;
       nameRef.current = name.trim();
       setJoined(true);
-      await send("*", "join", JSON.stringify({ name: nameRef.current }));
+      await send("*", "join", JSON.stringify({ name: nameRef.current, role: token ? "guest" : "member" }));
     } catch {
       setError("Camera or mic blocked. Allow access in the browser, then retry.");
     }
@@ -258,7 +259,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { 
       <div className="meet-grid">
         <div className="meet-tile">
           <video ref={localVideo} autoPlay playsInline muted />
-          <span className="meet-name">{nameRef.current} (you){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
+          <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
         </div>
         {tiles.map((p) => (
           <PeerTile key={p.id} peer={p} />
@@ -270,6 +271,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "" }: { 
         <button onClick={shareScreen} disabled={sharing}>{sharing ? "Sharing…" : "Share screen"}</button>
       </div>
       <p className="muted small">{tiles.length === 0 ? "Alone here. Share this page URL to invite the team." : `${tiles.length} peer(s) connected.`}</p>
+      <LiveNotes roomId={roomId} token={token} canManage={!token} transcribe={transcribeOk} localName={nameRef.current || name} />
     </>
   );
 }
@@ -282,7 +284,7 @@ function PeerTile({ peer }: { peer: Peer }) {
   return (
     <div className="meet-tile">
       {peer.stream ? <video ref={ref} autoPlay playsInline /> : <div className="meet-wait">Connecting…</div>}
-      <span className="meet-name">{peer.name}</span>
+      <span className="meet-name">{peer.name} {peer.role === "guest" ? "(customer)" : "(teammate)"}</span>
     </div>
   );
 }
@@ -327,3 +329,237 @@ export function InviteButton({ roomId }: { roomId: string }) {
     </button>
   );
 }
+
+
+// Speech recognition (Chrome/Edge). Minimal typing: the DOM lib lacks it.
+interface SRResult { 0?: { transcript?: string }; isFinal: boolean }
+interface SR extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<SRResult> }) => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+declare global {
+  interface Window {
+    webkitSpeechRecognition?: new () => SR;
+    SpeechRecognition?: new () => SR;
+  }
+}
+
+interface LiveLineView {
+  speaker: string;
+  role: "teammate" | "customer";
+  text: string;
+  at: string;
+}
+
+/** Charie live notes: opt-in transcription with speaker roles, action notes,
+ *  Spark summaries, read-aloud, and save-to-ticket. Transcript lives in call
+ *  memory only; nothing is stored unless the team presses Save. */
+export function LiveNotes({ roomId, token = "", canManage, transcribe, localName }: { roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string }) {
+  const qp = token ? `?token=${encodeURIComponent(token)}` : "";
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [lines, setLines] = useState<LiveLineView[]>([]);
+  const [notes, setNotes] = useState<string[]>([]);
+  const [summary, setSummary] = useState("");
+  const [model, setModel] = useState("");
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+  const [supported] = useState(() => typeof window !== "undefined" && Boolean(window.SpeechRecognition ?? window.webkitSpeechRecognition));
+  const nameRef = useRef(localName);
+  nameRef.current = localName;
+
+  useEffect(() => {
+    let stop = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/meet/rooms/${roomId}/live${qp}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const j = (await res.json()) as { enabled?: boolean; lines?: LiveLineView[]; notes?: string[]; summary?: string };
+        if (stop) return;
+        setEnabled(j.enabled === true);
+        setLines(j.lines ?? []);
+        setNotes(j.notes ?? []);
+        setSummary(j.summary ?? "");
+      } catch {
+        /* retry next tick */
+      }
+    };
+    void poll();
+    const t = setInterval(poll, 2000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [roomId, qp]);
+
+  useEffect(() => {
+    if (!transcribe || !enabled || !supported) return;
+    const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = navigator.language || "en-US";
+    let stopped = false;
+    rec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        const text = r.isFinal ? r[0]?.transcript?.trim() : "";
+        if (text) {
+          fetch(`/api/meet/rooms/${roomId}/live${qp}`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text, name: nameRef.current }),
+          }).catch(() => {});
+        }
+      }
+    };
+    rec.onerror = () => {};
+    rec.onend = () => {
+      if (!stopped) {
+        try {
+          rec.start();
+        } catch {
+          /* mic busy */
+        }
+      }
+    };
+    try {
+      rec.start();
+    } catch {
+      /* mic busy */
+    }
+    return () => {
+      stopped = true;
+      try {
+        rec.stop();
+      } catch {
+        /* already stopped */
+      }
+    };
+  }, [transcribe, enabled, supported, roomId, qp]);
+
+  async function toggle() {
+    setBusy("toggle");
+    setMsg("");
+    const res = await fetch(`/api/meet/rooms/${roomId}/settings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ liveNotes: !enabled }),
+    });
+    setBusy("");
+    if (res.ok) {
+      setEnabled(!enabled);
+      if (enabled) {
+        setLines([]);
+        setNotes([]);
+        setSummary("");
+      }
+    } else {
+      setMsg("Toggle failed.");
+    }
+  }
+
+  async function summarize() {
+    setBusy("sum");
+    setMsg("");
+    try {
+      const res = await fetch(`/api/meet/rooms/${roomId}/summarize${qp}`, { method: "POST" });
+      const j = (await res.json()) as { summary?: string; model?: string; error?: string };
+      if (res.ok && j.summary) {
+        setSummary(j.summary);
+        setModel(j.model ?? "");
+      } else {
+        setMsg(j.error ?? "Summary failed.");
+      }
+    } catch {
+      setMsg("Summary failed.");
+    }
+    setBusy("");
+  }
+
+  function readAloud() {
+    try {
+      const text = summary || notes.join(". ");
+      if (!text) return;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text.slice(0, 1000)));
+    } catch {
+      /* speech unavailable */
+    }
+  }
+
+  async function save() {
+    setBusy("save");
+    setMsg("");
+    try {
+      const res = await fetch(`/api/meet/rooms/${roomId}/save`, { method: "POST" });
+      const j = (await res.json()) as { savedTo?: string; id?: string; error?: string };
+      setMsg(res.ok ? `Saved to ${j.savedTo} (${String(j.id).slice(0, 18)}).` : (j.error ?? "Save failed."));
+    } catch {
+      setMsg("Save failed.");
+    }
+    setBusy("");
+  }
+
+  if (enabled === null) return <p className="small muted">Checking live notes…</p>;
+  if (!enabled) {
+    return canManage ? (
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="card-title">Charie live notes</div>
+        <p className="small muted">Let Charie join with transcription, speaker roles, action notes, and summaries. Transcript stays in call memory; nothing is stored unless you press Save.</p>
+        <button className="secondary" disabled={busy !== ""} onClick={toggle}>{busy === "toggle" ? "…" : "Let Charie join"}</button>
+        {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
+      </div>
+    ) : (
+      <p className="small muted">Live notes are off for this call.</p>
+    );
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 12 }}>
+      <div className="card-title">Charie live notes {canManage && <button type="button" className="ghost sm" disabled={busy !== ""} onClick={toggle}>Remove Charie</button>}</div>
+      <p className="small muted">
+        {transcribe && supported ? "Transcribing your mic · " : transcribe && !supported ? "Transcription needs Chrome or Edge · " : "Your mic is not transcribed · "}
+        teammate vs customer labels come from sign-in vs invite.
+      </p>
+      <div className="live-lines">
+        {lines.length === 0 ? (
+          <p className="small muted">Listening… speak and lines appear here.</p>
+        ) : (
+          lines.slice(-30).map((l, i) => (
+            <p key={i} className="small"><strong>{l.speaker}</strong> <span className="pill">{l.role}</span> {l.text}</p>
+          ))
+        )}
+      </div>
+      {notes.length > 0 && (
+        <div>
+          <div className="section-label">Action notes</div>
+          <ul className="small" style={{ marginTop: 0 }}>
+            {notes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {summary && (
+        <div>
+          <div className="section-label">Summary {model && <span className="muted">· {model}</span>}</div>
+          <p className="small" style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+        </div>
+      )}
+      <div className="row" style={{ marginTop: 8 }}>
+        <button type="button" className="secondary sm" disabled={busy !== "" || lines.length === 0} onClick={summarize}>{busy === "sum" ? "Summarizing…" : "Summarize with Charie"}</button>
+        <button type="button" className="secondary sm" disabled={!summary && notes.length === 0} onClick={readAloud}>Read aloud</button>
+        {canManage && <button type="button" className="secondary sm" disabled={busy !== "" || lines.length === 0} onClick={save}>{busy === "save" ? "Saving…" : "Save notes"}</button>}
+        {msg && <span className="small muted">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+

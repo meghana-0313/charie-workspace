@@ -254,6 +254,13 @@ export const fileStore = {
   async getMeetRoom(id: string): Promise<MeetRoom | null> {
     return meetRooms.read()[id] ?? null;
   },
+  async updateMeetRoom(id: string, patch: Partial<MeetRoom>): Promise<void> {
+    const all = meetRooms.read();
+    if (all[id]) {
+      all[id] = { ...all[id], ...patch, updatedAt: now() };
+      meetRooms.write(all);
+    }
+  },
   async createMeetRoom(input: { title: string; createdBy: string; uid?: string }): Promise<MeetRoom> {
     const all = meetRooms.read();
     const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };

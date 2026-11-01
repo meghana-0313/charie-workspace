@@ -21,6 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     body: `Guest ${name} joined "${room.title}" about: ${issue}`,
     goal: `Reproduce and diagnose: ${issue.slice(0, 200)}`,
     targetUrl: "",
+    sourceRepo: `meet:${roomId}`,
   });
   await store.addMessage(ticket.roomId!, {
     authorType: "agent",
