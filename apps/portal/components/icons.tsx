@@ -20,6 +20,8 @@ const P: Record<string, string> = {
   play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   agent: '<rect x="4" y="4" width="16" height="12" rx="2"/><path d="M9 9.5h.01M15 9.5h.01M9 13h6"/><path d="M12 16v2.5M8.5 21h7"/>',
+  chat: '<path d="M4 6h16v10H9l-5 4z"/><path d="M8 10h8M8 13h5"/>',
+  plug: '<path d="M9 3v6M15 3v6M6 9h12v5a6 6 0 0 1-12 0zM12 20v1"/>',
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof P & string; size?: number }) {

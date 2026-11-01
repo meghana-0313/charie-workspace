@@ -12,6 +12,7 @@ import { useState } from "react";
 
 const BUILD: Array<[string, string, string, string]> = [
   ["/", "Home", "grid", "Tickets, runs, status"],
+  ["/chat", "Chat", "chat", "Talk to Charie"],
   ["/repos", "Test a repo", "repo", "Connect GitHub, build, deploy"],
   ["/tickets", "Tickets and fixes", "ticket", "Report to verified fix"],
   ["/ux", "UX and redesign", "eye", "UI analysis, new screens"],
@@ -31,6 +32,7 @@ const OPS: Array<[string, string, string, string]> = [
   ["/guardian/night", "Night shift", "moon", "Overnight agent runs"],
   ["/guardian/zoom", "Meet", "video", "Built in video calls"],
   ["/autopilot", "Autopilot", "clock", "Schedules that run"],
+  ["/marketplace", "Marketplace", "plug", "Jira and context"],
 ];
 
 function active(path: string, href: string): boolean {

@@ -3,6 +3,7 @@
 // executes whatever is due and advances unfinished repo builds.
 
 import { store } from "./store";
+import { pullRule } from "./jira-sync";
 import { runLogWatch, runNightShift, runPentest, runSweep } from "./guardian";
 import { pushToAll } from "./push";
 import { advanceStuckBuilds } from "./repos";
@@ -14,7 +15,7 @@ const WINDOW_MS: Record<SchedulePreset, number> = {
   weekly: 7 * 24 * 3600 * 1000,
 };
 
-export function scheduleDue(s: Schedule, at = Date.now()): boolean {
+export function scheduleDue(s: Pick<Schedule, "preset" | "enabled" | "lastRunAt" | "createdAt">, at = Date.now()): boolean {
   if (!s.enabled) return false;
   const last = s.lastRunAt ? Date.parse(s.lastRunAt) : Date.parse(s.createdAt);
   if (Number.isNaN(last)) return true;
@@ -75,6 +76,12 @@ export async function tickAutopilot(): Promise<TickResult> {
     const at = new Date().toISOString();
     await store.saveSchedule({ ...s, lastRunAt: at, lastStatus: status, updatedAt: at }).catch(() => {});
     results.push({ id: s.id, kind: s.kind, status });
+  }
+  const rules = await store.listSyncRules().catch(() => []);
+  for (const r of rules) {
+    if (!scheduleDue(r)) continue;
+    const status = await pullRule(r.id);
+    results.push({ id: r.id, kind: "jira-pull", status });
   }
   const advanced = await advanceStuckBuilds().catch(() => 0);
   return { ran: results.length, advanced, results };

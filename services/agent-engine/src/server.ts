@@ -14,6 +14,7 @@
 //   POST /pentest/run  GET /zoom/status  POST /zoom/join
 //   POST /a11y/run  GET /a11y/reports  POST /firstrun/run  GET /firstrun/reports
 //   POST /guardian/logwatch  GET /guardian/logwatch
+//   POST /chat/turn {history, snapshot?, contextNotes?} -> {kind, tool?, args?, text?, model}
 //
 // Auth: x-engine-token must equal the ENGINE_TOKEN secret. When no token is
 // configured (local dev without GCP), auth is skipped with a one-time warning.
@@ -37,6 +38,7 @@ import type { SignalMessage } from "./signals.js";
 import { fetchVoiceNote } from "./storage.js";
 import { loadSweeps, runSweep } from "./sweep.js";
 import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
+import { chatTurn } from "./chat-agent.js";
 import { transcribe } from "./voice.js";
 import {
   approveWorkOrder, createWorkOrder, getWorkOrder, loadWorkOrders, updateWorkOrder,
@@ -204,6 +206,28 @@ export function createApp(opts: ServerOpts): RequestListener {
             },
           );
           send(res, 201, { runId, status: "running" });
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/chat/turn") {
+          let body: { history?: Array<{ role?: string; content?: string }>; snapshot?: unknown; contextNotes?: string[] };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          const history = Array.isArray(body.history) ? body.history : [];
+          const clean = history
+            .filter((t) => t && typeof t.content === "string" && (t.role === "user" || t.role === "assistant" || t.role === "tool"))
+            .map((t) => ({ role: t.role as "user" | "assistant" | "tool", content: String(t.content).slice(0, 4000) }))
+            .slice(-12);
+          if (clean.length === 0) {
+            send(res, 400, { error: "history with at least one turn required" });
+            return;
+          }
+          const out = await chatTurn({ history: clean, snapshot: body.snapshot, contextNotes: body.contextNotes });
+          send(res, 200, out);
           return;
         }
 

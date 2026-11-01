@@ -8,7 +8,7 @@ never from a stub.** Judges can trace each one to a file.
 
 | Meta model | Real job in the product | Code | Status |
 |---|---|---|---|
-| **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; later, journey planner | `services/agent-engine/src/analyst.ts` via `meta-client.ts` | Live with `META_API_KEY` (key verified 200); heuristic fallback |
+| **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; chat agent brain (tool loop) | `services/agent-engine/src/analyst.ts` + `src/chat-agent.ts` via `meta-client.ts` | Live with `META_API_KEY` (key verified 200); heuristic fallback |
 | **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Live: deep dives replace low-confidence prose (M5) |
 | **Muse Image** | Evidence-linked UI redesigns: 2-3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Live: PNGs in `redesigns/` + briefs.json, first 2 usability findings (M2) |
 | **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` + engine `/transcribe` | Live: voice-first tickets (M4) |
@@ -81,6 +81,7 @@ abuse, exfiltration); models interpret and explain, never gate detection alone.
 - **M2 DONE:** Image redesigns in the report. **M3 DONE:** SAM grounding boxes. **M4 DONE:** voice tickets.
 - **M5 DONE:** Wonder deep-dive escalation. **M6 DONE:** Glimmer triage. **M7 DONE:** Spark Open second opinion.
 - **M8 DONE:** Portal rooms + MCP server serving findings to Muse Code.
+- **M9 DONE:** Spark chat agent with tool loop + fake-model tests; Jira marketplace sync.
 
 ## Why this mapping wins points
 

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { saveVoiceNote } from "@/lib/blob";
-import { spawnEngineRun, transcribeNote, triageTicket } from "@/lib/engine";
-import { extractGoal } from "@/lib/triage";
+import { transcribeNote } from "@/lib/engine";
+import { fileTicketAndInvestigate } from "@/lib/tickets";
 import { identity, scopeUid } from "@/lib/who";
 
 export async function GET(req: Request) {
@@ -49,27 +49,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "subject and body required (or attach a voice note)" }, { status: 400 });
   }
 
-  const goal = goalInput || (await triageTicket(subject, body))?.goal || extractGoal(subject, body);
   const ownerUid = scopeUid(await identity(req));
-
-  const ticket = await store.createTicket({ subject, body, goal, targetUrl, voiceNotePath, uid: ownerUid });
-  // Autopilot: start the investigation immediately when the engine answers.
-  try {
-    const runId = await spawnEngineRun({ targetUrl, goal, verify: false });
-    await store.createRun({ id: runId, ticketId: ticket.id, roomId: ticket.roomId!, kind: "investigate", targetUrl, uid: ownerUid });
-    await store.addRunToRoom(ticket.roomId!, runId);
-    await store.setTicketStatus(ticket.id, "investigating");
-    await store.addMessage(ticket.roomId!, {
-      authorType: "agent",
-      authorName: "Charie",
-      body: `Room opened for "${subject}". Investigation started automatically - driving ${targetUrl} toward the goal.`,
-    });
-  } catch {
-    await store.addMessage(ticket.roomId!, {
-      authorType: "agent",
-      authorName: "Charie",
-      body: `Room opened for "${subject}". The engine is unreachable right now - press "Run investigation" once it is back.`,
-    });
-  }
+  const { ticket } = await fileTicketAndInvestigate({
+    subject, body, goal: goalInput || undefined, targetUrl, voiceNotePath, ownerUid,
+  });
   return NextResponse.json(ticket, { status: 201 });
 }

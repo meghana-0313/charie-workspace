@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import { runStatus, spawnEngineRun } from "@/lib/engine";
+import { syncVerifyToJira } from "@/lib/jira-sync";
 import { identity, scopeUid } from "@/lib/who";
 
 export async function POST(req: Request) {
@@ -41,7 +42,11 @@ export async function GET(req: Request) {
   const status = await runStatus(runId);
   if (rec.status === "running" && status !== "running") {
     await store.setRunStatus(runId, status);
-    if (status === "done" && rec.kind === "verify") await store.setTicketStatus(rec.ticketId, "verified");
+    if (status === "done" && rec.kind === "verify") {
+      await store.setTicketStatus(rec.ticketId, "verified");
+      const t = await store.getTicket(rec.ticketId).catch(() => null);
+      if (t) void syncVerifyToJira(t);
+    }
     else if (status === "done") await store.setTicketStatus(rec.ticketId, "in-room");
   }
   return NextResponse.json({ ...(await store.getRun(runId)), live: status });

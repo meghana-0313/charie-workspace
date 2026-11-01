@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { getFirestore } from "firebase-admin/firestore";
-import type { ApiKey, Approval, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, TeamSeat, Ticket } from "./types";
+import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
 
@@ -292,6 +292,62 @@ export const firestoreStore = {
   },
   async deleteGithubToken(filterUid: string): Promise<void> {
     await firestore().collection("github_tokens").doc(filterUid).delete().catch(() => {});
+  },
+
+  async listThreads(filterUid?: string): Promise<ChatThread[]> {
+    const snap = await firestore().collection("chat_threads").orderBy("updatedAt", "desc").get();
+    return mine(snap.docs.map((d) => d.data() as ChatThread), filterUid);
+  },
+  async getThread(id: string): Promise<ChatThread | null> {
+    const d = await firestore().collection("chat_threads").doc(id).get();
+    return d.exists ? (d.data() as ChatThread) : null;
+  },
+  async saveThread(t: ChatThread): Promise<void> {
+    await firestore().collection("chat_threads").doc(t.id).set(clean({ ...t }));
+  },
+  async deleteThread(id: string): Promise<void> {
+    await firestore().collection("chat_threads").doc(id).delete().catch(() => {});
+  },
+
+  async listConnectors(filterUid?: string): Promise<Connector[]> {
+    const snap = await firestore().collection("connectors").orderBy("createdAt").get();
+    return mine(snap.docs.map((d) => d.data() as Connector), filterUid);
+  },
+  async getConnector(id: string): Promise<Connector | null> {
+    const d = await firestore().collection("connectors").doc(id).get();
+    return d.exists ? (d.data() as Connector) : null;
+  },
+  async saveConnector(c: Connector): Promise<void> {
+    await firestore().collection("connectors").doc(c.id).set(clean({ ...c }));
+  },
+  async deleteConnector(id: string): Promise<void> {
+    await firestore().collection("connectors").doc(id).delete().catch(() => {});
+  },
+
+  async listSyncRules(filterUid?: string): Promise<SyncRule[]> {
+    const snap = await firestore().collection("sync_rules").orderBy("createdAt").get();
+    return mine(snap.docs.map((d) => d.data() as SyncRule), filterUid);
+  },
+  async getSyncRule(id: string): Promise<SyncRule | null> {
+    const d = await firestore().collection("sync_rules").doc(id).get();
+    return d.exists ? (d.data() as SyncRule) : null;
+  },
+  async saveSyncRule(r: SyncRule): Promise<void> {
+    await firestore().collection("sync_rules").doc(r.id).set(clean({ ...r }));
+  },
+  async deleteSyncRule(id: string): Promise<void> {
+    await firestore().collection("sync_rules").doc(id).delete().catch(() => {});
+  },
+
+  async listContextDocs(filterUid?: string): Promise<ContextDoc[]> {
+    const snap = await firestore().collection("context_docs").orderBy("createdAt").get();
+    return mine(snap.docs.map((d) => d.data() as ContextDoc), filterUid);
+  },
+  async saveContextDoc(d: ContextDoc): Promise<void> {
+    await firestore().collection("context_docs").doc(d.id).set(clean({ ...d }));
+  },
+  async deleteContextDoc(id: string): Promise<void> {
+    await firestore().collection("context_docs").doc(id).delete().catch(() => {});
   },
 
   async getSetting(key: string): Promise<string | null> {
