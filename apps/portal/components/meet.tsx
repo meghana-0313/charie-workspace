@@ -200,6 +200,16 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     }
   };
 
+  const leave = () => {
+    void send("*", "leave");
+    for (const id of Object.keys(pcs.current)) pcs.current[id].close();
+    pcs.current = {};
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setPeers({});
+    setJoined(false);
+  };
+
   const toggleMute = () => {
     const next = !muted;
     streamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next; });
@@ -269,8 +279,10 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         <button onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>
         <button onClick={toggleCam}>{camOff ? "Camera on" : "Camera off"}</button>
         <button onClick={shareScreen} disabled={sharing}>{sharing ? "Sharing…" : "Share screen"}</button>
+        {!token && <InviteButton roomId={roomId} />}
+        <button className="danger-ghost" onClick={leave}>Leave call</button>
       </div>
-      <p className="muted small">{tiles.length === 0 ? "Alone here. Share this page URL to invite the team." : `${tiles.length} peer(s) connected.`}</p>
+      <p className="muted small">{tiles.length === 0 ? (token ? "You are in. Waiting for the host to join." : "Alone here. Invite a guest with the button above, or send the room link to your team.") : `${tiles.length} peer(s) connected.`}</p>
       <LiveNotes roomId={roomId} token={token} canManage={!token} transcribe={transcribeOk} localName={nameRef.current || name} />
     </>
   );

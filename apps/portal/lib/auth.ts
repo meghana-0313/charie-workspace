@@ -16,8 +16,15 @@ export interface SessionIdentity {
   name: string;
 }
 
-function signingKey(): string {
-  return process.env.SESSION_KEY ?? "dev-insecure-session-key";
+export function signingKey(): string {
+  const key = process.env.SESSION_KEY ?? "";
+  if (key.length >= 16) return key;
+  // Hosted (Firestore) mode must never sign with a guessable key: fail closed.
+  // Local file-store runs keep the dev fallback so judges can run offline.
+  if (process.env.NODE_ENV === "production" && process.env.PORTAL_STORE === "firestore") {
+    throw new Error("SESSION_KEY is missing or too short; refusing to sign sessions");
+  }
+  return "dev-insecure-session-key";
 }
 
 /** Local file-store mode allows one-click local owner login (judges, dev). */

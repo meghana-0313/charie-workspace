@@ -27,16 +27,20 @@ async function validSession(cookie: string | undefined, secret: string): Promise
   return hmacOk(secret, `${exp}.${payloadHex}`, sig);
 }
 
-/** Guest invite links: /meet/guest/<room>?token=<room>.<exp>.<sig>. */
-async function validGuest(path: string, token: string | null, secret: string): Promise<boolean> {
+/** Guest invite token: <room>.<exp>.<sig> for one meet room. */
+async function validGuestToken(roomId: string, token: string | null, secret: string): Promise<boolean> {
   if (!token || !secret) return false;
-  const m = path.match(/^\/meet\/guest\/([^/?]+)/);
-  if (!m) return false;
-  const roomId = decodeURIComponent(m[1]);
   const parts = token.split(".");
   if (parts.length !== 3 || parts[0] !== roomId) return false;
   if (Number(parts[1]) < Date.now()) return false;
   return hmacOk(secret, `${parts[0]}.${parts[1]}`, parts[2]);
+}
+
+/** Guest invite links: /meet/guest/<room>?token=<room>.<exp>.<sig>. */
+async function validGuest(path: string, token: string | null, secret: string): Promise<boolean> {
+  const m = path.match(/^\/meet\/guest\/([^/?]+)/);
+  if (!m) return false;
+  return validGuestToken(decodeURIComponent(m[1]), token, secret);
 }
 
 export async function middleware(req: NextRequest) {
@@ -47,7 +51,14 @@ export async function middleware(req: NextRequest) {
   if (path.startsWith("/meet/guest/") && (await validGuest(path, req.nextUrl.searchParams.get("token"), secret))) {
     return NextResponse.next();
   }
-  if (path.startsWith("/api/meet/") && req.nextUrl.searchParams.get("token")) return NextResponse.next();
+  // Meet API guests pass only with a valid signed invite for that room.
+  // Check-in validates its body token + consent in the route itself.
+  if (path.startsWith("/api/meet/rooms/")) {
+    if (/^\/api\/meet\/rooms\/[^/]+\/guest$/.test(path)) return NextResponse.next();
+    const m = path.match(/^\/api\/meet\/rooms\/([^/]+)\//);
+    const token = req.nextUrl.searchParams.get("token");
+    if (m && token && (await validGuestToken(decodeURIComponent(m[1]), token, secret))) return NextResponse.next();
+  }
   // SDK/app ingestion carries its own key; the route validates it strictly.
   if (path === "/api/guardian/events" && req.headers.get("x-charie-key")) return NextResponse.next();
   const url = req.nextUrl.clone();

@@ -3,7 +3,10 @@ import { store } from "@/lib/store";
 import { displayName, identity, scopeUid } from "@/lib/who";
 
 export async function GET(req: Request) {
-  return NextResponse.json({ rooms: await store.listMeetRooms(scopeUid(await identity(req))) });
+  const id = await identity(req);
+  // Never list unscoped: without an identity there is no room list at all.
+  if (!id) return NextResponse.json({ error: "login required" }, { status: 401 });
+  return NextResponse.json({ rooms: await store.listMeetRooms(scopeUid(id)) });
 }
 
 export async function POST(req: Request) {

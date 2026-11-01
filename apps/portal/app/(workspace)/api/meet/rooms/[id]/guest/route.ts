@@ -28,5 +28,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     authorName: "Charie",
     body: `Support call starting in "${room.title}" with guest ${name}. Press "Run investigation" once they share their screen or URL.`,
   });
+  // Record the consented check-in: the signal route requires it before a
+  // token guest may join or speak in the call.
+  await store.saveMeetCheckin({ roomId, name, ticketId: ticket.id, at: new Date().toISOString() });
   return NextResponse.json({ ok: true, ticketId: ticket.id });
 }

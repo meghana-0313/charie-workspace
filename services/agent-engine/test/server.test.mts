@@ -94,6 +94,22 @@ ok(
   (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://metadata.google.internal/" }))).code === 400,
   "metadata host blocked",
 );
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://127.0.0.1:8080/" }))).code === 400,
+  "loopback blocked",
+);
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://localhost/" }))).code === 400,
+  "localhost blocked",
+);
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://192.168.1.20/" }))).code === 400,
+  "RFC1918 blocked",
+);
+ok(
+  (await call("POST", "/runs", H, JSON.stringify({ targetUrl: "http://[::1]/" }))).code === 400,
+  "IPv6 loopback blocked",
+);
 
 const tri = await call("POST", "/triage", H, JSON.stringify({ subject: "Checkout broken", body: "500 on pay" }));
 const triBody = tri.json() as { goal: string; grade: string; source: string };

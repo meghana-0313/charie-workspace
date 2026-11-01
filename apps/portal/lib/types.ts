@@ -252,6 +252,14 @@ export interface MeetRoom {
   updatedAt: string;
 }
 
+/** A guest consent check-in, recorded before call signaling is allowed. */
+export interface MeetCheckin {
+  roomId: string;
+  name: string;
+  ticketId: string;
+  at: string;
+}
+
 export interface TeamSeat {
   id: string;
   email: string; // Google account; invites match on this

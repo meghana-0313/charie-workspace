@@ -23,6 +23,7 @@ export async function verifyApiKey(secret: string): Promise<ApiKey | null> {
   if (!m) return null;
   const rec = await store.getApiKeyByPrefix(m[1]).catch(() => null);
   if (!rec) return null;
+  if (rec.revoked) return null;
   const a = Buffer.from(rec.hash);
   const b = Buffer.from(hashSecret(m[2], rec.salt));
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;

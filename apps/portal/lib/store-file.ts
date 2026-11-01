@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
+import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetCheckin, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -39,6 +39,7 @@ const repos = file<Record<string, RepoConnection>>("repos", {});
 const builds = file<Record<string, RepoBuild>>("builds", {});
 const meetRooms = file<Record<string, MeetRoom>>("meet-rooms", {});
 const meetSignals = file<Record<string, MeetSignal[]>>("meet-signals", {});
+const meetCheckins = file<Record<string, MeetCheckin[]>>("meet-checkins", {});
 const seats = file<Record<string, TeamSeat>>("team-seats", {});
 const apiKeys = file<Record<string, ApiKey>>("api-keys", {});
 const schedules = file<Record<string, Schedule>>("schedules", {});
@@ -284,6 +285,14 @@ export const fileStore = {
   },
   async listMeetSignals(roomId: string, since: number): Promise<MeetSignal[]> {
     return (meetSignals.read()[roomId] ?? []).filter((s) => s.seq > since);
+  },
+  async saveMeetCheckin(checkin: MeetCheckin): Promise<void> {
+    const all = meetCheckins.read();
+    all[checkin.roomId] = [...(all[checkin.roomId] ?? []), checkin].slice(-20);
+    meetCheckins.write(all);
+  },
+  async hasMeetCheckin(roomId: string): Promise<boolean> {
+    return (meetCheckins.read()[roomId] ?? []).length > 0;
   },
 
   async listSeats(): Promise<TeamSeat[]> {

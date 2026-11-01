@@ -141,14 +141,18 @@ export function GithubConnect() {
   const [status, setStatus] = useState<null | { configured: boolean; connected: boolean; login: string | null }>(null);
   const [repos, setRepos] = useState<null | Array<{ owner: string; repo: string; visibility: string; defaultBranch: string }>>(null);
   const [busy, setBusy] = useState("");
+  const [listing, setListing] = useState(false);
+  const [query, setQuery] = useState("");
   const [msg, setMsg] = useState("");
   useEffect(() => {
     fetch("/api/github/status").then((r) => r.json()).then(setStatus).catch(() => setStatus(null));
   }, []);
   async function load() {
     setMsg("");
+    setListing(true);
     const res = await fetch("/api/github/repos");
     const j = (await res.json().catch(() => ({}))) as { repos?: typeof repos; error?: string };
+    setListing(false);
     if (res.ok && j.repos) setRepos(j.repos);
     else setMsg(j.error ?? "could not list repos");
   }
@@ -196,29 +200,35 @@ export function GithubConnect() {
         <button type="button" className="ghost sm" onClick={disconnect}>Disconnect</button>
       </p>
       {!repos ? (
-        <button type="button" className="secondary" onClick={load}>List my repos</button>
+        <button type="button" className="secondary" onClick={load} disabled={listing}>{listing ? "Listing…" : "List my repos"}</button>
       ) : repos.length === 0 ? (
         <p className="small muted">No repos visible to this connection.</p>
       ) : (
-        <table>
-          <thead><tr><th>Repo</th><th>Visibility</th><th></th></tr></thead>
-          <tbody>
-            {repos.slice(0, 20).map((r) => {
-              const full = `${r.owner}/${r.repo}`;
-              return (
-                <tr key={full}>
-                  <td className="small">{full}<br /><span className="muted">{r.defaultBranch}</span></td>
-                  <td className="small muted">{r.visibility}</td>
-                  <td>
-                    <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => connect(full)}>
-                      {busy === full ? "Connecting…" : "Connect"}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your repos…" aria-label="Search your repos" style={{ marginBottom: 8 }} />
+          <table>
+            <thead><tr><th>Repo</th><th>Visibility</th><th></th></tr></thead>
+            <tbody>
+              {repos.filter((r) => `${r.owner}/${r.repo}`.toLowerCase().includes(query.trim().toLowerCase())).map((r) => {
+                const full = `${r.owner}/${r.repo}`;
+                return (
+                  <tr key={full}>
+                    <td className="small">{full}<br /><span className="muted">{r.defaultBranch}</span></td>
+                    <td className="small muted">{r.visibility}</td>
+                    <td>
+                      <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => connect(full)}>
+                        {busy === full ? "Connecting…" : "Connect"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {repos.filter((r) => `${r.owner}/${r.repo}`.toLowerCase().includes(query.trim().toLowerCase())).length === 0 && (
+            <p className="small muted">No repos match “{query}”.</p>
+          )}
+        </>
       )}
       {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
     </div>
