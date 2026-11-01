@@ -253,7 +253,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     return (
       <div className="card">
         <div className="card-title">Join “{roomTitle}”</div>
-        <p className="muted small">Native Charie room. Camera and mic stay between peers; the portal only exchanges connection setup.</p>
+        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Native Charie room. Camera and mic stay between peers; the portal only exchanges connection setup.</p>
         <div className="row">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" style={{ flex: 1, minWidth: 160 }} />
           <button onClick={join}>Join with camera</button>

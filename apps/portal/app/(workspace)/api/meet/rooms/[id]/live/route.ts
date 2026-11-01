@@ -31,6 +31,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (room.liveNotes !== true) return NextResponse.json({ error: "live notes are off" }, { status: 400 });
   const who = await caller(req, roomId);
   if (!who) return NextResponse.json({ error: "login or invite required" }, { status: 401 });
+  if (who.role === "customer") {
+    // Transcription consent lives in the check-in record, not client state.
+    const checkin = await store.lastMeetCheckin(roomId).catch(() => null);
+    if (checkin?.transcribe !== true) {
+      return NextResponse.json({ error: "transcription not consented" }, { status: 403 });
+    }
+  }
   const { text, name } = (await req.json().catch(() => ({}))) as { text?: string; name?: string };
   const clean = String(text ?? "").trim().slice(0, 500);
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });

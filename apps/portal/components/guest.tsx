@@ -33,7 +33,7 @@ export function GuestLobby({ roomId, roomTitle, token }: { roomId: string; roomT
     const res = await fetch(`/api/meet/rooms/${roomId}/guest?token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, name: name.trim(), issue: issue.trim(), consent }),
+      body: JSON.stringify({ token, name: name.trim(), issue: issue.trim(), consent, transcribe: transcribeOk }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -85,7 +85,7 @@ export function GuestLobby({ roomId, roomTitle, token }: { roomId: string; roomT
           )}
           <div className="row" style={{ marginTop: 12 }}>
             <button disabled={busy || !name.trim() || !issue.trim() || !consent}>
-              {busy ? "Checking in…" : "Join the call"}
+              {busy ? "Checking in…" : "Check in (step 1 of 2)"}
             </button>
             {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
           </div>

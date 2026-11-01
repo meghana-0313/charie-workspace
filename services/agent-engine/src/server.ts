@@ -12,7 +12,7 @@
 //   POST /nightshift/run  GET /nightshift/digests
 //   POST /signals/ingest  GET /signals/clusters  POST /signals/seed
 //   POST /pentest/run  GET /zoom/status  POST /zoom/join
-//   POST /a11y/run  GET /a11y/reports  POST /firstrun/run  GET /firstrun/reports
+//   POST /a11y/run  GET /a11y/reports  POST /firstrun/run  GET /firstrun/reports
 //   POST /guardian/logwatch  GET /guardian/logwatch
 //   POST /chat/turn {history, snapshot?, contextNotes?} -> {kind, tool?, args?, text?, model}
 //
@@ -29,13 +29,13 @@ import { runA11y } from "./a11y.js";
 import { runFirstRun } from "./firstrun.js";
 import { detectSignals, investigate, simulateResponse, verifyContainment } from "./guardian.js";
 import { executeRun } from "./job.js";
-import { loadDigests, runNightShift } from "./nightshift.js";
+import { loadDigests, runNightShift } from "./nightshift.js";
 import { runLogWatch } from "./logwatch.js";
 import { runPentest } from "./pentest.js";
 import { secret } from "./secrets.js";
 import { appendMessages, clusterMessages, gradeMessage, loadMessages, seedMessages } from "./signals.js";
 import type { SignalMessage } from "./signals.js";
-import { fetchVoiceNote } from "./storage.js";
+import { ensureRunLocal, fetchVoiceNote } from "./storage.js";
 import { loadSweeps, runSweep } from "./sweep.js";
 import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
 import { chatTurn } from "./chat-agent.js";
@@ -692,7 +692,13 @@ export function createApp(opts: ServerOpts): RequestListener {
         const runMatch = url.pathname.match(/^\/runs\/([^/]+)$/);
         if (req.method === "GET" && runMatch) {
           const runId = decodeURIComponent(runMatch[1]);
-          const status = runStatus(runId);
+          let status = runStatus(runId);
+          if (status === "failed" && !jobs.has(runId)) {
+            // Another instance (or a restart) may have produced this run:
+            // pull it down from GCS before declaring it unknown.
+            await ensureRunLocal(root, runId);
+            status = runStatus(runId);
+          }
           if (status === "failed" && !jobs.has(runId) && !existsSync(join(root, runId))) {
             send(res, 404, { error: "unknown run" });
             return;
@@ -715,8 +721,14 @@ export function createApp(opts: ServerOpts): RequestListener {
           const runId = decodeURIComponent(artMatch[1]);
           const rel = artMatch[2].split("/").map(decodeURIComponent);
           const base = join(root, runId) + sep;
-          const full = normalize(join(root, runId, ...rel));
-          if (!full.startsWith(base) || !existsSync(full) || !statSync(full).isFile()) {
+          let full = normalize(join(root, runId, ...rel));
+          if (!full.startsWith(base)) {
+            send(res, 404, { error: "not found" });
+            return;
+          }
+          if (!existsSync(full)) await ensureRunLocal(root, runId);
+          full = normalize(join(root, runId, ...rel));
+          if (!existsSync(full) || !statSync(full).isFile()) {
             send(res, 404, { error: "not found" });
             return;
           }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import type { GuardEventView } from "@/lib/types";
 
 const MAX_LOG_BYTES = 2 * 1024 * 1024;
@@ -8,6 +9,9 @@ const OUTCOMES = ["success", "failure", "deny", "allow"] as const;
 
 // POST /api/guardian/events/upload - ingest a JSON array or JSONL log file.
 export async function POST(req: Request) {
+  const me = await identity(req);
+  if (!me) return NextResponse.json({ error: "login required" }, { status: 401 });
+  const stampUid = scopeUid(me);
   const fd = await req.formData();
   const file = fd.get("logs");
   if (!(file instanceof File) || file.size === 0) {
@@ -52,6 +56,7 @@ export async function POST(req: Request) {
     });
   }
   if (events.length === 0) return NextResponse.json({ error: "no parseable events in file" }, { status: 400 });
+  for (const e of events) e.uid = stampUid;
   // Firestore rejects undefined values - round-trip strips them.
   await store.saveEvents(JSON.parse(JSON.stringify(events)) as GuardEventView[]);
   return NextResponse.json({ saved: events.length }, { status: 201 });

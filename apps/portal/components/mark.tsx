@@ -4,7 +4,7 @@
 export function CharieMark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden="true">
-      <rect width="28" height="28" rx="7" fill="#6d5ef0" />
+      <rect width="28" height="28" rx="7" style={{ fill: "var(--accent)" }} />
       <path
         d="M20.6 12.6 A7.6 7.6 0 1 0 21.2 17.2"
         fill="none"

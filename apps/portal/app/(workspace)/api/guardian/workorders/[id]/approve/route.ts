@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { approveWorkOrder } from "@/lib/guardian";
 import { pushToAll } from "@/lib/push";
-import { DEMO_USER } from "@/lib/store";
+import { DEMO_USER, store } from "@/lib/store";
+import { isAdmin } from "@/lib/who";
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isAdmin(store, req))) return NextResponse.json({ error: "admin only" }, { status: 403 });
   const { id } = await params;
   const wo = await approveWorkOrder(id, DEMO_USER);
   if (!wo) return NextResponse.json({ error: "engine unreachable or bad transition" }, { status: 502 });

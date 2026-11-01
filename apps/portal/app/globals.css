@@ -21,7 +21,6 @@
 .side-brand:hover { text-decoration: none; }
 .side-mark {
   width: 28px; height: 28px; border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, #6d5ef0, #8b7cf6);
   display: inline-flex; align-items: center; justify-content: center;
   color: #fff; font-weight: 800; font-size: 15px; flex: none;
 }
@@ -150,7 +149,7 @@ input, textarea, select {
   width: 100%; background: var(--bg-sunken); color: var(--ink);
 }
 input::placeholder, textarea::placeholder { color: var(--ink-faint); }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 textarea { min-height: 76px; resize: vertical; }
 select { width: auto; }
 input[type="file"] { padding: 6px; font-size: var(--text-sm); }

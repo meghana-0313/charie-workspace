@@ -3,7 +3,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "./ui";
 
 export interface ChatMsg {
   role: "user" | "assistant";
@@ -44,6 +43,7 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
   const [busy, setBusy] = useState(false);
   const [tid, setTid] = useState<string | null>(threadId);
   const bottom = useRef<HTMLDivElement>(null);
+  const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
@@ -56,11 +56,14 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
     setInput("");
     const at = new Date().toISOString();
     setMsgs((m) => [...m, { role: "user", text: clean, at }]);
+    const ctl = new AbortController();
+    abort.current = ctl;
     try {
       const res = await fetch("/api/chat/turn", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ threadId: tid, text: clean }),
+        signal: ctl.signal,
       });
       const j = (await res.json()) as { threadId?: string; text?: string; model?: string; actions?: string[]; error?: string };
       if (!res.ok) {
@@ -72,9 +75,14 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
         }
         setMsgs((m) => [...m, { role: "assistant", text: j.text ?? "", model: j.model, actions: j.actions ?? [], at: new Date().toISOString() }]);
       }
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", text: "Chat failed: network error.", at: new Date().toISOString() }]);
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") {
+        setMsgs((m) => [...m, { role: "assistant", text: "Stopped. The request may still finish in the background.", at: new Date().toISOString() }]);
+      } else {
+        setMsgs((m) => [...m, { role: "assistant", text: "Chat failed: network error.", at: new Date().toISOString() }]);
+      }
     }
+    abort.current = null;
     setBusy(false);
   }
 
@@ -104,16 +112,26 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
               <Rich text={m.text} />
               {m.role === "assistant" && ((m.actions?.length ?? 0) > 0 || m.model) && (
                 <div className="chat-meta">
-                  {m.model && <Badge>{modelLabel(m.model)}</Badge>}
                   {(m.actions ?? []).map((a) => (
                     <code key={a} className="small" style={{ marginLeft: 6 }}>{a}</code>
                   ))}
+                  {m.model && (
+                    <details style={{ marginLeft: 6 }}>
+                      <summary className="small muted" style={{ cursor: "pointer" }}>Details</summary>
+                      <span className="small muted">Model: {modelLabel(m.model)}</span>
+                    </details>
+                  )}
                 </div>
               )}
             </div>
           </div>
         ))}
-        {busy && <p className="small muted">Charie is working…</p>}
+        {busy && (
+          <p className="small muted row">
+            Charie is working…
+            <button type="button" className="ghost sm" onClick={() => abort.current?.abort()}>Stop</button>
+          </p>
+        )}
         <div ref={bottom} />
       </div>
       <form

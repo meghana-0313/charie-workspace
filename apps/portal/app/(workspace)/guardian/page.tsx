@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
+import { identity, scopeUid } from "@/lib/who";
 import { lastLogWatch, listSweeps } from "@/lib/guardian";
 import { LogWatchPanel } from "@/components/logwatch";
 import { AnalyzeButton, SeedButton } from "@/components/guardian-forms";
@@ -9,8 +10,9 @@ import { Badge, EmptyState, PageHead, Stat } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function GuardianPage() {
-  const incidents = await store.listIncidents();
-  const events = await store.listRecentEvents(1);
+  const myUid = scopeUid(await identity());
+  const incidents = await store.listIncidents(myUid);
+  const events = await store.listRecentEvents(1, myUid);
   const sweeps = await listSweeps();
   let streak = 0;
   for (let i = sweeps.length - 1; i >= 0; i--) {

@@ -62,6 +62,7 @@ export interface PortalRun {
 // Guardian types. Mirror the engine shapes; the portal stays decoupled.
 export interface GuardEventView {
   id: string;
+  uid?: string; // ingesting account (API key owner or session user), stamped server side
   ts: string;
   kind: "auth" | "api" | "traffic" | "infra";
   actor?: string;
@@ -93,6 +94,7 @@ export interface IncidentAction {
 
 export interface Incident {
   id: string;
+  uid?: string; // account that ran the analysis, stamped server side
   title: string;
   severity: "blocker" | "major" | "minor";
   status: "open" | "contained" | "resolved";
@@ -257,6 +259,7 @@ export interface MeetCheckin {
   roomId: string;
   name: string;
   ticketId: string;
+  transcribe?: boolean; // guest opted into live transcription at check-in
   at: string;
 }
 

@@ -75,7 +75,7 @@ export function Sidebar({ env }: { env: string }) {
       </details>
       <div className="side-foot">
         <Link href="/team" className={`side-link${active(path, "/team") ? " on" : ""}`}>
-          <Icon name="access" />
+          <Icon name="users" />
           Team
         </Link>
         <Link href="/settings" className={`side-link${active(path, "/settings") ? " on" : ""}`}>

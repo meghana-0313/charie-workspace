@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { guardianAnalyze } from "@/lib/engine";
 import { pushToAll } from "@/lib/push";
+import { identity, isAdmin, scopeUid } from "@/lib/who";
 import type { Incident } from "@/lib/types";
 
 // POST /api/guardian/analyze - run the recent window through detection + AI.
-export async function POST() {
-  const events = await store.listRecentEvents(200);
+export async function POST(req: Request) {
+  if (!(await isAdmin(store, req))) return NextResponse.json({ error: "admin only" }, { status: 403 });
+  const me = await identity(req);
+  const events = await store.listRecentEvents(200, scopeUid(me));
   if (events.length === 0) {
     return NextResponse.json({ error: "no events yet - simulate an attack or ingest some first" }, { status: 400 });
   }
@@ -20,6 +23,7 @@ export async function POST() {
   const now = new Date().toISOString();
   const incident: Incident = {
     id: uid("inc"),
+    uid: scopeUid(me),
     title: top.title,
     severity: top.severity as Incident["severity"],
     status: "open",

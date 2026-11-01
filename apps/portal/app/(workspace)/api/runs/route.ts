@@ -11,8 +11,13 @@ export async function POST(req: Request) {
   if (!ticketId || !roomId || (kind !== "investigate" && kind !== "verify") || !targetUrl || !goal) {
     return NextResponse.json({ error: "ticketId, roomId, kind=investigate|verify, targetUrl, goal required" }, { status: 400 });
   }
-  if (!(await store.getTicket(ticketId)) || !(await store.getRoom(roomId))) {
+  const ticket = await store.getTicket(ticketId);
+  if (!ticket || !(await store.getRoom(roomId))) {
     return NextResponse.json({ error: "unknown ticket or room" }, { status: 404 });
+  }
+  const scope = scopeUid(await identity(req));
+  if (scope && ticket.uid && ticket.uid !== scope) {
+    return NextResponse.json({ error: "not your ticket" }, { status: 403 });
   }
   if (kind === "verify" && !baselineRunId) {
     return NextResponse.json({ error: "verify needs baselineRunId" }, { status: 400 });
@@ -39,6 +44,10 @@ export async function GET(req: Request) {
   if (!runId) return NextResponse.json({ error: "runId required" }, { status: 400 });
   const rec = await store.getRun(runId);
   if (!rec) return NextResponse.json({ error: "unknown run" }, { status: 404 });
+  const scope = scopeUid(await identity(req));
+  if (scope && rec.uid && rec.uid !== scope) {
+    return NextResponse.json({ error: "not your run" }, { status: 403 });
+  }
   const status = await runStatus(runId);
   if (rec.status === "running" && status !== "running") {
     await store.setRunStatus(runId, status);
