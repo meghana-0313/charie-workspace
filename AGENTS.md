@@ -10,7 +10,7 @@ See README.md for the product story; this file is working notes for the agent.
 
 - `apps/portal/` - Next.js workspace (tickets, rooms, scans, meet, guard, ops).
   File store locally (`.data/`), Firestore when `PORTAL_STORE=firestore`.
-  Firebase Google login via `/api/session` (ID token verify) + HMAC session
+  Firebase Google or email login via `/api/session` (ID token verify) + HMAC session
   cookie `charie_session`; always-on middleware gate; local-owner dev login +
   AUTOMATION_KEY fallback. Per-account data via `uid` scoping.
 - `services/agent-engine/` - Playwright loop + HTTP service (`src/serve.ts`, port

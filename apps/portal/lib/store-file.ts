@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ApiKey, Approval, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, TeamSeat, Ticket } from "./types";
+import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
 import { uid } from "./uid";
 
 const DATA = join(process.cwd(), ".data");
@@ -44,6 +44,10 @@ const apiKeys = file<Record<string, ApiKey>>("api-keys", {});
 const schedules = file<Record<string, Schedule>>("schedules", {});
 const ghTokens = file<Record<string, GithubToken>>("github-tokens", {});
 const settings = file<Record<string, string>>("settings", {});
+const threads = file<Record<string, ChatThread>>("chat-threads", {});
+const connectors = file<Record<string, Connector>>("connectors", {});
+const syncRules = file<Record<string, SyncRule>>("sync-rules", {});
+const contextDocs = file<Record<string, ContextDoc>>("context-docs", {});
 
 const now = () => new Date().toISOString();
 
@@ -351,6 +355,75 @@ export const fileStore = {
     const all = ghTokens.read();
     delete all[filterUid];
     ghTokens.write(all);
+  },
+
+  async listThreads(filterUid?: string): Promise<ChatThread[]> {
+    return mine(Object.values(threads.read()), filterUid)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  },
+  async getThread(id: string): Promise<ChatThread | null> {
+    return threads.read()[id] ?? null;
+  },
+  async saveThread(t: ChatThread): Promise<void> {
+    const all = threads.read();
+    all[t.id] = t;
+    threads.write(all);
+  },
+  async deleteThread(id: string): Promise<void> {
+    const all = threads.read();
+    delete all[id];
+    threads.write(all);
+  },
+
+  async listConnectors(filterUid?: string): Promise<Connector[]> {
+    return mine(Object.values(connectors.read()), filterUid)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+  async getConnector(id: string): Promise<Connector | null> {
+    return connectors.read()[id] ?? null;
+  },
+  async saveConnector(c: Connector): Promise<void> {
+    const all = connectors.read();
+    all[c.id] = c;
+    connectors.write(all);
+  },
+  async deleteConnector(id: string): Promise<void> {
+    const all = connectors.read();
+    delete all[id];
+    connectors.write(all);
+  },
+
+  async listSyncRules(filterUid?: string): Promise<SyncRule[]> {
+    return mine(Object.values(syncRules.read()), filterUid)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+  async getSyncRule(id: string): Promise<SyncRule | null> {
+    return syncRules.read()[id] ?? null;
+  },
+  async saveSyncRule(r: SyncRule): Promise<void> {
+    const all = syncRules.read();
+    all[r.id] = r;
+    syncRules.write(all);
+  },
+  async deleteSyncRule(id: string): Promise<void> {
+    const all = syncRules.read();
+    delete all[id];
+    syncRules.write(all);
+  },
+
+  async listContextDocs(filterUid?: string): Promise<ContextDoc[]> {
+    return mine(Object.values(contextDocs.read()), filterUid)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+  async saveContextDoc(d: ContextDoc): Promise<void> {
+    const all = contextDocs.read();
+    all[d.id] = d;
+    contextDocs.write(all);
+  },
+  async deleteContextDoc(id: string): Promise<void> {
+    const all = contextDocs.read();
+    delete all[id];
+    contextDocs.write(all);
   },
 
   async getSetting(key: string): Promise<string | null> {

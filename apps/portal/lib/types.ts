@@ -354,3 +354,74 @@ export interface GithubToken {
   createdAt: string;
   updatedAt: string;
 }
+
+
+// Chat with Charie: persistent threads per account.
+export interface ChatMessageView {
+  role: "user" | "assistant";
+  text: string;
+  model?: string; // serving model id or "heuristic"
+  actions?: string[]; // tool calls made, e.g. "ticket_status tkt_x"
+  at: string;
+}
+
+export interface ChatThread {
+  id: string;
+  uid?: string;
+  title: string;
+  messages: ChatMessageView[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Marketplace connectors: external systems Charie syncs with.
+export type ConnectorKind = "github" | "jira" | "webhook-in";
+
+export interface Connector {
+  id: string;
+  uid?: string;
+  kind: ConnectorKind;
+  name: string;
+  status: "connected" | "error";
+  detail?: string;
+  config: {
+    domain?: string; // jira host
+    email?: string; // jira login
+    token?: string; // jira api token (server only, never serialized to clients)
+  };
+  lastSyncAt?: string;
+  lastSyncStatus?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Sync rules: what to pull, where to test it, how often.
+export interface SyncRule {
+  id: string;
+  uid?: string;
+  connectorId: string;
+  kind: "jira-pull";
+  jql?: string; // empty = whole project
+  project?: string;
+  targetUrl: string; // app under test for auto investigations
+  preset: SchedulePreset;
+  enabled: boolean;
+  importedKeys?: string[];
+  doneTransitionId?: string; // jira transition applied after verify
+  lastRunAt?: string;
+  lastStatus?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Context docs: workspace notes that ground chat answers.
+export interface ContextDoc {
+  id: string;
+  uid?: string;
+  title: string;
+  source: "note" | "url";
+  body?: string;
+  url?: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -16,7 +16,27 @@ products:
 | Charie Guard | Runtime security and threat response | Threats, Fix tasks, Security tests |
 | Charie Ops | Production intelligence and reliability | Live signals, Night shift, Meet |
 
-Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google; ask the team for an invite if your account is new).
+Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google or email; ask the team for an invite if your account is new).
+
+## Hackathon submission
+
+- **Track:** Indie Developer (solo build).
+- **Problem statement:** Push the Frontier. Charie pushes AI autonomy into
+  software engineering: an agent that files, investigates, verifies, schedules,
+  and syncs fixes across GitHub and Jira with humans approving the
+  consequential steps.
+- **New work:** everything in this repo was built during the hackathon for this
+  submission. Nothing predates it.
+- **Every Meta requirement, live:** Muse Spark (investigation reasoning, chat
+  agent, incident analysis), Muse Wonder (deep-dive escalation), Muse Image
+  (UI redesigns), Muse Voice Transcribe (voice tickets), SAM 3.1 (screenshot
+  grounding), Muse Glimmer (triage router), Muse Spark Open (second-opinion
+  analyst on Baseten), Muse Code (consumes MCP fix packets). See
+  `docs/META_STACK.md` for the file-by-file mapping.
+- **Bonus aims:** Best Build on Open Weight Models (Glimmer router + Spark
+  Open on Baseten, both live with heuristic fallbacks), Best Agentic
+  Use-Case (autopilot, webhooks, night shift, chat tools, verified agent
+  loop), Best Creative Build (Image redesigns in the review flow).
 
 ## How the suite fits together
 
@@ -44,6 +64,10 @@ build, deploy, and test themselves on Cloud Run and post results back to the
 commit. Meet rooms bring customers into support calls through consent first
 guest invites: no recording, no stored data, just the session.
 
+Chat with Charie (Meta Muse Spark, tool-using, receipted) sits on top of all
+three loops, and the Marketplace connects Jira (auto-pull, proof sync-back),
+GitHub (one-click repos, builds, webhooks), and workspace context.
+
 The connective tissue: a drop-in web SDK plus a documented mobile contract for
 prod apps, team seats with scoped logins, API keys for event ingest, and an
 MCP server so any coding agent can pull findings and push fixes back for
@@ -57,7 +81,7 @@ verification.
 
 | Piece | Path | Job |
 |---|---|---|
-| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Google sign-in (Firebase Auth); one-click local owner for judges. |
+| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Google or email sign-in (Firebase Auth, reset emails included); one-click local owner for judges. |
 | Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. HTTP service in prod, same runs as the CLI. |
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
