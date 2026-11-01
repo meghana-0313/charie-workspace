@@ -67,5 +67,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/session|api/auth/config|api/github/webhook|api/cron/tick|_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|icon\\.svg|charie\\.js).*)"],
+  matcher: ["/((?!login|api/session|api/auth/config|api/github/webhook|api/cron/tick|__|_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|icon\\.svg|charie\\.js).*)"],
 };

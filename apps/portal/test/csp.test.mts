@@ -6,12 +6,13 @@ import assert from "node:assert/strict";
 
 const cfg = (await import("../next.config.mjs")).default as {
   headers: () => Promise<Array<{ source: string; headers: Array<{ key: string; value: string }> }>>;
+  rewrites: () => Promise<Array<{ source: string; destination: string }>>;
 };
 
 async function csp(): Promise<string> {
   const all = await cfg.headers();
-  const entry = all
-    .flatMap((h) => h.headers)
+  const portalWide = all.find((h) => h.source === "/:path*");
+  const entry = (portalWide?.headers ?? [])
     .find((h) => h.key.toLowerCase() === "content-security-policy");
   assert.ok(entry, "Content-Security-Policy header is set");
   return entry.value;
@@ -35,5 +36,11 @@ describe("content security policy", () => {
     const v = await csp();
     assert.match(v, /default-src 'self'/);
     assert.match(v, /frame-ancestors 'none'/);
+  });
+  it("serves the Firebase auth handler on the portal origin", async () => {
+    const rw = await cfg.rewrites();
+    const auth = rw.find((r) => r.source.startsWith("/__/auth"));
+    assert.ok(auth, "a /__/auth rewrite exists");
+    assert.match(auth.destination, /firebaseapp\.com\/__\/auth\//);
   });
 });

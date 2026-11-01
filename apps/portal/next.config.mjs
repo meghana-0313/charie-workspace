@@ -19,8 +19,28 @@ const csp = [
 const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  async rewrites() {
+    return [
+      // Serve the Firebase Auth handler from the portal's own origin (the
+      // config route reports this host as authDomain). Browsers that block
+      // third-party storage otherwise lose the sign-in result on return and
+      // Firebase reports auth/internal-error.
+      {
+        source: "/__/auth/:path*",
+        destination: "https://project-8b9ab843-d0d6-4ea4-a11.firebaseapp.com/__/auth/:path*",
+      },
+    ];
+  },
   async headers() {
     return [
+      {
+        // The auth handler is Firebase's own page; our portal CSP would
+        // block its scripts, so it gets a permissive policy instead.
+        source: "/__/auth/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:" },
+        ],
+      },
       {
         source: "/:path*",
         headers: [
