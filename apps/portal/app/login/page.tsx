@@ -27,21 +27,31 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [cfgFailed, setCfgFailed] = useState(false);
+
+  function loadCfg() {
+    setCfgFailed(false);
+    fetch("/api/auth/config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setCfg(j as Config))
+      .catch(() => {
+        setCfgFailed(true);
+        setError("Could not load sign-in options. Check your connection, then retry.");
+      });
+  }
+
   useEffect(() => {
     completeGoogleRedirect()
       .then((idToken) => {
         if (idToken) void exchange(idToken);
       })
-      .catch(() => {});
+      .catch((e) => firebaseError(e));
     fetch("/api/session", { cache: "no-store" })
       .then((r) => {
         if (r.ok) router.push("/");
       })
       .catch(() => {});
-    fetch("/api/auth/config", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => setCfg(j as Config))
-      .catch(() => setError("Could not reach the portal. Is it running?"));
+    loadCfg();
   }, [router]);
 
   async function exchange(idToken: string): Promise<boolean> {
@@ -104,7 +114,20 @@ export default function LoginPage() {
     try {
       await exchange(await signInWithGoogle());
     } catch (e) {
-      firebaseError(e);
+      const code = String((e as { code?: string })?.code ?? "");
+      if (code.includes("popup-blocked") || code.includes("internal-error") || code.includes("cancelled-popup-request")) {
+        // Popup sign-in fails outright in some browsers; fall back to the
+        // full-page redirect flow instead of dead-ending the user.
+        setInfo("Popup sign-in did not work here. Redirecting to Google instead.");
+        try {
+          await signInWithGoogleRedirect();
+          return;
+        } catch (e2) {
+          firebaseError(e2);
+        }
+      } else {
+        firebaseError(e);
+      }
     }
     setBusy(null);
   }
@@ -203,6 +226,11 @@ export default function LoginPage() {
           {cfg?.devLogin && (
             <button className="secondary" onClick={local} disabled={busy !== null}>
               {busy === "local" ? "Signing in…" : "Continue as local owner (dev only)"}
+            </button>
+          )}
+          {cfgFailed && (
+            <button type="button" className="ghost sm" onClick={loadCfg} disabled={busy !== null}>
+              Retry loading sign-in
             </button>
           )}
           {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}

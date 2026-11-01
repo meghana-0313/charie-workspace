@@ -1,11 +1,15 @@
 /** @type {import('next').NextConfig} */
+// Firebase Auth in the browser needs its handler iframe (frame-src) and its
+// REST endpoints (connect-src); without them sign-in fails with
+// auth/internal-error. Everything else stays same-origin only.
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "media-src 'self' blob: data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+  "frame-src 'self' https://*.firebaseapp.com",
   "font-src 'self' data:",
   "frame-ancestors 'none'",
   "base-uri 'self'",

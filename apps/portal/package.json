@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3102",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/session.test.mts"
+    "test": "node --test test/csp.test.mts test/session.test.mts"
   },
   "dependencies": {
     "firebase": "^13.1.0",
