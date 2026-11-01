@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CharieMark } from "@/components/mark";
-import { sendReset, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/firebase-client";
+import { completeGoogleRedirect, sendReset, signInWithEmail, signInWithGoogle, signInWithGoogleRedirect, signUpWithEmail } from "@/lib/firebase-client";
 
 interface Config {
   configured: boolean;
@@ -28,6 +28,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
+    completeGoogleRedirect()
+      .then((idToken) => {
+        if (idToken) void exchange(idToken);
+      })
+      .catch(() => {});
     fetch("/api/session", { cache: "no-store" })
       .then((r) => {
         if (r.ok) router.push("/");
@@ -70,8 +75,23 @@ export default function LoginPage() {
       setError("That email address looks wrong.");
     } else if ((e as Error)?.message === "auth-not-configured") {
       setSetupNeeded(true);
+    } else if (code.includes("popup-blocked") || code.includes("popup-closed") || code.includes("cancelled-popup-request")) {
+      setError(`Popup sign-in failed (${code || "blocked"}). Use the redirect button below instead.`);
     } else {
-      setError("Sign-in failed. Try again.");
+      setError(`Sign-in failed${code ? ` (${code})` : ""}. Try again or use redirect.`);
+    }
+  }
+
+  async function googleRedirect() {
+    if (busy) return;
+    setBusy("google");
+    setError("");
+    setInfo("");
+    try {
+      await signInWithGoogleRedirect();
+    } catch (e) {
+      firebaseError(e);
+      setBusy(null);
     }
   }
 
@@ -147,6 +167,9 @@ export default function LoginPage() {
         <div className="stack" style={{ marginTop: 14 }}>
           <button onClick={google} disabled={busy !== null || cfg === null}>
             {busy === "google" ? "Waiting for Google…" : "Sign in with Google"}
+          </button>
+          <button className="ghost sm" onClick={googleRedirect} disabled={busy !== null || cfg === null}>
+            Popup blocked? Sign in with Google (redirect)
           </button>
           <div className="section-label">Or use email</div>
           {mode === "reset" ? (

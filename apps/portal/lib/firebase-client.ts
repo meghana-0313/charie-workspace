@@ -7,10 +7,12 @@ import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from "firebase/auth";
 
@@ -36,6 +38,20 @@ async function firebaseApp(): Promise<FirebaseApp> {
 export async function signInWithGoogle(): Promise<string> {
   const a = await firebaseApp();
   const cred = await signInWithPopup(getAuth(a), new GoogleAuthProvider());
+  return cred.user.getIdToken();
+}
+
+/** Google redirect sign-in (fallback when the popup is blocked). */
+export async function signInWithGoogleRedirect(): Promise<void> {
+  const a = await firebaseApp();
+  await signInWithRedirect(getAuth(a), new GoogleAuthProvider());
+}
+
+/** After a redirect back: the ID token, or null when no redirect happened. */
+export async function completeGoogleRedirect(): Promise<string | null> {
+  const a = await firebaseApp();
+  const cred = await getRedirectResult(getAuth(a));
+  if (!cred) return null;
   return cred.user.getIdToken();
 }
 
