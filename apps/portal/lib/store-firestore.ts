@@ -202,6 +202,9 @@ export const firestoreStore = {
     const d = await firestore().collection("meet_rooms").doc(id).get();
     return d.exists ? (d.data() as MeetRoom) : null;
   },
+  async updateMeetRoom(id: string, patch: Partial<MeetRoom>): Promise<void> {
+    await firestore().collection("meet_rooms").doc(id).update(clean({ ...patch, updatedAt: now() })).catch(() => {});
+  },
   async createMeetRoom(input: { title: string; createdBy: string; uid?: string }): Promise<MeetRoom> {
     const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };
     await firestore().collection("meet_rooms").doc(room.id).set(clean({ ...room }));

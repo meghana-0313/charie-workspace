@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CharieMark } from "./mark";
 import { MeetRoom } from "./meet";
 
@@ -15,6 +15,15 @@ export function GuestLobby({ roomId, roomTitle, token }: { roomId: string; roomT
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [checkedIn, setCheckedIn] = useState(false);
+  const [liveOn, setLiveOn] = useState(false);
+  const [transcribeOk, setTranscribeOk] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/meet/rooms/${roomId}/live?token=${encodeURIComponent(token)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setLiveOn((j as { enabled?: boolean }).enabled === true))
+      .catch(() => {});
+  }, [roomId, token]);
 
   async function join(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +47,7 @@ export function GuestLobby({ roomId, roomTitle, token }: { roomId: string; roomT
     return (
       <main className="content" style={{ maxWidth: 980 }}>
         <h1 className="page-title" style={{ marginBottom: 12 }}>{roomTitle}</h1>
-        <MeetRoom roomId={roomId} roomTitle={roomTitle} token={token} initialName={name.trim()} />
+        <MeetRoom roomId={roomId} roomTitle={roomTitle} token={token} initialName={name.trim()} transcribeOk={transcribeOk} />
       </main>
     );
   }
@@ -66,8 +75,14 @@ export function GuestLobby({ roomId, roomTitle, token }: { roomId: string; roomT
           />
           <label className="row small" style={{ fontWeight: 400, marginTop: 10 }}>
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-            I agree to this support call. I understand it is not recorded, transcribed, or stored.
+            I agree to this support call. I understand it is not recorded or stored{liveOn ? " (transcription below is optional)" : ", transcribed, or stored"}.
           </label>
+          {liveOn && (
+            <label className="row small" style={{ fontWeight: 400, marginTop: 6 }}>
+              <input type="checkbox" checked={transcribeOk} onChange={(e) => setTranscribeOk(e.target.checked)} />
+              Let Charie transcribe my mic for live notes. Transcript stays in call memory and is kept only if the team presses Save.
+            </label>
+          )}
           <div className="row" style={{ marginTop: 12 }}>
             <button disabled={busy || !name.trim() || !issue.trim() || !consent}>
               {busy ? "Checking in…" : "Join the call"}

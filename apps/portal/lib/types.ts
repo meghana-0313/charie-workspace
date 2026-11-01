@@ -246,6 +246,7 @@ export interface MeetRoom {
   uid?: string;
   title: string;
   createdBy: string;
+  liveNotes?: boolean; // opt-in: Charie joins with live transcription + notes
   seq: number; // last signal sequence number
   createdAt: string;
   updatedAt: string;
