@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signOutGoogle } from "@/lib/firebase-client";
+import { signOutFirebase } from "@/lib/firebase-client";
 
 /** Runs in <head> before paint so the theme never flashes. */
 export const themeInitScript = `(function(){try{var t=localStorage.getItem("charie-theme");if(!t&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.dataset.theme="light";}catch(e){}})();`;
@@ -50,7 +50,7 @@ export function LogoutButton() {
       className="side-link as-button"
       onClick={async () => {
         await fetch("/api/session", { method: "DELETE" }).catch(() => {});
-        await signOutGoogle().catch(() => {});
+        await signOutFirebase().catch(() => {});
         location.href = "/login";
       }}
     >

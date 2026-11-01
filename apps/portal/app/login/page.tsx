@@ -1,12 +1,12 @@
-// Standalone login: no sidebar, no app chrome. Google sign-in, email +
-// password (with reset emails), one-click local owner in file-store mode.
+// Standalone login: no sidebar, no app chrome. Email + password (with
+// reset emails), one-click local owner in file-store mode.
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CharieMark } from "@/components/mark";
-import { completeGoogleRedirect, sendReset, signInWithEmail, signInWithGoogle, signInWithGoogleRedirect, signUpWithEmail } from "@/lib/firebase-client";
+import { sendReset, signInWithEmail, signUpWithEmail } from "@/lib/firebase-client";
 
 interface Config {
   configured: boolean;
@@ -14,7 +14,7 @@ interface Config {
   setupUrl: string;
 }
 
-type Busy = "google" | "local" | "email" | "reset" | null;
+type Busy = "local" | "email" | "reset" | null;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,11 +41,6 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    completeGoogleRedirect()
-      .then((idToken) => {
-        if (idToken) void exchange(idToken);
-      })
-      .catch((e) => firebaseError(e));
     fetch("/api/session", { cache: "no-store" })
       .then((r) => {
         if (r.ok) router.push("/");
@@ -73,8 +68,6 @@ export default function LoginPage() {
     const code = String((e as { code?: string })?.code ?? "");
     if (code.includes("configuration-not-found") || code.includes("operation-not-allowed")) {
       setSetupNeeded(true);
-    } else if (code.includes("popup-closed") || code.includes("cancelled")) {
-      setError("Popup closed before sign-in finished. Try again.");
     } else if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
       setError("Wrong email or password.");
     } else if (code.includes("email-already-in-use")) {
@@ -85,51 +78,9 @@ export default function LoginPage() {
       setError("That email address looks wrong.");
     } else if ((e as Error)?.message === "auth-not-configured") {
       setSetupNeeded(true);
-    } else if (code.includes("popup-blocked") || code.includes("popup-closed") || code.includes("cancelled-popup-request")) {
-      setError(`Popup sign-in failed (${code || "blocked"}). Use the redirect button below instead.`);
     } else {
-      setError(`Sign-in failed${code ? ` (${code})` : ""}. Try again or use redirect.`);
+      setError(`Sign-in failed${code ? ` (${code})` : ""}. Try again.`);
     }
-  }
-
-  async function googleRedirect() {
-    if (busy) return;
-    setBusy("google");
-    setError("");
-    setInfo("");
-    try {
-      await signInWithGoogleRedirect();
-    } catch (e) {
-      firebaseError(e);
-      setBusy(null);
-    }
-  }
-
-  async function google() {
-    if (busy) return;
-    setBusy("google");
-    setError("");
-    setInfo("");
-    setSetupNeeded(false);
-    try {
-      await exchange(await signInWithGoogle());
-    } catch (e) {
-      const code = String((e as { code?: string })?.code ?? "");
-      if (code.includes("popup-blocked") || code.includes("internal-error") || code.includes("cancelled-popup-request")) {
-        // Popup sign-in fails outright in some browsers; fall back to the
-        // full-page redirect flow instead of dead-ending the user.
-        setInfo("Popup sign-in did not work here. Redirecting to Google instead.");
-        try {
-          await signInWithGoogleRedirect();
-          return;
-        } catch (e2) {
-          firebaseError(e2);
-        }
-      } else {
-        firebaseError(e);
-      }
-    }
-    setBusy(null);
   }
 
   async function emailAuth(e: React.FormEvent) {
@@ -188,13 +139,6 @@ export default function LoginPage() {
         </div>
         <p className="muted small">Autonomous engineering intelligence. Sign in to reach your workspace.</p>
         <div className="stack" style={{ marginTop: 14 }}>
-          <button onClick={google} disabled={busy !== null || cfg === null}>
-            {busy === "google" ? "Waiting for Google…" : "Sign in with Google"}
-          </button>
-          <button className="ghost sm" onClick={googleRedirect} disabled={busy !== null || cfg === null}>
-            Popup blocked? Sign in with Google (redirect)
-          </button>
-          <div className="section-label">Or use email</div>
           {mode === "reset" ? (
             <form onSubmit={reset}>
               <label htmlFor="login-email">Email</label>
