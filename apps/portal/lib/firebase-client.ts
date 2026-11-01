@@ -4,7 +4,15 @@
 "use client";
 
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
 
 export interface WebConfig {
   apiKey: string;
@@ -29,6 +37,26 @@ export async function signInWithGoogle(): Promise<string> {
   const a = await firebaseApp();
   const cred = await signInWithPopup(getAuth(a), new GoogleAuthProvider());
   return cred.user.getIdToken();
+}
+
+/** Email + password sign-in. Resolves with the Firebase ID token. */
+export async function signInWithEmail(email: string, password: string): Promise<string> {
+  const a = await firebaseApp();
+  const cred = await signInWithEmailAndPassword(getAuth(a), email, password);
+  return cred.user.getIdToken();
+}
+
+/** Create an email + password account. Resolves with the Firebase ID token. */
+export async function signUpWithEmail(email: string, password: string): Promise<string> {
+  const a = await firebaseApp();
+  const cred = await createUserWithEmailAndPassword(getAuth(a), email, password);
+  return cred.user.getIdToken();
+}
+
+/** Send the Firebase password-reset email. */
+export async function sendReset(email: string): Promise<void> {
+  const a = await firebaseApp();
+  await sendPasswordResetEmail(getAuth(a), email);
 }
 
 export async function signOutGoogle(): Promise<void> {

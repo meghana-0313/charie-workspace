@@ -16,7 +16,7 @@ products:
 | Charie Guard | Runtime security and threat response | Threats, Fix tasks, Security tests |
 | Charie Ops | Production intelligence and reliability | Live signals, Night shift, Meet |
 
-Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google; ask the team for an invite if your account is new).
+Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google or email; ask the team for an invite if your account is new).
 
 ## Hackathon submission
 
@@ -81,7 +81,7 @@ verification.
 
 | Piece | Path | Job |
 |---|---|---|
-| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Google sign-in (Firebase Auth); one-click local owner for judges. |
+| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Google or email sign-in (Firebase Auth, reset emails included); one-click local owner for judges. |
 | Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. HTTP service in prod, same runs as the CLI. |
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
