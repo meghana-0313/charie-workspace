@@ -23,7 +23,7 @@ app = modal.App("charie-tts")
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("libsndfile1")
-    .pip_install("kokoro>=0.9.2", "soundfile>=0.12", "numpy")
+    .pip_install("fastapi[standard]", "kokoro>=0.9.2", "soundfile>=0.12", "numpy")
 )
 
 VOICE = "am_michael"  # warm conversational American male
