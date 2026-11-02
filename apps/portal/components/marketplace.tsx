@@ -5,6 +5,66 @@
 import { useState } from "react";
 import { Badge } from "./ui";
 
+function CopyBlock({ label, text }: { label: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div className="row">
+        <strong className="small">{label}</strong>
+        <button
+          className="secondary"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+            } catch {
+              /* clipboard blocked */
+            }
+          }}
+        >
+          {copied ? "Copied" : "Copy config"}
+        </button>
+      </div>
+      <pre className="small" style={{ overflowX: "auto", marginTop: 6 }}>{text}</pre>
+    </div>
+  );
+}
+
+/** MCP for coding agents: cloud endpoint (no clone needed) or local stdio.
+ *  Both expose the same tools; reads are scoped to the caller's account. */
+export function McpConfigCard({ portalUrl }: { portalUrl: string }) {
+  const cloud = JSON.stringify({
+    mcpServers: {
+      charie: {
+        url: `${portalUrl}/api/mcp`,
+        headers: { Authorization: "Bearer <YOUR_CHARIE_API_KEY>" },
+      },
+    },
+  }, null, 2);
+  const local = JSON.stringify({
+    mcpServers: {
+      charie: {
+        command: "npm",
+        args: ["--prefix", "services/mcp-server", "start"],
+        env: { CHARIE_REPORTS: "<repo>/services/agent-engine/reports" },
+      },
+    },
+  }, null, 2);
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-title">MCP for coding agents</div>
+      <p className="small muted">
+        Give your coding agent (Muse Code, Cursor, Codex) the evidence Charie collected: run lists,
+        findings, markdown fix packets, and verification proof. Paste either config into the agent MCP
+        settings. Cloud needs no local clone; mint an API key under <a href="/team">Team and access</a> and
+        replace the placeholder. Reads are scoped to your account.
+      </p>
+      <CopyBlock label="Cloud (hosted portal, recommended)" text={cloud} />
+      <CopyBlock label="Local (stdio, from a repo checkout)" text={local} />
+    </div>
+  );
+}
+
 export function JiraConnectForm() {
   const [domain, setDomain] = useState("");
   const [email, setEmail] = useState("");

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { identity, scopeUid } from "@/lib/who";
 import { getWorkOrder } from "@/lib/guardian";
 import { NightShiftButton, WorkOrderButtons } from "@/components/suite";
 import { Badge, PageHead } from "@/components/ui";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wo = await getWorkOrder(id);
+  const wo = await getWorkOrder(id, scopeUid(await identity()));
   if (!wo) notFound();
   return (
     <>

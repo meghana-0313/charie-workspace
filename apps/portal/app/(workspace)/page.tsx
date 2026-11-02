@@ -14,7 +14,7 @@ export default async function Dashboard() {
   const runs = await store.listRuns(8, myUid);
   const incidents = await store.listIncidents(myUid);
   const repos = await store.listRepos(myUid);
-  const sweeps = await listSweeps();
+  const sweeps = await listSweeps(myUid);
   const openTickets = tickets.filter((t) => t.status !== "closed" && t.status !== "verified").length;
   const openIncidents = incidents.filter((i) => i.status === "open").length;
   const lastSweep = sweeps.at(-1);

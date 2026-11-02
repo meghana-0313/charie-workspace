@@ -161,6 +161,45 @@ export function WorkOrderButtons({ id, status }: { id: string; status: string })
 }
 
 /** One-click proposal with a prebuilt plan (from an incident, cluster, or check). */
+/** Complaint to ticket: file the cluster as a ticket with its own evidence
+ *  room and an automatic investigation of the affected product URL. */
+export function ClusterTicketButton({ theme, samples, size, angryShare }: {
+  theme: string; samples: string[]; size: number; angryShare: number;
+}) {
+  const [url, setUrl] = useState("");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [ticketId, setTicketId] = useState("");
+  async function run() {
+    if (!url.trim() || state === "busy") return;
+    setState("busy");
+    const r = await post("/api/guardian/signals/ticket", {
+      theme, samples, size, angryShare, targetUrl: url.trim(),
+    });
+    if (r.ok && typeof r.data.id === "string") {
+      setTicketId(r.data.id);
+      setState("done");
+    } else setState("error");
+  }
+  if (state === "done") {
+    return <p className="small" style={{ marginTop: 8 }}>Ticket filed and investigating. <a href={`/tickets/${ticketId}`}>Open the ticket</a></p>;
+  }
+  return (
+    <span className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+      <input
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="Product URL where this happens"
+        aria-label="Product URL where this happens"
+        style={{ minWidth: 220 }}
+      />
+      <button className="secondary" disabled={state === "busy" || !url.trim()} onClick={run}>
+        {state === "busy" ? "Filing…" : "File as ticket"}
+      </button>
+      {state === "error" && <span className="small" style={{ color: "var(--danger)" }}>Filing failed. Check the URL and retry.</span>}
+    </span>
+  );
+}
+
 export function ProposeWorkOrderButton({ title, source, sourceRef, plan }: {
   title: string; source: string; sourceRef: string;
   plan: Array<{ kind: string; label: string; ref: string; targetUrl?: string; baselineRunId?: string; goal?: string }>;

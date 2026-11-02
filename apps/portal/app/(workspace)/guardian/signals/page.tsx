@@ -1,11 +1,12 @@
 import { listClusters } from "@/lib/guardian";
-import { ProposeWorkOrderButton, SeedSignalsButton, SignalsIngestForm } from "@/components/suite";
+import { identity, scopeUid } from "@/lib/who";
+import { ClusterTicketButton, ProposeWorkOrderButton, SeedSignalsButton, SignalsIngestForm } from "@/components/suite";
 import { Badge, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function SignalsPage() {
-  const { total, clusters } = await listClusters();
+  const { total, clusters } = await listClusters(scopeUid(await identity()));
   return (
     <>
       <PageHead
@@ -33,6 +34,7 @@ export default async function SignalsPage() {
                 <ul className="small muted">
                   {c.samples.map((s, i) => <li key={i}>“{s}”</li>)}
                 </ul>
+                <ClusterTicketButton theme={c.theme} samples={c.samples} size={c.size} angryShare={c.angryShare} />
                 <ProposeWorkOrderButton
                   title={`Address customer theme: ${c.theme}`}
                   source="signals"

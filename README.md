@@ -1,4 +1,4 @@
-# Meet CHARIE - Autonomous Engineering Intelligence
+# Meet CHARIE: Autonomous Engineering Intelligence
 
 [![Built with Muse Code](https://img.shields.io/badge/Built%20with-Muse%20Code-0668E1?logo=meta)](https://dev.meta.ai/lp/muse-code)
 
@@ -69,9 +69,14 @@ three loops, and the Marketplace connects Jira (auto-pull, proof sync-back),
 GitHub (one-click repos, builds, webhooks), and workspace context.
 
 The connective tissue: a drop-in web SDK plus a documented mobile contract for
-prod apps, team seats with scoped logins, API keys for event ingest, and an
-MCP server so any coding agent can pull findings and push fixes back for
-verification.
+prod apps, team seats with scoped logins, API keys for event ingest, and MCP
+for coding agents in two flavors: a cloud endpoint on the portal itself
+(`POST /api/mcp`, authorized with your ingest key, no local clone needed) and a
+local stdio server. The Integrations page generates copy-paste configs for
+both. Agents pull findings and fix packets scoped to your account and check
+verification proof before they call a fix done. Everything a user creates,
+from tickets to pentest reports, is saved per account and survives restarts:
+the engine keeps each account's Guardian data in its own partition.
 
 > A system that only produces insightful reports is another analysis tool.
 > A system that finds a problem, helps fix it, and independently verifies the
@@ -81,16 +86,16 @@ verification.
 
 | Piece | Path | Job |
 |---|---|---|
-| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Google or email sign-in (Firebase Auth, reset emails included); one-click local owner for judges. |
+| Portal (dashboard) | `apps/portal/` | The whole workspace: tickets, rooms, evidence, approvals, scans, meetings. Next.js. Email and password sign-in (Firebase Auth, password reset emails included); one-click local owner for judges. |
 | Agent engine | `services/agent-engine/` | The autonomous loop: drives the app with Playwright, simulates a naive user, analyzes evidence, writes reports, verifies fixes. HTTP service in prod, same runs as the CLI. |
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
-| MCP server | `services/mcp-server/` | Lets any coding agent (Muse Code and others) pull findings with repro steps and push fixes back for verification. |
+| MCP server | `services/mcp-server/` + portal `POST /api/mcp` | Lets any coding agent (Muse Code and others) pull findings with repro steps and fix packets and check verification proof. Local stdio from a checkout, or cloud over HTTP with an ingest key; the Integrations page generates both configs. |
 | Charie Guard | `apps/portal/app/guardian/` + engine `guardian.ts`, `workorders.ts`, `nightshift.ts`, `signals.ts`, `pentest.ts`, `sweep.ts` | Post-deploy suite: threats, fix tasks, night shift, live signals, security tests, continuous sweeps, push alerts. |
-| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Guest invite links with support-ticket check-in, never recorded. Zoom bot via Recall.ai stays as the external fallback. |
+| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Join with a live camera preview, start muted, camera off, or audio only; stuck peers time out with a remove option. Guest invite links with consent first support-ticket check-in, never recorded; rooms belong to the account that created them. Charie can join with opt-in live notes and speaker aware summaries. Zoom bot via Recall.ai stays as the external fallback. |
 | Production monitoring | Threats page + engine `logwatch.ts` + `/api/guardian/events` + `public/charie.js` | Log watch reads your GCP project's errors itself; prod web apps report via the drop-in SDK; mobile apps follow `docs/MOBILE_SDK.md`. App keys on the Team page. |
 | UX, accessibility, first run | `apps/portal/app/ux|a11y|firstrun/` + engine `redesign.ts`, `a11y.ts`, `firstrun.ts` | UI analysis with generated screen redesigns, 8 accessibility checks with grades, 6 first-time-user checks with scores. |
 | Connected repos | `apps/portal/app/repos/` + `lib/repos.ts`, `lib/github.ts`, `lib/gcp.ts` | GitHub native integration: connect a repo, Cloud Build compiles it, Cloud Run hosts it, a ticket files itself, investigation runs, commit status posts back. |
-| Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs, meet rooms, signals. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. |
+| Data layer | Firestore / JSON files | Tickets, rooms, messages, approvals, runs, meet rooms, signals. Firestore in prod, JSON files in `apps/portal/.data` locally. Same interface, selected by `PORTAL_STORE`. Every record is scoped to the owning account; engine Guardian reports live in per-account partitions (`_guardian/acct/<uid>`). |
 
 Typical flow: file a ticket in the portal, press Run investigation, watch the engine
 drive the demo store, review 6 seeded findings with screenshots and repro steps,
@@ -110,7 +115,7 @@ it is the data/auth layer inside that same project:
 | Hosting (all 3 apps) | Cloud Run | `charie-portal`, `charie-engine`, `charie-demo`. Chosen over Firebase Hosting because the engine needs Playwright/Chromium. |
 | Database | Cloud Firestore | Tickets, rooms, messages, approvals, runs, meet rooms. See `docs/FIRESTORE_SCHEMA.md`. |
 | File blobs | Cloud Storage | Voice notes, report screenshots, traces. Bucket name keeps the historic `-ghostqa` suffix (internal only). |
-| Secrets | Secret Manager | Meta/Baseten keys, engine token, portal passphrase. No `.env` file exists anywhere; the backend reads secrets at runtime. |
+| Secrets | Secret Manager | Meta/Baseten keys, engine token, session key, Firebase web config. No `.env` file exists anywhere; the backend reads secrets at runtime. |
 | Images/builds | Artifact Registry + Cloud Build | Container images in the `charie` repo, built from `deploy/Dockerfile.*`. CI deploys on every push to dev. |
 
 Local runs need none of this: file store, no login gate, heuristic analysis.

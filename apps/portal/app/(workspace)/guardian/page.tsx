@@ -13,7 +13,7 @@ export default async function GuardianPage() {
   const myUid = scopeUid(await identity());
   const incidents = await store.listIncidents(myUid);
   const events = await store.listRecentEvents(1, myUid);
-  const sweeps = await listSweeps();
+  const sweeps = await listSweeps(myUid);
   let streak = 0;
   for (let i = sweeps.length - 1; i >= 0; i--) {
     if (sweeps[i].pass) streak++;
@@ -23,7 +23,7 @@ export default async function GuardianPage() {
   const open = incidents.filter((i) => i.status === "open").length;
 
   const prodProject = await store.getSetting("prodProjectId").catch(() => null);
-  const logReport = await lastLogWatch().catch(() => null);
+  const logReport = await lastLogWatch(myUid).catch(() => null);
   return (
     <>
       <PageHead
