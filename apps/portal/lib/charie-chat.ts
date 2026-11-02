@@ -161,6 +161,7 @@ export interface ChatAnswer {
 export async function answerMessage(opts: {
   history: LoopTurn[];
   uid: string | undefined;
+  extraNotes?: string[];
 }): Promise<ChatAnswer> {
   const actions: string[] = [];
   let model = "heuristic";
@@ -176,7 +177,7 @@ export async function answerMessage(opts: {
       schedules: schedules.map((s) => `${s.kind}/${s.preset}/${s.enabled ? "on" : "off"}`),
       repos: repos.map((r) => `${r.owner}/${r.repo}:${r.status}`),
     };
-    const contextNotes = docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`);
+    const contextNotes = [...docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`), ...(opts.extraNotes ?? [])];
     const convo: LoopTurn[] = [...opts.history];
     for (let i = 0; i < 5; i++) {
       const turn = await engineTurn(convo, snapshot, contextNotes);

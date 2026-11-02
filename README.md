@@ -44,19 +44,23 @@ proves every step instead of just reporting it:
 
 ## Which credits does Charie use?
 
-- **Chat and Meet conversations: Meta Model API credits.** Both go through
-  the same portal chat loop to the engine, which calls Muse Spark
-  (`muse-spark-1.3`) at `https://api.meta.ai/v1` when `META_API_KEY`
-  resolves (env first, then GCP Secret Manager). With no key, both fall
-  back to the free built-in heuristic and say so (`analysisSource: heuristic`).
-- **Baseten credits: second opinions only.** Muse Spark Open
-  (`meta-models/muse-spark-open-1026`) on Baseten re-grades investigation
-  findings. It never powers chat or calls.
-- **Modal: not used.** There is no Modal code path in this repo; it is only
-  mentioned in planning docs as a backup that was never wired in.
-- **Meet voice itself costs nothing extra:** speech recognition and speech
-  synthesis run in the browser. Chat voice notes transcribe through Meta
-  Muse Voice (`muse-voice-transcribe-1.0`).
+- **Chat and Meet conversations: Baseten credits first.** Both go through
+  the same chat loop to the engine, which calls Muse Spark Open
+  (`meta-models/muse-spark-open-1026`) at `https://inference.baseten.co/v1`
+  when `BASETEN_API_KEY` resolves (env first, then GCP Secret Manager).
+  That is your Baseten credit balance at work, and the reply model field
+  says `(baseten)` so you can see it. If Baseten is down it falls back to
+  Meta Muse Spark (`muse-spark-1.3`, Meta credits), then to the free
+  built-in heuristic, labelled `heuristic`. Baseten also re-grades
+  investigation findings as a second opinion.
+- **Meet human voice: Modal credits.** Charie speaks with Kokoro-82M on
+  Modal (warm male voice `am_michael`, see `services/modal-tts/`). Deploy
+  it with `modal deploy services/modal-tts/modal_app.py` and set
+  `CHARIE_TTS_URL` on the portal. Until then she uses the best local male
+  browser voice. Speech recognition still runs free in the browser.
+- Speech is written to be spoken: short sentences, contractions, and a
+  speakable-text pass strips markdown, links, and ticket ids before any
+  voice reads a reply aloud.
 
 Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google or email; ask the team for an invite if your account is new).
 

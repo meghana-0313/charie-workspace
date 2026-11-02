@@ -19,6 +19,19 @@ export function charieAskLine(text: string): string {
   return /\bcharie\b/i.test(t) ? t : `Charie, ${t}`;
 }
 
+/** Strip anything a voice should never read aloud (markdown, links, ids). */
+export function speakableText(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "the link in the chat")
+    .replace(/\/(tickets|repos|guardian)\/[A-Za-z0-9_-]+/g, "the page in the workspace")
+    .replace(/\btkt_[a-z0-9]+\b/gi, "that ticket")
+    .replace(/[`#>*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 300);
+}
+
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

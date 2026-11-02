@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
 import { Icon } from "./icons";
-import { charieAskLine } from "@/lib/room-status";
+import { charieAskLine, speakableText } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -732,6 +732,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   const nameRef = useRef(localName);
   nameRef.current = localName;
   const spokenRef = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const voiceRef = useRef(false);
   voiceRef.current = voice;
   const onAgentChangeRef = useRef(onAgentChange);
@@ -781,16 +782,47 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     spokenRef.current = agentLines.length;
     const latest = fresh[fresh.length - 1];
     if (!latest) return;
-    try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(latest.text.slice(0, 300));
-      u.onstart = () => onAgentSpeakRef.current?.(true);
-      u.onend = () => onAgentSpeakRef.current?.(false);
-      u.onerror = () => onAgentSpeakRef.current?.(false);
-      window.speechSynthesis.speak(u);
-    } catch {
-      /* speech unavailable */
-    }
+    const text = speakableText(latest.text);
+    if (!text) return;
+    let cancelled = false;
+    const stopSpeaking = () => onAgentSpeakRef.current?.(false);
+    const browserFallback = () => {
+      if (cancelled) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis.getVoices();
+        u.voice = voices.find((v) => /male|david|daniel|george|michael/i.test(v.name) && v.lang.startsWith("en")) ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
+        u.pitch = 0.92;
+        u.rate = 1.02;
+        u.onstart = () => onAgentSpeakRef.current?.(true);
+        u.onend = stopSpeaking;
+        u.onerror = stopSpeaking;
+        window.speechSynthesis.speak(u);
+      } catch { /* speech unavailable */ }
+    };
+    (async () => {
+      try {
+        audioRef.current?.pause();
+        try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+        const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) return browserFallback();
+        const blob = await res.blob();
+        if (cancelled) return;
+        const audio = new Audio(URL.createObjectURL(blob));
+        audioRef.current = audio;
+        audio.onplay = () => onAgentSpeakRef.current?.(true);
+        audio.onended = stopSpeaking;
+        audio.onerror = browserFallback;
+        await audio.play();
+      } catch {
+        browserFallback();
+      }
+    })();
+    return () => { cancelled = true; };
   }, [lines]);
 
   useEffect(() => {
@@ -956,7 +988,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
             {canManage && <button type="button" className={agent.enabled ? "danger-ghost sm" : "sm"} disabled={busy !== ""} onClick={toggleAgent}>{busy === "agent" ? "…" : agent.enabled ? "Remove Charie" : "Bring Charie in"}</button>}
           </div>
           <p className="small muted">Charie listens, thinks out loud below, and proposes actions. Nothing runs until a human approves a card.</p>
-          <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } onAgentSpeakRef.current?.(false); } }} label="Charie speaks aloud" />
+          <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } audioRef.current?.pause(); onAgentSpeakRef.current?.(false); } }} label="Charie speaks aloud" />
           <AskCharie roomId={roomId} qp={qp} name={localName} />
           {pending.map((a) => (
             <div key={a.id} className="consent-card">

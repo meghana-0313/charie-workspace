@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { charieAskLine, charieShouldReply, meetRoomStatus } from "../lib/room-status.ts";
+import { charieAskLine, charieShouldReply, meetRoomStatus, speakableText } from "../lib/room-status.ts";
 
 test("room without endedAt is Open", () => {
   assert.equal(meetRoomStatus({}), "Open");
@@ -27,4 +27,9 @@ test("typed Ask Charie lines always address Charie (same path as a chat message)
   assert.equal(charieAskLine("Charie, check the logs"), "Charie, check the logs");
   assert.equal(charieAskLine("  "), "");
   assert.equal(charieShouldReply(charieAskLine("summarise the call")), true);
+});
+
+test("speakableText strips markdown, links and ids a voice must not read aloud", () => {
+  assert.equal(speakableText("See **this** https://x.test/a for tkt_abc123"), "See this the link in the chat for that ticket");
+  assert.equal(speakableText("Open /tickets/tkt_abc123 now"), "Open the page in the workspace now");
 });

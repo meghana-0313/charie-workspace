@@ -31,7 +31,10 @@ async function engineReply(roomId: string, line: LiveLine): Promise<string | nul
     content: `${l.speaker}: ${l.text}`,
   }));
   try {
-    const ans = await answerMessage({ history, uid: undefined });
+    const ans = await answerMessage({
+      history, uid: undefined,
+      extraNotes: ["You are speaking aloud in a live video call as Charie, a warm male teammate. Reply in one or two short spoken sentences. Use contractions and plain words. No markdown, no lists, no links, no ticket ids or URLs read aloud."],
+    });
     if (!ans.text || ans.model === "heuristic" && /engine is unreachable/i.test(ans.text)) return null;
     return ans.text.trim().slice(0, 600) || null;
   } catch {

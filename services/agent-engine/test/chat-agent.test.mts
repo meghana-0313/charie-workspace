@@ -57,4 +57,17 @@ const f = await chatTurn({ history: [u("list my tickets")], fetchImpl: boom as t
 ok(f.kind === "tool" && f.model === "heuristic", "Spark failure falls back to heuristic");
 delete process.env.META_API_KEY;
 
+
+// --- Baseten Muse Spark Open powers chat when its key is present ---
+delete process.env.META_API_KEY;
+process.env.BASETEN_API_KEY = "fake-baseten-key";
+_clearSecretCache();
+let seenUrl = "";
+const basetenReply = async (url: unknown) => { seenUrl = String(url); return new Response(JSON.stringify({ choices: [{ message: { content: '{"text": "On it, checking now."}' } }] }), { status: 200 }); };
+const b = await chatTurn({ history: [u("hello Charie")], fetchImpl: basetenReply as typeof fetch });
+ok(b.kind === "text" && b.model.includes("baseten"), "Baseten key means Baseten Muse Spark Open drives chat");
+ok(seenUrl.includes("inference.baseten.co"), "chat went to the Baseten endpoint, not Meta");
+delete process.env.BASETEN_API_KEY;
+_clearSecretCache();
+
 console.log(`chat-agent: ${n} assertions passed`);

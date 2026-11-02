@@ -5,9 +5,13 @@
 //   output: { kind: "tool", tool, args } | { kind: "text", text }
 // Tools run in the portal, never here: list_tickets, ticket_status,
 // file_ticket, start_scan, get_findings, list_schedules, repo_status, help.
-// Without META_API_KEY the heuristic router answers from keywords.
+// Provider order for chat turns: Baseten Muse Spark Open when
+// BASETEN_API_KEY resolves (user Baseten credits), then Meta Muse Spark
+// (META_API_KEY), then the free heuristic router. The model field always
+// names the provider that actually answered.
 
 import { chat, hasMetaKey, modelId } from "./meta-client.js";
+import { hasBasetenKey, sparkOpenChat, sparkOpenModelId } from "./baseten.js";
 import type { FetchImpl } from "./baseten.js";
 
 export type ChatRole = "user" | "assistant" | "tool";
@@ -68,7 +72,8 @@ Rules:
 - Only cite ids, URLs, statuses, and numbers that appeared in tool results or the snapshot. Never invent them.
 - If the request needs a target URL you do not have, ask for it in a text reply.
 - Approvals, dispatches, verifies, pushes, and external writes happen on the ticket page by a human: link there, never claim you did them.
-- Keep text replies short. Link tickets as /tickets/<id>, repos as /repos/<id>.`;
+- Keep text replies short. Link tickets as /tickets/<id>, repos as /repos/<id>.
+- Sound like a real teammate, not a report: natural contractions, plain words, no corporate filler. When the snapshot says the surface is a live call, answer in one or two short spoken sentences with no markdown, lists, links, or ids read aloud.`;
 
 function snapshotBlock(snapshot: unknown): string {
   if (!snapshot) return "Snapshot: (empty)";
@@ -178,7 +183,7 @@ export interface ChatTurnInput {
 }
 
 export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
-  if (!hasMetaKey()) return heuristicTurn(input.history);
+  if (!hasBasetenKey() && !hasMetaKey()) return heuristicTurn(input.history);
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: `${SYSTEM}\n\n${snapshotBlock(input.snapshot)}${contextBlock(input.contextNotes)}` },
   ];
@@ -187,6 +192,18 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     else if (t.role === "tool") messages.push({ role: "user", content: `TOOL RESULT: ${t.content}` });
     else messages.push({ role: "user", content: t.content });
   }
+  // Baseten first: Muse Spark Open on the user's Baseten credits.
+  if (hasBasetenKey()) {
+    try {
+      const out = await sparkOpenChat(messages, { maxTokens: 800, temperature: 0.4, fetchImpl: input.fetchImpl });
+      const parsed = parseTurnReply(out);
+      const label = `${sparkOpenModelId()} (baseten)`;
+      return { ...parsed, model: parsed.model === "spark" ? label : parsed.model };
+    } catch (e) {
+      console.warn(`[chat-agent] Baseten Muse Spark Open unavailable, trying Meta: ${(e as Error).message}`);
+    }
+  }
+  if (!hasMetaKey()) return heuristicTurn(input.history);
   try {
     const out = await chat(messages, { model: modelId("spark"), maxTokens: 800, fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
