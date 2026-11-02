@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
+import { Icon } from "./icons";
+import { charieAskLine } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -77,10 +79,10 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [error, setError] = useState("");
   const [muted, setMuted] = useState(false);
-  const [camOff, setCamOff] = useState(false);
+  const [camOff, setCamOff] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [startMuted, setStartMuted] = useState(false);
-  const [startCamOff, setStartCamOff] = useState(false);
+  const [startCamOff, setStartCamOff] = useState(true);
   const [audioOnly, setAudioOnly] = useState(false);
   const [previewErr, setPreviewErr] = useState("");
   const localVideo = useRef<HTMLVideoElement>(null);
@@ -245,7 +247,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: !audioOnly, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: !audioOnly && !startCamOff, audio: true });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -268,7 +270,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         streamRef.current = null;
       }
     };
-  }, [joined, audioOnly]);
+  }, [joined, audioOnly, startCamOff]);
 
   // Pre-join toggles act on the preview immediately: checking "Camera off"
   // stops the preview track (camera light out) instead of only applying at
@@ -457,26 +459,17 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     return (
       <div className="card">
         <div className="card-title">Join “{roomTitle}”</div>
-        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Check how you look and sound, then join. Camera and mic stay between peers; the portal only exchanges connection setup.</p>
+        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Camera starts off. Turn it on only if you want to be seen.</p>
         {!audioOnly && !startCamOff && <video ref={previewVideo} autoPlay playsInline muted className="meet-preview" aria-label="Camera preview" />}
-        {startCamOff && !audioOnly && <div className="meet-preview meet-wait">Camera is off. Nobody can see you; uncheck Camera off to preview again.</div>}
+        {startCamOff && !audioOnly && <div className="meet-preview meet-wait">Camera is off. Nobody can see you. Switch Camera off to preview.</div>}
         <div className="row">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 160 }} />
           <button onClick={join}>{audioOnly ? "Join audio only" : "Join call"}</button>
         </div>
-        <div className="row small" style={{ marginTop: 8 }}>
-          <label className="row" style={{ fontWeight: 400 }}>
-            <input type="checkbox" checked={startMuted} onChange={(e) => setStartMuted(e.target.checked)} />
-            Start muted
-          </label>
-          <label className="row" style={{ fontWeight: 400 }}>
-            <input type="checkbox" checked={startCamOff} disabled={audioOnly} onChange={(e) => setStartCamOff(e.target.checked)} />
-            Camera off
-          </label>
-          <label className="row" style={{ fontWeight: 400 }}>
-            <input type="checkbox" checked={audioOnly} onChange={(e) => setAudioOnly(e.target.checked)} />
-            Audio only
-          </label>
+        <div className="stack" style={{ marginTop: 8 }}>
+          <MeetSwitch checked={startMuted} onChange={setStartMuted} label="Start muted" />
+          <MeetSwitch checked={startCamOff} onChange={setStartCamOff} label="Camera off" disabled={audioOnly} />
+          <MeetSwitch checked={audioOnly} onChange={(v) => { setAudioOnly(v); if (v) setStartCamOff(true); }} label="Audio only" />
         </div>
         {previewErr && <p className="small" style={{ color: "var(--danger)" }}>{previewErr}</p>}
         {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
@@ -513,12 +506,12 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           )}
         </div>
         <div className="meet-controls">
-          <button onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>
-          <button onClick={toggleCam}>{camOff ? "Camera on" : "Camera off"}</button>
-          <button onClick={shareScreen} disabled={sharing}>{sharing ? "Sharing…" : "Share screen"}</button>
+          <button type="button" className={`meet-ctrl${muted ? " off" : ""}`} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={toggleMute}><span className="meet-ctrl-dot"><Icon name={muted ? "mic-off" : "mic"} size={20} /></span>{muted ? "Unmute" : "Mute"}</button>
+          <button type="button" className={`meet-ctrl${camOff ? " off" : ""}`} aria-pressed={camOff} aria-label={camOff ? "Turn camera on" : "Turn camera off"} title={camOff ? "Camera on" : "Camera off"} onClick={toggleCam}><span className="meet-ctrl-dot"><Icon name={camOff ? "video-off" : "video"} size={20} /></span>{camOff ? "Camera on" : "Camera off"}</button>
+          <button type="button" className="meet-ctrl" aria-label="Share screen" title="Share screen" onClick={shareScreen} disabled={sharing}><span className="meet-ctrl-dot"><Icon name="screen" size={20} /></span>{sharing ? "Sharing" : "Share"}</button>
           {!token && <InviteButton roomId={roomId} />}
-          <button className="danger-ghost" onClick={leave}>Leave call</button>
-          {!token && <button className="danger" onClick={endForEveryone} disabled={ending}>{ending ? "Ending…" : "End for everyone"}</button>}
+          <button type="button" className="meet-ctrl leave" aria-label="Leave call" title="Leave call" onClick={leave}><span className="meet-ctrl-dot"><Icon name="phone" size={20} /></span>Leave</button>
+          {!token && <button type="button" className="danger" onClick={endForEveryone} disabled={ending}>{ending ? "Ending…" : "End for everyone"}</button>}
         </div>
         {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
         <p className="muted small">{tiles.length === 0 ? (token ? "You are in. Waiting for the host to join." : "Alone here. Invite a guest with the button above, or send the room link to your team.") : `${tiles.length} peer(s) connected.`}</p>
@@ -677,6 +670,46 @@ interface AgentStateView {
   actions: AgentActionView[];
 }
 
+
+/** Smooth accessible toggle used for every Meet option. */
+export function MeetSwitch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <span className="switch-row-label">
+      <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} className={`switch${checked ? " on" : ""}`} onClick={() => onChange(!checked)}><i /></button>
+      <span className="small">{label}</span>
+    </span>
+  );
+}
+
+/** Type to Charie in a call, exactly like sending her a chat message. */
+export function AskCharie({ roomId, qp, name }: { roomId: string; qp: string; name: string }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    const line = charieAskLine(text);
+    if (!line || busy) return;
+    setBusy(true); setErr("");
+    const res = await fetch(`/api/meet/rooms/${roomId}/live${qp}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: line, name }),
+    }).catch(() => null);
+    setBusy(false);
+    if (res?.ok) setText("");
+    else setErr("Charie did not get that. Bring Charie in first, then ask again.");
+  }
+  return (
+    <form onSubmit={send} style={{ marginTop: 8 }}>
+      <div className="row" style={{ flexWrap: "nowrap" }}>
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask Charie anything…" aria-label="Ask Charie" style={{ flex: 1, minWidth: 0 }} />
+        <button type="submit" className="sm" disabled={busy || !text.trim()}>{busy ? "Asking…" : "Ask"}</button>
+      </div>
+      {err && <p className="small" style={{ color: "var(--danger)" }}>{err}</p>}
+    </form>
+  );
+}
+
 /** War-room side panel: Transcript | Charie (thinking + consent cards) |
  *  Notes & Actions. Charie only acts after a human approves a card. */
 export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare }: {
@@ -691,7 +724,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   const [summary, setSummary] = useState("");
   const [model, setModel] = useState("");
   const [agent, setAgent] = useState<AgentStateView>({ enabled: false, thoughts: [], actions: [] });
-  const [voice, setVoice] = useState(false);
+  const [voice, setVoice] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
@@ -746,13 +779,15 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     if (!voiceRef.current || agentLines.length <= spokenRef.current) return;
     const fresh = agentLines.slice(spokenRef.current);
     spokenRef.current = agentLines.length;
+    const latest = fresh[fresh.length - 1];
+    if (!latest) return;
     try {
-      for (const l of fresh) {
-        const u = new SpeechSynthesisUtterance(l.text.slice(0, 300));
-        u.onstart = () => onAgentSpeakRef.current?.(true);
-        u.onend = () => onAgentSpeakRef.current?.(false);
-        window.speechSynthesis.speak(u);
-      }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(latest.text.slice(0, 300));
+      u.onstart = () => onAgentSpeakRef.current?.(true);
+      u.onend = () => onAgentSpeakRef.current?.(false);
+      u.onerror = () => onAgentSpeakRef.current?.(false);
+      window.speechSynthesis.speak(u);
     } catch {
       /* speech unavailable */
     }
@@ -921,12 +956,8 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
             {canManage && <button type="button" className={agent.enabled ? "danger-ghost sm" : "sm"} disabled={busy !== ""} onClick={toggleAgent}>{busy === "agent" ? "…" : agent.enabled ? "Remove Charie" : "Bring Charie in"}</button>}
           </div>
           <p className="small muted">Charie listens, thinks out loud below, and proposes actions. Nothing runs until a human approves a card.</p>
-          <div className="row">
-            <label className="row small" style={{ fontWeight: 400 }}>
-              <input type="checkbox" checked={voice} onChange={(e) => { setVoice(e.target.checked); if (!e.target.checked) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } onAgentSpeakRef.current?.(false); } }} />
-              Charie speaks aloud
-            </label>
-          </div>
+          <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } onAgentSpeakRef.current?.(false); } }} label="Charie speaks aloud" />
+          <AskCharie roomId={roomId} qp={qp} name={localName} />
           {pending.map((a) => (
             <div key={a.id} className="consent-card">
               <strong className="small">{a.title}</strong>

@@ -16,36 +16,24 @@ import {
   type AgentAction, type LiveLine,
 } from "./livecall";
 import { charieShouldReply } from "./room-status";
+import { answerMessage } from "./charie-chat";
 
 /**
- * Ask the engine for a spoken reply to one utterance, using recent transcript
- * as context. Returns null when the engine is unreachable or has no text, so
- * the caller can fall back. Bounded to 15s so a live call never stalls.
- * analysisSource stays heuristic until this returns real model text.
+ * Reply through the exact same loop as Chat with Charie (answerMessage):
+ * same engine turns, same tool execution, same model. One difference only:
+ * the reply is kept short enough to speak aloud. Returns null when the
+ * engine is unreachable, so the caller can fall back honestly.
  */
 async function engineReply(roomId: string, line: LiveLine): Promise<string | null> {
-  const base = (process.env.ENGINE_URL ?? "http://localhost:3103").replace(/\/$/, "");
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (process.env.ENGINE_TOKEN) headers["x-engine-token"] = process.env.ENGINE_TOKEN;
   const { lines } = getLive(roomId);
   const history = lines.slice(-10).map((l) => ({
     role: l.role === "agent" ? "assistant" as const : "user" as const,
     content: `${l.speaker}: ${l.text}`,
   }));
   try {
-    const res = await fetch(`${base}/chat/turn`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        history,
-        snapshot: { surface: "meet-call", roomId },
-        contextNotes: ["You are Charie in a live video call. Answer the last speaker briefly, in one or two spoken sentences."],
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) return null;
-    const j = (await res.json()) as { kind?: string; text?: string };
-    return j.kind === "text" && j.text?.trim() ? j.text.trim().slice(0, 400) : null;
+    const ans = await answerMessage({ history, uid: undefined });
+    if (!ans.text || ans.model === "heuristic" && /engine is unreachable/i.test(ans.text)) return null;
+    return ans.text.trim().slice(0, 600) || null;
   } catch {
     return null;
   }

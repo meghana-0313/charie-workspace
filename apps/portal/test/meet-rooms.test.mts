@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { charieShouldReply, meetRoomStatus } from "../lib/room-status.ts";
+import { charieAskLine, charieShouldReply, meetRoomStatus } from "../lib/room-status.ts";
 
 test("room without endedAt is Open", () => {
   assert.equal(meetRoomStatus({}), "Open");
@@ -20,4 +20,11 @@ test("Charie replies to direct questions and when addressed by name", () => {
 test("Charie stays silent for ordinary statements (no reply spam)", () => {
   assert.equal(charieShouldReply("I deployed the fix ten minutes ago."), false);
   assert.equal(charieShouldReply("Let us move to the next topic."), false);
+});
+
+test("typed Ask Charie lines always address Charie (same path as a chat message)", () => {
+  assert.equal(charieAskLine("why is checkout failing"), "Charie, why is checkout failing");
+  assert.equal(charieAskLine("Charie, check the logs"), "Charie, check the logs");
+  assert.equal(charieAskLine("  "), "");
+  assert.equal(charieShouldReply(charieAskLine("summarise the call")), true);
 });
