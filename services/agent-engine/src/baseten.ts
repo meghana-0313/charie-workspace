@@ -15,6 +15,39 @@ function model(): string {
   return secret("SPARK_OPEN_MODEL_ID") ?? "meta-models/muse-spark-open-1026";
 }
 
+export function hasBasetenKey(): boolean {
+  return Boolean(secret("BASETEN_API_KEY"));
+}
+
+export function sparkOpenModelId(): string {
+  return model();
+}
+
+/** One OpenAI-compatible chat completion on Muse Spark Open (Baseten). Throws on failure; callers fall back. */
+export async function sparkOpenChat(
+  messages: Array<{ role: string; content: string }>,
+  opts?: { maxTokens?: number; temperature?: number; fetchImpl?: FetchImpl },
+): Promise<string> {
+  const key = secret("BASETEN_API_KEY");
+  if (!key) throw new Error("BASETEN_API_KEY not set");
+  const res = await (opts?.fetchImpl ?? fetch)(`${endpoint()}/chat/completions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: model(),
+      messages,
+      max_tokens: opts?.maxTokens ?? 800,
+      temperature: opts?.temperature ?? 0.4,
+    }),
+  });
+  if (!res.ok) throw new Error(`Baseten error: ${res.status}`);
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string | null; reasoning_content?: string } }> };
+  const msg = data.choices?.[0]?.message;
+  // Spark Open reasons first: when reasoning eats the token budget the
+  // visible content can be empty, so fall back to reasoning_content.
+  return (msg?.content || msg?.reasoning_content || "").trim();
+}
+
 export interface SecondOpinion {
   severity: "blocker" | "major" | "minor";
   note: string;
