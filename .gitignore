@@ -11,3 +11,4 @@ reports/
 .data/
 .next/
 *.tsbuildinfo
+.gh-token
