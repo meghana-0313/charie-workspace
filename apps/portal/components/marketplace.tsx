@@ -176,16 +176,36 @@ export function JiraConnectForm() {
     }
     location.reload();
   }
+  const step = !domain.trim() ? 1 : !email.trim() ? 2 : !token.trim() ? 3 : 4;
   return (
     <form onSubmit={run}>
-      <label htmlFor="jira-domain">Jira domain</label>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        Three short steps. Charie then pulls matching issues in as investigated tickets and sends verified
+        fixes back as comments and transitions. Atlassian does not offer one-click OAuth for apps like
+        Charie without admin registration, so this uses a personal API token: it stays server-side,
+        is never shown again, and you can revoke it in Atlassian at any time.
+      </p>
+      <div className="row" style={{ gap: "var(--space-2)", marginBottom: 12 }} aria-label="Connection progress">
+        {["Your site", "Your account", "Secure token"].map((label, i) => (
+          <span key={label} className="row" style={{ flexWrap: "nowrap" }}>
+            <span className="initials" style={{ width: 26, height: 26, background: step > i + 1 ? "var(--ok)" : step === i + 1 ? "var(--accent)" : "var(--surface-overlay)", color: "#fff" }}>{step > i + 1 ? "✓" : i + 1}</span>
+            <span className="small"><strong>{label}</strong></span>
+            {i < 2 && <span style={{ width: 18, height: 1, background: "var(--line-strong)" }} />}
+          </span>
+        ))}
+      </div>
+      <label htmlFor="jira-domain">Step 1: your Jira site</label>
       <input id="jira-domain" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="acme.atlassian.net" required />
-      <label htmlFor="jira-email">Jira email</label>
+      <label htmlFor="jira-email">Step 2: the email on your Atlassian account</label>
       <input id="jira-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />
-      <label htmlFor="jira-token">API token (<a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">create one</a>)</label>
-      <input id="jira-token" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="stored server-side, never shown" required autoComplete="off" />
+      <label htmlFor="jira-token">Step 3: API token</label>
+      <div className="row" style={{ flexWrap: "nowrap" }}>
+        <input id="jira-token" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Paste token, stored server-side, never shown" required autoComplete="off" style={{ flex: 1 }} />
+        <a className="btn secondary" href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">Create token</a>
+      </div>
+      <p className="field-hint">Create token → copy it → paste here. Charie tests the connection before saving.</p>
       <div className="row" style={{ marginTop: 10 }}>
-        <button disabled={busy}>{busy ? "Connecting…" : "Connect Jira"}</button>
+        <button disabled={busy}>{busy ? "Testing connection…" : "Connect Jira"}</button>
         {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
       </div>
     </form>

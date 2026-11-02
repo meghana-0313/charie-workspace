@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
+import { stalePeerIds, touchPeer } from "@/lib/presence";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -63,11 +64,14 @@ interface Peer {
   stream: MediaStream | null;
 }
 
-export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean }) {
+export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true, initialEnded = false }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean; initialEnded?: boolean }) {
   const [name, setName] = useState(initialName);
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
   const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
   const [joined, setJoined] = useState(false);
+  const [ended, setEnded] = useState(initialEnded);
+  const [ending, setEnding] = useState(false);
+  const lastSeen = useRef<Record<string, number>>({});
   const [agentOn, setAgentOn] = useState(false);
   const [agentSpeaking, setAgentSpeaking] = useState(false);
   const [peers, setPeers] = useState<Record<string, Peer>>({});
@@ -99,11 +103,32 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const closePeer = (id: string) => {
     pcs.current[id]?.close();
     delete pcs.current[id];
+    delete lastSeen.current[id];
     setPeers((p) => {
       const next = { ...p };
       delete next[id];
       return next;
     });
+  };
+
+  // Leave must survive tab close: keepalive lets the request finish while
+  // the page unloads (a plain fetch is cancelled and leaves a ghost tile).
+  const sendLeave = () => {
+    fetch(`/api/meet/rooms/${roomId}/signal${qp}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ from: me.current, to: "*", kind: "leave", payload: "" }),
+      keepalive: true,
+    }).catch(() => {});
+  };
+
+  const teardown = () => {
+    for (const id of Object.keys(pcs.current)) pcs.current[id].close();
+    pcs.current = {};
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    lastSeen.current = {};
+    setPeers({});
   };
 
   const ensurePeer = (id: string, peerName: string, peerRole = "member"): RTCPeerConnection => {
@@ -129,6 +154,14 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const handle = async (s: MeetSignal) => {
     if (s.from === me.current) return;
     if (s.to !== "*" && s.to !== me.current) return;
+    lastSeen.current = touchPeer(lastSeen.current, s.from, Date.now());
+    if (s.kind === "ping") return;
+    if (s.kind === "end") {
+      teardown();
+      setJoined(false);
+      setEnded(true);
+      return;
+    }
     try {
       if (s.kind === "join") {
         const { name: peerName, role: peerRole } = JSON.parse(s.payload || "{}") as { name?: string; role?: string };
@@ -173,22 +206,28 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     };
     void poll();
     timer = setInterval(poll, 1500);
-    const bye = () => { stopPoll.current = true; void send("*", "leave"); };
+    // Presence heartbeat + ghost sweep: peers who stop pinging (closed tab,
+    // crashed browser, lost leave signal) lose their tile automatically.
+    const heartbeat = setInterval(() => { void send("*", "ping"); }, 8000);
+    const sweep = setInterval(() => {
+      for (const id of stalePeerIds(lastSeen.current, Date.now())) closePeer(id);
+    }, 5000);
+    const bye = () => { stopPoll.current = true; sendLeave(); };
     window.addEventListener("beforeunload", bye);
     return () => {
       clearInterval(timer);
+      clearInterval(heartbeat);
+      clearInterval(sweep);
       window.removeEventListener("beforeunload", bye);
-      void send("*", "leave");
-      for (const id of Object.keys(pcs.current)) pcs.current[id].close();
-      pcs.current = {};
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      sendLeave();
+      teardown();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joined, roomId]);
 
   useEffect(() => {
     if (localVideo.current && streamRef.current) localVideo.current.srcObject = streamRef.current;
-  }, [joined]);
+  }, [joined, camOff]);
 
   // Pre-join device preview: see yourself before anyone else does. The same
   // stream is reused on Join so the permission prompt only fires once.
@@ -215,6 +254,26 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     };
   }, [joined, audioOnly]);
 
+  // Pre-join toggles act on the preview immediately: checking "Camera off"
+  // stops the preview track (camera light out) instead of only applying at
+  // join time. Unchecking re-acquires through the preview effect above.
+  useEffect(() => {
+    if (joined) return;
+    const stream = streamRef.current;
+    if (!stream) return;
+    stream.getAudioTracks().forEach((t) => { t.enabled = !startMuted; });
+    if (startCamOff) {
+      stream.getVideoTracks().forEach((t) => { t.stop(); stream.removeTrack(t); });
+      if (previewVideo.current) previewVideo.current.srcObject = null;
+    } else if (!audioOnly && stream.getVideoTracks().length === 0) {
+      navigator.mediaDevices.getUserMedia({ video: true }).then((fresh) => {
+        if (!streamRef.current) return;
+        streamRef.current.addTrack(fresh.getVideoTracks()[0]);
+        if (previewVideo.current) previewVideo.current.srcObject = streamRef.current;
+      }).catch(() => {});
+    }
+  }, [joined, audioOnly, startMuted, startCamOff]);
+
   const join = async () => {
     if (!name.trim()) {
       setError("Enter your name first.");
@@ -226,7 +285,9 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
       // again when the caller switched between camera and audio only.
       let stream = streamRef.current;
       const hasVideo = (stream?.getVideoTracks().length ?? 0) > 0;
-      if (!stream || hasVideo === audioOnly) {
+      // Keep the preview stream when joining with camera off: its video track
+      // was already stopped on the pre-join screen, so nobody re-prompts.
+      if (!stream || (hasVideo && audioOnly) || (!hasVideo && !audioOnly && !startCamOff)) {
         stream?.getTracks().forEach((t) => t.stop());
         stream = await navigator.mediaDevices.getUserMedia({ video: !audioOnly, audio: true });
         streamRef.current = stream;
@@ -244,13 +305,23 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   };
 
   const leave = () => {
-    void send("*", "leave");
-    for (const id of Object.keys(pcs.current)) pcs.current[id].close();
-    pcs.current = {};
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setPeers({});
+    sendLeave();
+    teardown();
     setJoined(false);
+  };
+
+  const endForEveryone = async () => {
+    if (!confirm("End this meeting for everyone? All participants, guests included, will be disconnected.")) return;
+    setEnding(true);
+    const res = await fetch(`/api/meet/rooms/${roomId}/end`, { method: "POST" }).catch(() => null);
+    setEnding(false);
+    if (res?.ok) {
+      teardown();
+      setJoined(false);
+      setEnded(true);
+    } else {
+      setError("Only the host who created this room can end it for everyone.");
+    }
   };
 
   const toggleMute = () => {
@@ -259,10 +330,36 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     setMuted(next);
   };
 
-  const toggleCam = () => {
-    const next = !camOff;
-    streamRef.current?.getVideoTracks().forEach((t) => { t.enabled = !next; });
-    setCamOff(next);
+  // Camera off must really turn the camera off: stop the track (light goes
+  // out, peers get no frames) instead of only muting it. Turning back on
+  // re-acquires the camera and re-attaches it to every peer connection.
+  const toggleCam = async () => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    if (!camOff) {
+      for (const pc of Object.values(pcs.current)) {
+        const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) await sender.replaceTrack(null).catch(() => {});
+      }
+      stream.getVideoTracks().forEach((t) => { t.stop(); stream.removeTrack(t); });
+      if (localVideo.current) localVideo.current.srcObject = stream;
+      setCamOff(true);
+      return;
+    }
+    try {
+      const fresh = await navigator.mediaDevices.getUserMedia({ video: true });
+      const track = fresh.getVideoTracks()[0];
+      stream.addTrack(track);
+      for (const pc of Object.values(pcs.current)) {
+        const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) await sender.replaceTrack(track).catch(() => {});
+        else pc.addTrack(track, stream);
+      }
+      if (localVideo.current) localVideo.current.srcObject = stream;
+      setCamOff(false);
+    } catch {
+      setError("Camera blocked. Allow access in the browser, then retry.");
+    }
   };
 
   const shareScreen = async () => {
@@ -292,12 +389,27 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     }
   };
 
+  if (ended) {
+    return (
+      <div className="card">
+        <div className="card-title">Meeting ended</div>
+        <p className="muted small">
+          {token
+            ? "The host ended this meeting for everyone. Thanks for joining; you can close this tab."
+            : "This meeting has ended for everyone. Start a new room from the Meet page when you need one."}
+        </p>
+        {!token && <p style={{ marginBottom: 0 }}><a className="btn" href="/guardian/zoom">Back to Meet</a></p>}
+      </div>
+    );
+  }
+
   if (!joined) {
     return (
       <div className="card">
         <div className="card-title">Join “{roomTitle}”</div>
         <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Check how you look and sound, then join. Camera and mic stay between peers; the portal only exchanges connection setup.</p>
-        {!audioOnly && <video ref={previewVideo} autoPlay playsInline muted className="meet-preview" aria-label="Camera preview" />}
+        {!audioOnly && !startCamOff && <video ref={previewVideo} autoPlay playsInline muted className="meet-preview" aria-label="Camera preview" />}
+        {startCamOff && !audioOnly && <div className="meet-preview meet-wait">Camera is off. Nobody can see you; uncheck Camera off to preview again.</div>}
         <div className="row">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 160 }} />
           <button onClick={join}>{audioOnly ? "Join audio only" : "Join call"}</button>
@@ -328,7 +440,12 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
       <div className="war-main">
         <div className="meet-grid">
           <div className="meet-tile">
-            {audioOnly ? <div className="meet-wait">Audio only</div> : <video ref={localVideo} autoPlay playsInline muted />}
+            {audioOnly || camOff ? (
+              <div className="meet-wait">
+                <span className="initials" style={{ width: 56, height: 56, fontSize: 20 }}>{(nameRef.current || "Y").slice(0, 1).toUpperCase()}</span>
+                <span className="small muted">{audioOnly ? "Audio only" : "Camera off"}</span>
+              </div>
+            ) : <video ref={localVideo} autoPlay playsInline muted />}
             <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
           </div>
           {tiles.map((p) => (
@@ -351,7 +468,9 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           <button onClick={shareScreen} disabled={sharing}>{sharing ? "Sharing…" : "Share screen"}</button>
           {!token && <InviteButton roomId={roomId} />}
           <button className="danger-ghost" onClick={leave}>Leave call</button>
+          {!token && <button className="danger" onClick={endForEveryone} disabled={ending}>{ending ? "Ending…" : "End for everyone"}</button>}
         </div>
+        {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
         <p className="muted small">{tiles.length === 0 ? (token ? "You are in. Waiting for the host to join." : "Alone here. Invite a guest with the button above, or send the room link to your team.") : `${tiles.length} peer(s) connected.`}</p>
       </div>
       <aside className="side-panel">

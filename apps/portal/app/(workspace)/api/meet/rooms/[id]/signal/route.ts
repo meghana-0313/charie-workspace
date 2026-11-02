@@ -4,7 +4,7 @@ import { identity } from "@/lib/who";
 import { store } from "@/lib/store";
 import type { MeetRoom, MeetSignalKind } from "@/lib/types";
 
-const KINDS: MeetSignalKind[] = ["join", "leave", "offer", "answer", "candidate"];
+const KINDS: MeetSignalKind[] = ["join", "leave", "offer", "answer", "candidate", "ping", "end"];
 
 /** Guests authenticate with ?token=; members ride the session cookie. */
 function guestOk(req: Request, roomId: string): boolean {
@@ -53,7 +53,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const b = (await req.json().catch(() => ({}))) as { from?: string; to?: string; kind?: string; payload?: string };
   if (!b.from?.trim() || !b.to?.trim() || !KINDS.includes(b.kind as MeetSignalKind)) {
-    return NextResponse.json({ error: "from, to, kind join|leave|offer|answer|candidate required" }, { status: 400 });
+    return NextResponse.json({ error: "from, to, kind join|leave|offer|answer|candidate|ping|end required" }, { status: 400 });
+  }
+  if (room.endedAt && b.kind === "join") {
+    return NextResponse.json({ error: "this meeting has ended" }, { status: 410 });
+  }
+  // Only the /end route may broadcast "end"; clients cannot forge it.
+  if (b.kind === "end") {
+    return NextResponse.json({ error: "use POST /end to end the meeting" }, { status: 400 });
   }
   const payload = String(b.payload ?? "");
   if (payload.length > 20000) return NextResponse.json({ error: "payload too large" }, { status: 400 });
