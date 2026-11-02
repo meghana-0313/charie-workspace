@@ -45,6 +45,10 @@ export function LogWatchPanel({ initialProject, initialReport }: { initialProjec
       </form>
       {busy && <p className="muted small">Querying the last 60 minutes of errors…</p>}
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
+      <p className="small muted" style={{ marginTop: 8 }}>
+        The engine reads Cloud Logging with its service account; Logging Viewer on the project is enough.
+        Find your project id in the project picker at the top of console.cloud.google.com. On hosted Charie this is already wired.
+      </p>
       {report && !report.configured && (
         <p className="small muted">Log watch needs GCP (the engine reads Cloud Logging with its service account). Locally it stays off.</p>
       )}

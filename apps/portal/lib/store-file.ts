@@ -166,8 +166,8 @@ export const fileStore = {
   async saveEvents(events: GuardEventView[]): Promise<void> {
     gevents.write([...gevents.read(), ...events].slice(-1000));
   },
-  async listRecentEvents(limit = 200): Promise<GuardEventView[]> {
-    return gevents.read().slice(-limit);
+  async listRecentEvents(limit = 200, filterUid?: string): Promise<GuardEventView[]> {
+    return mine(gevents.read(), filterUid).slice(-limit);
   },
   async saveIncident(inc: Incident): Promise<void> {
     const all = incidents.read();
@@ -177,8 +177,8 @@ export const fileStore = {
   async getIncident(id: string): Promise<Incident | null> {
     return incidents.read()[id] ?? null;
   },
-  async listIncidents(): Promise<Incident[]> {
-    return Object.values(incidents.read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async listIncidents(filterUid?: string): Promise<Incident[]> {
+    return mine(Object.values(incidents.read()), filterUid).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
     const all = incidents.read();
@@ -293,6 +293,10 @@ export const fileStore = {
   },
   async hasMeetCheckin(roomId: string): Promise<boolean> {
     return (meetCheckins.read()[roomId] ?? []).length > 0;
+  },
+  async lastMeetCheckin(roomId: string): Promise<MeetCheckin | null> {
+    const list = meetCheckins.read()[roomId] ?? [];
+    return list.length > 0 ? list[list.length - 1] : null;
   },
 
   async listSeats(): Promise<TeamSeat[]> {

@@ -9,7 +9,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id: roomId } = await params;
   const room = await store.getMeetRoom(roomId);
   if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
-  const b = (await req.json().catch(() => ({}))) as { token?: string; name?: string; issue?: string; consent?: boolean };
+  const b = (await req.json().catch(() => ({}))) as { token?: string; name?: string; issue?: string; consent?: boolean; transcribe?: boolean };
   if (!checkInvite(roomId, b.token)) return NextResponse.json({ error: "bad invite" }, { status: 403 });
   const name = String(b.name ?? "").trim().slice(0, 60);
   const issue = String(b.issue ?? "").trim().slice(0, 2000);
@@ -29,7 +29,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     body: `Support call starting in "${room.title}" with guest ${name}. Press "Run investigation" once they share their screen or URL.`,
   });
   // Record the consented check-in: the signal route requires it before a
-  // token guest may join or speak in the call.
-  await store.saveMeetCheckin({ roomId, name, ticketId: ticket.id, at: new Date().toISOString() });
+  // token guest may join, and the live route requires the transcription
+  // opt-in before a guest line is accepted.
+  await store.saveMeetCheckin({ roomId, name, ticketId: ticket.id, transcribe: b.transcribe === true, at: new Date().toISOString() });
   return NextResponse.json({ ok: true, ticketId: ticket.id });
 }

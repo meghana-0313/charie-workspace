@@ -47,7 +47,7 @@ export function SeatForm() {
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       {created && (
         <p className="small" style={{ marginTop: 8 }}>
-          Invited <strong>{created}</strong>. They sign in with Google and link automatically.{" "}
+          Invited <strong>{created}</strong>. They create an account with this email and link automatically.{" "}
           <button type="button" className="ghost sm" onClick={() => location.reload()}>Refresh the list</button>
         </p>
       )}

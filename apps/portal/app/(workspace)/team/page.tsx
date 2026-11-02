@@ -15,7 +15,7 @@ export default async function TeamPage() {
       <PageHead
         crumbs={[["/", "Home"], ["/team", "Team"]]}
         title="Team"
-        sub="Google seats for teammates. Invite by email; invited people sign in with Google and land in their own account."
+        sub="Seats for teammates. Invite by email; invited people create an account with that email and land in their own data."
       />
       {!admin ? (
         <div className="card">
@@ -30,7 +30,7 @@ export default async function TeamPage() {
           <div className="card">
             <div className="card-title">Seats ({seats.length})</div>
             {seats.length === 0 ? (
-              <EmptyState title="No seats yet" body="Invite above. Teammates sign in with Google and link automatically." />
+              <EmptyState title="No seats yet" body="Invite above. Teammates create an account with the invited email and link automatically." />
             ) : (
               <table>
                 <thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr></thead>

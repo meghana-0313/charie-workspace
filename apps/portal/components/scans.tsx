@@ -17,6 +17,16 @@ async function post(path: string, body: unknown): Promise<{ ok: boolean; data: R
   return { ok: res.ok, data };
 }
 
+function urlError(raw: string): string {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "Use an http(s) URL, e.g. https://your-app.example.com";
+    return "";
+  } catch {
+    return "Enter a full URL, e.g. https://your-app.example.com";
+  }
+}
+
 function useScan<T>(path: string) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,6 +35,11 @@ function useScan<T>(path: string) {
   async function run(e: React.FormEvent) {
     e.preventDefault();
     if (!url.trim() || busy) return;
+    const bad = urlError(url.trim());
+    if (bad) {
+      setError(bad);
+      return;
+    }
     setBusy(true);
     setError("");
     setReport(null);
@@ -62,6 +77,11 @@ export function UxReviewButton() {
     e.preventDefault();
     const target = url.trim();
     if (!target || busy) return;
+    const bad = urlError(target);
+    if (bad) {
+      setError(bad);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -102,7 +122,7 @@ export function UxReviewButton() {
       </form>
       {busy && <p className="muted small">Filing the ticket and driving the app…</p>}
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
-      <p className="muted small">One click files the ticket, runs the investigation, and the briefs land below.</p>
+      <p className="muted small">One click files the ticket, runs the investigation, and opens the ticket with the evidence brief.</p>
     </div>
   );
 }
@@ -111,6 +131,7 @@ export function A11yRunForm() {
   const { url, setUrl, busy, error, report, run } = useScan<A11yView>("/api/guardian/a11y");
   return (
     <div>
+      <p className="muted small">Checks the page in a real browser: labels, contrast, keyboard order, landmarks, and more, each graded with evidence.</p>
       <form onSubmit={run}>
         <UrlRow url={url} setUrl={setUrl} busy={busy} label="Run accessibility scan" />
       </form>
@@ -142,6 +163,7 @@ export function FirstRunForm() {
   const { url, setUrl, busy, error, report, run } = useScan<FirstRunView>("/api/guardian/firstrun");
   return (
     <div>
+      <p className="muted small">Loads the site as a brand new visitor on desktop and mobile: speed, first paint, tap targets, and whether the first screen explains itself.</p>
       <form onSubmit={run}>
         <UrlRow url={url} setUrl={setUrl} busy={busy} label="Run first run test" />
       </form>

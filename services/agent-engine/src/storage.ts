@@ -70,6 +70,33 @@ export async function fetchVoiceNote(rel: string): Promise<Buffer | null> {
  * Make sure a baseline's findings.json exists locally, fetching from GCS when
  * this instance never saw that run (multi-instance Cloud Run). Never throws.
  */
+/**
+ * Hydrate a whole run dir from GCS when this instance has never seen it
+ * (Cloud Run restarts and multi-instance reads). Returns true when the run
+ * exists in the bucket. Never throws.
+ */
+export async function ensureRunLocal(reportsRoot: string, runId: string): Promise<boolean> {
+  if (existsSync(join(reportsRoot, runId, "findings.json"))) return true;
+  const bucket = bucketName();
+  if (!bucket) return false;
+  try {
+    const [files] = await client().bucket(bucket).getFiles({ prefix: `runs/${runId}/` });
+    if (files.length === 0) return false;
+    for (const f of files) {
+      const rel = f.name.slice(`runs/${runId}/`.length);
+      if (!rel || rel.endsWith("/")) continue;
+      const dest = join(reportsRoot, runId, ...rel.split("/"));
+      await mkdir(join(dest, ".."), { recursive: true });
+      await f.download({ destination: dest });
+    }
+    console.log(`[storage] hydrated run ${runId} from GCS`);
+    return true;
+  } catch (e) {
+    console.warn(`[storage] run hydrate skipped: ${(e as Error).message}`);
+    return false;
+  }
+}
+
 export async function ensureBaselineLocal(reportsRoot: string, baselineRunId: string): Promise<void> {
   if (existsSync(join(reportsRoot, baselineRunId, "findings.json"))) return;
   const bucket = bucketName();

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { verifyApiKey } from "@/lib/keys";
-import { identity } from "@/lib/who";
+import { identity, scopeUid } from "@/lib/who";
 import type { GuardEventView } from "@/lib/types";
 
 function validEvent(e: unknown): e is GuardEventView {
@@ -18,10 +18,15 @@ function validEvent(e: unknown): e is GuardEventView {
 // Authed by session cookie (members) or x-charie-key (apps/SDKs).
 export async function POST(req: Request) {
   const key = req.headers.get("x-charie-key");
+  let stampUid: string | undefined;
   if (key) {
-    if (!(await verifyApiKey(key))) return NextResponse.json({ error: "bad key" }, { status: 403 });
-  } else if ((await identity(req)) === null) {
-    return NextResponse.json({ error: "login or key required" }, { status: 401 });
+    const rec = await verifyApiKey(key);
+    if (!rec) return NextResponse.json({ error: "bad key" }, { status: 403 });
+    stampUid = rec.uid;
+  } else {
+    const me = await identity(req);
+    if (me === null) return NextResponse.json({ error: "login or key required" }, { status: 401 });
+    stampUid = scopeUid(me);
   }
   const { events } = (await req.json().catch(() => ({}))) as { events?: unknown };
   if (!Array.isArray(events) || events.length === 0 || events.length > 500) {
@@ -44,10 +49,14 @@ export async function POST(req: Request) {
     }
   }
   if (clean.length === 0) return NextResponse.json({ error: "no usable events" }, { status: 400 });
+  // Ownership is stamped server side; client-supplied uids are discarded.
+  for (const e of clean) e.uid = stampUid;
   await store.saveEvents(JSON.parse(JSON.stringify(clean)) as GuardEventView[]);
   return NextResponse.json({ saved: clean.length }, { status: 201 });
 }
 
-export async function GET() {
-  return NextResponse.json(await store.listRecentEvents(50));
+export async function GET(req: Request) {
+  const me = await identity(req);
+  if (!me) return NextResponse.json({ error: "login required" }, { status: 401 });
+  return NextResponse.json(await store.listRecentEvents(50, scopeUid(me)));
 }

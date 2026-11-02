@@ -3,6 +3,7 @@ import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
 import { listSweeps } from "@/lib/guardian";
 import { NewTicketForm } from "@/components/forms";
+import { GetStarted } from "@/components/onboard";
 import { Badge, EmptyState, PageHead, Stat } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,8 @@ export default async function Dashboard() {
   const myUid = scopeUid(await identity());
   const tickets = await store.listTickets(myUid);
   const runs = await store.listRuns(8, myUid);
-  const incidents = await store.listIncidents();
+  const incidents = await store.listIncidents(myUid);
+  const repos = await store.listRepos(myUid);
   const sweeps = await listSweeps();
   const openTickets = tickets.filter((t) => t.status !== "closed" && t.status !== "verified").length;
   const openIncidents = incidents.filter((i) => i.status === "open").length;
@@ -23,16 +25,7 @@ export default async function Dashboard() {
         title="Meet CHARIE"
         sub="Your software's autonomous companion. Charie Build tests your product, Charie Guard answers threats, Charie Ops watches production. Start below."
       />
-      {tickets.length === 0 && runs.length === 0 && (
-        <div className="card">
-          <div className="card-title">First time here? Three steps</div>
-          <ol className="onboard">
-            <li><span className="step">1</span><span><Link href="/repos"><strong>Test a repo</strong></Link>. Connect GitHub; Charie builds, deploys, and files the first ticket itself.</span></li>
-            <li><span className="step">2</span><span><a href="#new-ticket"><strong>File a ticket</strong></a>. Describe a customer problem, or run an <Link href="/a11y">accessibility scan</Link> or <Link href="/firstrun">first run test</Link> on any URL.</span></li>
-            <li><span className="step">3</span><span><strong>Approve the fix</strong>. Open the ticket (it investigates itself), approve findings, dispatch to your coding agent.</span></li>
-          </ol>
-        </div>
-      )}
+      <GetStarted hasRepo={repos.length > 0} hasTicket={tickets.length > 0} hasRun={runs.length > 0} />
       <div className="stats">
         <Stat num={openTickets} label="open tickets" />
         <Stat num={runs.length} label="recent engine runs" />

@@ -128,9 +128,9 @@ export const firestoreStore = {
     for (const e of events) batch.set(fs.collection("guardian-events").doc(e.id), e);
     await batch.commit();
   },
-  async listRecentEvents(limit = 200): Promise<GuardEventView[]> {
+  async listRecentEvents(limit = 200, filterUid?: string): Promise<GuardEventView[]> {
     const snap = await firestore().collection("guardian-events").orderBy("ts", "desc").limit(limit).get();
-    return snap.docs.map((d) => d.data() as GuardEventView).reverse();
+    return mine(snap.docs.map((d) => d.data() as GuardEventView), filterUid).reverse();
   },
   async saveIncident(inc: Incident): Promise<void> {
     await firestore().collection("incidents").doc(inc.id).set(inc);
@@ -139,9 +139,9 @@ export const firestoreStore = {
     const d = await firestore().collection("incidents").doc(id).get();
     return d.exists ? (d.data() as Incident) : null;
   },
-  async listIncidents(): Promise<Incident[]> {
+  async listIncidents(filterUid?: string): Promise<Incident[]> {
     const snap = await firestore().collection("incidents").orderBy("createdAt", "desc").get();
-    return snap.docs.map((d) => d.data() as Incident);
+    return mine(snap.docs.map((d) => d.data() as Incident), filterUid);
   },
   async updateIncident(id: string, patch: Partial<Incident>): Promise<void> {
     await firestore().collection("incidents").doc(id).update({ ...patch, updatedAt: now() });
@@ -241,6 +241,10 @@ export const firestoreStore = {
   async hasMeetCheckin(roomId: string): Promise<boolean> {
     const d = await firestore().collection("meet_checkins").doc(roomId).get().catch(() => null);
     return Boolean(d?.exists);
+  },
+  async lastMeetCheckin(roomId: string): Promise<MeetCheckin | null> {
+    const d = await firestore().collection("meet_checkins").doc(roomId).get().catch(() => null);
+    return d?.exists ? (d.data() as MeetCheckin) : null;
   },
 
   async listSeats(): Promise<TeamSeat[]> {
