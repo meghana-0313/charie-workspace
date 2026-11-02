@@ -27,7 +27,7 @@ export default async function WorkOrdersPage() {
         crumbs={[["/", "Home"], ["/guardian/work", "Fix Tasks"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="code" size={19} /></span> Fix Tasks / Work Orders</>}
         sub="AI-generated fixes for incidents, bugs, and operational issues. Review, approve and run safely in your environment."
-        actions={<Link href="/tickets#new" className="btn">+ New Work Order</Link>}
+        actions={<Link href="/tickets?new=1" className="btn">+ New Work Order</Link>}
       />
       <div className="tabs">
         <span className="tab on" style={{ padding: "7px 14px" }}>All Work Orders ({list.length})</span>

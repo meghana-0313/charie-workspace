@@ -10,5 +10,15 @@ export default async function GuestPage({ params, searchParams }: { params: Prom
   const { token } = await searchParams;
   const room = await store.getMeetRoom(id);
   if (!room || !checkInvite(id, token)) notFound();
+  if (room.endedAt) {
+    return (
+      <div className="login-wrap">
+        <div className="card" style={{ maxWidth: 480 }}>
+          <div className="card-title">Meeting ended</div>
+          <p className="muted small">The host ended &ldquo;{room.title}&rdquo; for everyone. Thanks for joining; you can close this tab.</p>
+        </div>
+      </div>
+    );
+  }
   return <GuestLobby roomId={room.id} roomTitle={room.title} token={token ?? ""} />;
 }

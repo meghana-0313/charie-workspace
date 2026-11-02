@@ -8,7 +8,7 @@ import { Icon } from "./icons";
 import { CharieMark } from "./mark";
 import { Palette } from "./palette";
 import { LogoutButton, ThemeToggle } from "./theme";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type NavLink = [string, string, string, number?];
 
@@ -21,7 +21,6 @@ const SECTIONS: Array<[string, NavLink[]]> = [
   ["OPERATIONS", [
     ["/tickets", "Tickets & Fixes", "ticket"],
     ["/guardian", "Incidents", "alert"],
-    ["/guardian", "Threats", "shield"],
     ["/guardian/security", "Security Tests", "lock"],
     ["/guardian/work", "Fix Tasks", "order"],
   ]],
@@ -40,7 +39,7 @@ const SECTIONS: Array<[string, NavLink[]]> = [
   ["INTEGRATIONS", [
     ["/marketplace", "Integrations", "plug"],
   ]],
-  ["WORKSPACE", [
+  ["ACCOUNT", [
     ["/team", "Team", "users"],
     ["/settings", "Settings", "gear"],
   ]],
@@ -49,7 +48,6 @@ const SECTIONS: Array<[string, NavLink[]]> = [
 function active(path: string, href: string, label: string): boolean {
   if (href === "/") return path === "/";
   if (label === "Incidents") return path === "/guardian" || /^\/guardian\/[^/]+$/.test(path) && !path.startsWith("/guardian/work") && !path.startsWith("/guardian/security") && !path.startsWith("/guardian/signals") && !path.startsWith("/guardian/night") && !path.startsWith("/guardian/zoom");
-  if (label === "Threats") return false;
   return path === href || path.startsWith(`${href}/`);
 }
 
@@ -57,16 +55,29 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
   env: string; workspaceName?: string; ticketsOpen?: number; incidentsOpen?: number;
 }) {
   const path = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("charie-nav-collapsed") === "1");
+  }, []);
+  useEffect(() => {
+    document.querySelector(".shell")?.classList.toggle("nav-collapsed", collapsed);
+    try { localStorage.setItem("charie-nav-collapsed", collapsed ? "1" : "0"); } catch { /* private mode */ }
+  }, [collapsed]);
   const badge = (label: string) => label === "Tickets & Fixes" && ticketsOpen ? ticketsOpen : label === "Incidents" && incidentsOpen ? incidentsOpen : undefined;
   return (
-    <aside className="sidebar">
-      <Link href="/" className="side-brand">
-        <span className="side-mark"><CharieMark /></span>
-        <span>
-          <span className="side-name">{workspaceName ?? "CHARIE"}</span>
-          <div className="side-sub">Autonomous Engineering Intelligence</div>
-        </span>
-      </Link>
+    <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+        <Link href="/" className="side-brand">
+          <span className="side-mark"><CharieMark /></span>
+          <span>
+            <span className="side-name">{workspaceName ?? "CHARIE"}</span>
+            <div className="side-sub">Autonomous Engineering Intelligence</div>
+          </span>
+        </Link>
+        <button type="button" className="icon-btn nav-toggle" aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((c) => !c)}>
+          <Icon name={collapsed ? "chev-r" : "chev-l"} />
+        </button>
+      </div>
       {SECTIONS.map(([title, links], si) => (
         <div key={`${title}-${si}`}>
           <div className="side-section">{title}</div>
@@ -74,7 +85,7 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
             const on = active(path, href, label);
             const b = badge(label);
             return (
-              <Link key={`${label}-${href}`} href={href} className={`side-link${on ? " on" : ""}`}>
+              <Link key={`${label}-${href}`} href={href} title={label} className={`side-link${on ? " on" : ""}`}>
                 <Icon name={icon} />
                 <span style={{ flex: 1 }}>{label}</span>
                 {b !== undefined && <span className="badge accent">{b}</span>}
@@ -119,8 +130,6 @@ export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, al
               <div className="menu" role="menu">
                 <div className="menu-head"><strong className="small">{workspaceName ?? "Charie"}</strong><br /><span className="sub small muted">Autonomous Engineering Intelligence</span></div>
                 <Link className="menu-item" href="/settings" onClick={close}><Icon name="gear" /> Workspace settings</Link>
-                <Link className="menu-item" href="/team" onClick={close}><Icon name="users" /> Team and access</Link>
-                <Link className="menu-item" href="/marketplace" onClick={close}><Icon name="plug" /> Integrations</Link>
               </div>
             )}
           </div>
@@ -181,14 +190,13 @@ export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, al
               <div className="menu right" role="menu">
                 <div className="menu-head"><strong className="small">{userLabel ?? "You"}</strong><br /><span className="sub small muted">Signed in</span></div>
                 <Link className="menu-item" href="/settings" onClick={close}><Icon name="gear" /> Settings</Link>
-                <Link className="menu-item" href="/team" onClick={close}><Icon name="users" /> Team and access</Link>
                 <LogoutButton />
               </div>
             )}
           </div>
         </div>
       </div>
-      {menu && <button type="button" className="menu-backdrop" aria-label="Close menu" onClick={close} />}
+      {menu && <div className="menu-backdrop" role="presentation" onClick={close} />}
       {open && <Palette close={() => setOpen(false)} />}
     </>
   );

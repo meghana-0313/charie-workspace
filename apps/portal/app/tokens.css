@@ -1,6 +1,7 @@
-/* Charie design tokens v3: reference war-room system.
-   Deep navy surfaces, violet accent, clean sans display type.
-   Fraunces files remain self-hosted for the login wordmark fallback. */
+/* Charie design tokens v4: fixed brand kit "Teal Signal on Ink Navy".
+   One accent (teal), true-red danger, warm navy surfaces. No violet, no pink.
+   Fraunces (self-hosted, no network fetch) is the display face for headings
+   and the login wordmark; Inter/system is the UI face. */
 
 @font-face {
   font-family: "Fraunces";
@@ -28,34 +29,34 @@
 }
 
 :root {
-  --bg: #090d1d;
-  --bg-sunken: #060913;
-  --surface: #12172e;
-  --surface-raised: #171e3a;
-  --surface-overlay: #202949;
-  --line: #232b4d;
-  --line-strong: #35406e;
+  --bg: #0a0f14;
+  --bg-sunken: #070b0f;
+  --surface: #11181f;
+  --surface-raised: #16202a;
+  --surface-overlay: #1d2a36;
+  --line: #22303d;
+  --line-strong: #33465a;
 
-  --ink: #eef1ff;
-  --ink-muted: #9aa6cf;
-  --ink-faint: #68739c;
+  --ink: #eef4f2;
+  --ink-muted: #9db0ad;
+  --ink-faint: #6d817d;
 
-  --accent: #7c4dff;
-  --accent-hover: #8f66ff;
-  --accent-dim: rgba(124, 77, 255, 0.16);
-  --accent-ink: #c9b3ff;
+  --accent: #0fbfae;
+  --accent-hover: #0aa696;
+  --accent-dim: rgba(15, 191, 174, 0.14);
+  --accent-ink: #6ee7d8;
 
-  --ok: #34d399;
-  --ok-dim: rgba(52, 211, 153, 0.13);
-  --warn: #fbbf24;
-  --warn-dim: rgba(251, 191, 36, 0.13);
-  --danger: #fb7185;
-  --danger-dim: rgba(251, 113, 133, 0.13);
-  --info: #60a5fa;
-  --info-dim: rgba(96, 165, 250, 0.13);
+  --ok: #22c55e;
+  --ok-dim: rgba(34, 197, 94, 0.13);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245, 158, 11, 0.13);
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.13);
+  --info: #38bdf8;
+  --info-dim: rgba(56, 189, 248, 0.13);
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Inter", system-ui, serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 13px;
@@ -82,10 +83,10 @@
   --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.32);
 
-  --topbar-bg: rgba(9, 13, 29, 0.92);
+  --topbar-bg: rgba(10, 15, 20, 0.92);
   --row-hover: rgba(255, 255, 255, 0.03);
-  --scrollbar: #2c3763;
-  --dot: rgba(180, 190, 255, 0.05);
+  --scrollbar: #2c404d;
+  --dot: rgba(160, 200, 195, 0.05);
 }
 
 [data-theme="light"] {
@@ -101,19 +102,19 @@
   --ink-muted: #4c5878;
   --ink-faint: #8490b3;
 
-  --accent: #6d28d9;
-  --accent-hover: #5b21b6;
-  --accent-dim: rgba(109, 40, 217, 0.1);
-  --accent-ink: #5b21b6;
+  --accent: #0f766e;
+  --accent-hover: #115e59;
+  --accent-dim: rgba(15, 118, 110, 0.1);
+  --accent-ink: #0f766e;
 
-  --ok: #059669;
-  --ok-dim: rgba(5, 150, 105, 0.12);
+  --ok: #15803d;
+  --ok-dim: rgba(21, 128, 61, 0.12);
   --warn: #b45309;
   --warn-dim: rgba(180, 83, 9, 0.13);
-  --danger: #e11d48;
-  --danger-dim: rgba(225, 29, 72, 0.1);
-  --info: #2563eb;
-  --info-dim: rgba(37, 99, 235, 0.11);
+  --danger: #dc2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
+  --info: #0369a1;
+  --info-dim: rgba(3, 105, 161, 0.11);
 
   --shadow-pop: 0 16px 40px rgba(21, 24, 54, 0.18);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 26px rgba(21, 24, 54, 0.08);
@@ -141,7 +142,7 @@ body {
 a { color: var(--accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-::selection { background: rgba(124, 77, 255, 0.4); }
+::selection { background: rgba(15, 191, 174, 0.4); }
 
 :focus-visible {
   outline: 2px solid var(--accent);

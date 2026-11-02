@@ -47,7 +47,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
           )}
         </div>
         <div className="card chat-main">
-          <ChatPanel threadId={active?.id ?? null} initial={initial} />
+          <ChatPanel key={active?.id ?? "new"} threadId={active?.id ?? null} initial={initial} />
         </div>
         <div className="card chat-rail">
           <div className="tabs" style={{ marginBottom: 10 }}><span className="tab on" style={{ padding: "6px 12px" }}>Context</span><span className="small muted" style={{ alignSelf: "center" }}>Tools · Activity</span></div>

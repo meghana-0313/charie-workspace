@@ -2,7 +2,8 @@ import Link from "next/link";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
-import { InviteButton, MeetCreateForm } from "@/components/meet";
+import { InviteButton, MeetCreateForm, ReopenButton } from "@/components/meet";
+import { meetRoomStatus } from "@/lib/room-status";
 import { ZoomJoinForm } from "@/components/suite";
 import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function MeetPage() {
   const myUid = scopeUid(await identity());
   const [rooms, status] = await Promise.all([store.listMeetRooms(myUid), zoomStatus()]);
+  const openRooms = rooms.filter((r) => meetRoomStatus(r) === "Open");
   return (
     <>
       <PageHead
@@ -20,7 +22,7 @@ export default async function MeetPage() {
         sub="Built in video calls for standups and incident war rooms. Charie can join, take live notes, and propose investigations with your consent. No third party needed; Zoom fallback stays for external meetings."
       />
       <div className="stats">
-        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="video" size={20} /></span><div><div className="stat-num">{rooms.length}</div><div className="stat-label">Open rooms</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="video" size={20} /></span><div><div className="stat-num">{openRooms.length}</div><div className="stat-label">Open rooms</div></div></div></div>
         <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="brain" size={20} /></span><div><div className="stat-num">Charie</div><div className="stat-label">AI agent in every room</div></div></div></div>
         <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="lock" size={20} /></span><div><div className="stat-num">Private</div><div className="stat-label">Peer to peer, no recording</div></div></div></div>
         <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="phone" size={20} /></span><div><div className="stat-num">{status?.configured ? "Ready" : "Off"}</div><div className="stat-label">Zoom fallback</div></div></div></div>
@@ -28,20 +30,25 @@ export default async function MeetPage() {
       <div className="card">
         <div className="card-title">Charie rooms</div>
         <MeetCreateForm />
-        <div className="section-label">Open rooms ({rooms.length})</div>
+        <div className="section-label">Rooms ({rooms.length})</div>
         {rooms.length === 0 ? (
           <EmptyState title="No rooms yet" body="Start one above, then share its URL with the team." />
         ) : (
           <table>
-            <thead><tr><th>Room</th><th>Opened</th><th>Guest</th></tr></thead>
+            <thead><tr><th>Room</th><th>Status</th><th>Opened</th><th>Context</th><th></th></tr></thead>
             <tbody>
-              {rooms.map((r) => (
-                <tr key={r.id}>
-                  <td><Link href={`/guardian/zoom/rooms/${r.id}`}>{r.title}</Link></td>
-                  <td className="small muted">{r.createdAt.slice(0, 16).replace("T", " ")}</td>
-                  <td><InviteButton roomId={r.id} /></td>
-                </tr>
-              ))}
+              {rooms.map((r) => {
+                const st = meetRoomStatus(r);
+                return (
+                  <tr key={r.id}>
+                    <td><Link href={`/guardian/zoom/rooms/${r.id}`}>{r.title}</Link></td>
+                    <td><Badge tone={st === "Open" ? "done" : undefined}>{st}</Badge></td>
+                    <td className="small muted">{r.createdAt.slice(0, 16).replace("T", " ")}</td>
+                    <td className="small muted">{r.transcript?.length ? `${r.transcript.length} transcript lines saved` : "No saved transcript"}</td>
+                    <td>{st === "Open" ? <InviteButton roomId={r.id} /> : <ReopenButton roomId={r.id} />}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

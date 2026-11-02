@@ -12,14 +12,14 @@ const COMMANDS: Array<[string, string, string]> = [
   ["UX and redesign", "/ux", "design, screens, usability, mockup"],
   ["Accessibility", "/a11y", "a11y, contrast, labels, wcag"],
   ["First run", "/firstrun", "onboarding, new user, landing"],
-  ["Threats", "/guardian", "incidents, monitoring, runtime"],
+  ["Incidents", "/guardian", "threats, monitoring, runtime"],
   ["Fix tasks", "/guardian/work", "remediation, approve, work orders"],
   ["Security tests", "/guardian/security", "pentest, headers, tls"],
   ["Live signals", "/guardian/signals", "support, inbox, sentiment, complaints"],
   ["Night shift", "/guardian/night", "overnight, digest, autonomous"],
   ["Meet", "/guardian/zoom", "video, call, standup, zoom"],
   ["Settings", "/settings", "environment, integrations"],
-  ["New ticket", "/#new-ticket", "file, report, bug"],
+  ["New investigation", "/tickets?new=1", "file, report, bug, investigate"],
 ];
 
 export function Palette({ close }: { close: () => void }) {

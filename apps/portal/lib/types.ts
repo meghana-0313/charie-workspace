@@ -250,6 +250,11 @@ export interface MeetRoom {
   createdBy: string;
   liveNotes?: boolean; // opt-in: Charie joins with live transcription + notes
   endedAt?: string; // set when the host ends the meeting for everyone
+  // Persisted on End so the room can be re-opened later with full context:
+  // Charie reads these back in when the room reopens on the same issue.
+  transcript?: Array<{ speaker: string; role: string; text: string; at: string }>;
+  notes?: string[];
+  summary?: string;
   seq: number; // last signal sequence number
   createdAt: string;
   updatedAt: string;
@@ -396,7 +401,7 @@ export interface ChatThread {
 }
 
 // Marketplace connectors: external systems Charie syncs with.
-export type ConnectorKind = "github" | "jira" | "webhook-in";
+export type ConnectorKind = "github" | "jira" | "webhook-in" | "azure" | "cloudflare" | "supabase";
 
 export interface Connector {
   id: string;
@@ -409,6 +414,13 @@ export interface Connector {
     domain?: string; // jira host
     email?: string; // jira login
     token?: string; // jira api token (server only, never serialized to clients)
+    apiToken?: string; // cloudflare api token (server only)
+    projectRef?: string; // supabase project ref
+    serviceRoleKey?: string; // supabase service role key (server only)
+    tenantId?: string; // azure entra tenant
+    clientId?: string; // azure service principal app id
+    clientSecret?: string; // azure service principal secret (server only)
+    subscriptionId?: string; // azure subscription (optional scope)
   };
   lastSyncAt?: string;
   lastSyncStatus?: string;
