@@ -39,6 +39,7 @@ import { ensureRunLocal, fetchVoiceNote } from "./storage.js";
 import { loadSweeps, runSweep } from "./sweep.js";
 import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
 import { chatTurn } from "./chat-agent.js";
+import { describeScreen } from "./vision.js";
 import { transcribe } from "./voice.js";
 import {
   approveWorkOrder, createWorkOrder, getWorkOrder, loadWorkOrders, updateWorkOrder,
@@ -250,6 +251,28 @@ export function createApp(opts: ServerOpts): RequestListener {
             return;
           }
           const out = await chatTurn({ history: clean, snapshot: body.snapshot, contextNotes: body.contextNotes });
+          send(res, 200, out);
+          return;
+        }
+
+        if (req.method === "POST" && url.pathname === "/vision/describe") {
+          let body: { image?: string; question?: string };
+          try {
+            body = JSON.parse(await readBody(req)) as typeof body;
+          } catch {
+            send(res, 400, { error: "invalid JSON body" });
+            return;
+          }
+          const image = String(body.image ?? "");
+          if (!image.startsWith("data:image/") || image.length > 2_000_000) {
+            send(res, 400, { error: "image data URI (max 2MB) required" });
+            return;
+          }
+          const out = await describeScreen(image, String(body.question ?? "").slice(0, 300));
+          if (!out) {
+            send(res, 503, { error: "vision unavailable (no multimodal key answered)" });
+            return;
+          }
           send(res, 200, out);
           return;
         }

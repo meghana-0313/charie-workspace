@@ -169,6 +169,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     if (s.kind === "ping") return;
     if (s.kind === "end") {
       teardown();
+      setStartCamOff(true);
+      setCamOff(true);
       setJoined(false);
       setEnded(true);
       return;
@@ -326,6 +328,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const leave = () => {
     sendLeave();
     teardown();
+    setStartCamOff(true);
+    setCamOff(true);
     setJoined(false);
   };
 
@@ -336,6 +340,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     setEnding(false);
     if (res?.ok) {
       teardown();
+      setStartCamOff(true);
+      setCamOff(true);
       setJoined(false);
       setEnded(true);
     } else {
@@ -492,7 +498,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
             <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
           </div>
           {tiles.map((p) => (
-            <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} />
+            <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} roomId={roomId} qp={qp} />
           ))}
           {agentOn && (
             <div className="meet-tile" style={{ background: "radial-gradient(120% 120% at 50% 0%, #0b2e2a 0%, #071417 70%)", borderColor: "rgba(110,231,216,.45)" }}>
@@ -555,7 +561,39 @@ export function ReopenButton({ roomId }: { roomId: string }) {
   );
 }
 
-function PeerTile({ peer, onRemove }: { peer: Peer; onRemove: () => void }) {
+/** Capture one frame of a tile and ask Charie to describe it aloud. */
+export function LookButton({ roomId, qp, getVideo, label = "Charie, look" }: { roomId: string; qp: string; getVideo: () => HTMLVideoElement | null; label?: string }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function look() {
+    const video = getVideo();
+    if (!video || busy) { setErr("No video to look at yet."); return; }
+    setBusy(true); setErr("");
+    try {
+      const canvas = document.createElement("canvas");
+      const w = Math.min(video.videoWidth || 640, 960);
+      canvas.width = w;
+      canvas.height = Math.round(w * ((video.videoHeight || 540) / (video.videoWidth || 640)));
+      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const image = canvas.toDataURL("image/jpeg", 0.72);
+      const res = await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ image, question: "What do you see on this screen, and where should we click next?" }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) setErr(j.error ?? "Charie could not look right now.");
+    } catch { setErr("Charie could not look right now."); }
+    setBusy(false);
+  }
+  return (
+    <span className="row" style={{ gap: 6 }}>
+      <button type="button" className="secondary sm" onClick={look} disabled={busy}>{busy ? "Looking…" : label}</button>
+      {err && <span className="small" style={{ color: "var(--danger)" }}>{err}</span>}
+    </span>
+  );
+}
+
+function PeerTile({ peer, onRemove, roomId, qp }: { peer: Peer; onRemove: () => void; roomId: string; qp: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
@@ -582,6 +620,7 @@ function PeerTile({ peer, onRemove }: { peer: Peer; onRemove: () => void }) {
         <div className="meet-wait">Connecting…</div>
       )}
       <span className="meet-name">{peer.name} {peer.role === "guest" ? "(customer)" : "(teammate)"}</span>
+      {peer.stream && <span style={{ position: "absolute", right: 8, bottom: 8 }}><LookButton roomId={roomId} qp={qp} getVideo={() => ref.current} /></span>}
     </div>
   );
 }
@@ -988,6 +1027,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
             {canManage && <button type="button" className={agent.enabled ? "danger-ghost sm" : "sm"} disabled={busy !== ""} onClick={toggleAgent}>{busy === "agent" ? "…" : agent.enabled ? "Remove Charie" : "Bring Charie in"}</button>}
           </div>
           <p className="small muted">Charie listens, thinks out loud below, and proposes actions. Nothing runs until a human approves a card.</p>
+          <p className="small muted">She can watch a shared screen (use Charie, look on a tile) and tell you where to click. Browsers cannot give any web app control of your mouse or keyboard, so she guides you instead - and when the product itself needs driving, Investigate lets her drive it in her own browser.</p>
           <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } audioRef.current?.pause(); onAgentSpeakRef.current?.(false); } }} label="Charie speaks aloud" />
           <AskCharie roomId={roomId} qp={qp} name={localName} />
           {pending.map((a) => (

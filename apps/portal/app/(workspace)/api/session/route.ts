@@ -19,7 +19,7 @@ function setSession(res: NextResponse, value: string, maxAge: number): void {
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
-    idToken?: string; localOwner?: boolean; key?: string;
+    idToken?: string; localOwner?: boolean; key?: string; userName?: string;
   };
 
   // 1. Firebase ID token (Google sign-in from the login page).
@@ -32,7 +32,8 @@ export async function POST(req: Request) {
     }
     const email = String(decoded.email ?? "").toLowerCase();
     if (!email) return NextResponse.json({ error: "email required" }, { status: 401 });
-    const name = String(decoded.name ?? email.split("@")[0]);
+    const chosen = String(body.userName ?? "").trim().slice(0, 60);
+    const name = chosen || String(decoded.name ?? email.split("@")[0]);
     const seat = await store.getSeatByEmail(email).catch(() => null);
     if (!seat) {
       const all = await store.listSeats().catch(() => []);

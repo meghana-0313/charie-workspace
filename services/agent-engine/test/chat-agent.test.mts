@@ -70,4 +70,9 @@ ok(seenUrl.includes("inference.baseten.co"), "chat went to the Baseten endpoint,
 delete process.env.BASETEN_API_KEY;
 _clearSecretCache();
 
+const t9 = parseTurnReply("Hey! I am doing great, thanks for asking. How can I help?");
+ok(t9.kind === "text" && (t9.text ?? "").includes("doing great"), "plain conversational reply is an answer, not a parse error");
+const t10 = parseTurnReply('{"text": "The capital of France is Paris."}');
+ok(t10.kind === "text" && (t10.text ?? "").includes("Paris"), "general question answer parses");
+
 console.log(`chat-agent: ${n} assertions passed`);

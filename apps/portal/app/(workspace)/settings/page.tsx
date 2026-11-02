@@ -2,6 +2,7 @@ import { store } from "@/lib/store";
 import { identity, isAdmin, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
 import { SettingsForm } from "@/components/settings-form";
+import { AccountForm } from "@/components/account-form";
 import { LogoutButton, ThemeToggle } from "@/components/theme";
 import { Icon } from "@/components/icons";
 import { Badge, PageHead } from "@/components/ui";
@@ -129,6 +130,8 @@ export default async function SettingsPage() {
               <span style={{ flex: 1 }}><strong className="small">{me?.name ?? "You"}</strong><br /><span className="small muted">{me?.email ?? ""} · {canEdit ? "Workspace admin" : "Member"} · everything you do saves to this account</span></span>
               <LogoutButton />
             </div>
+            <hr className="divider" />
+            <AccountForm initialName={me?.name ?? ""} email={me?.email ?? ""} />
           </div>
         </div>
       </div>

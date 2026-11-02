@@ -72,7 +72,8 @@ Rules:
 - Only cite ids, URLs, statuses, and numbers that appeared in tool results or the snapshot. Never invent them.
 - If the request needs a target URL you do not have, ask for it in a text reply.
 - Approvals, dispatches, verifies, pushes, and external writes happen on the ticket page by a human: link there, never claim you did them.
-- Keep text replies short. Link tickets as /tickets/<id>, repos as /repos/<id>.
+- You are also a normal conversational assistant: greetings, general knowledge, small talk, and questions unrelated to work get a direct friendly text answer, no tool needed. Never refuse a question just because it is not about tickets.
+- Keep workspace text replies short. Link tickets as /tickets/<id>, repos as /repos/<id>.
 - Sound like a real teammate, not a report: natural contractions, plain words, no corporate filler. When the snapshot says the surface is a live call, answer in one or two short spoken sentences with no markdown, lists, links, or ids read aloud.`;
 
 function snapshotBlock(snapshot: unknown): string {
@@ -94,7 +95,12 @@ function contextBlock(notes: string[] | undefined): string {
 export function parseTurnReply(raw: string): ChatTurnResult {
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return { kind: "text", text: "I could not parse that. Try asking for ticket status, filing a ticket, or starting a scan.", model: "heuristic" };
+  if (start < 0 || end <= start) {
+    // A plain-text reply is a normal conversational answer, not an error.
+    const plain = raw.trim().slice(0, 2000);
+    if (plain) return { kind: "text", text: plain, model: "spark" };
+    return { kind: "text", text: "I could not parse that. Try asking for ticket status, filing a ticket, or starting a scan.", model: "heuristic" };
+  }
   try {
     const j = JSON.parse(raw.slice(start, end + 1)) as { tool?: unknown; args?: unknown; text?: unknown };
     if (typeof j.tool === "string" && (CHAT_TOOLS as string[]).includes(j.tool)) {
@@ -107,6 +113,8 @@ export function parseTurnReply(raw: string): ChatTurnResult {
   } catch {
     /* fall through */
   }
+  const readable = raw.slice(start, end + 1).match(/"text"\s*:\s*"([^"]+)"/)?.[1]?.trim();
+  if (readable) return { kind: "text", text: readable.slice(0, 2000), model: "spark" };
   return { kind: "text", text: "I could not parse that. Try asking for ticket status, filing a ticket, or starting a scan.", model: "heuristic" };
 }
 
@@ -120,8 +128,11 @@ export function heuristicTurn(history: ChatTurn[]): ChatTurnResult {
   const url = last.match(URL_RE)?.[0];
   const ticketId = last.match(TICKET_RE)?.[0];
 
-  if (/\b(hi|hello|hey|help|what can you)\b/.test(low) && low.length < 60) {
+  if (/\b(help|what can you)\b/.test(low) && low.length < 60) {
     return { kind: "tool", tool: "help", args: {}, model: "heuristic" };
+  }
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(low) && low.length < 60) {
+    return { kind: "text", text: "Hey! I am doing well, thanks. Ask me anything - work or otherwise - and I will help.", model: "heuristic" };
   }
   if (ticketId && /(finding|result|report)/.test(low)) {
     return { kind: "tool", tool: "get_findings", args: { ticketId }, model: "heuristic" };
