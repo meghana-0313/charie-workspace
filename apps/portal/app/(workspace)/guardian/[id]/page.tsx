@@ -19,7 +19,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PageHead
-        crumbs={[["/", "Home"], ["/guardian", "Threats"], [`/guardian/${inc.id}`, inc.id]]}
+        crumbs={[["/", "Home"], ["/guardian", "Incidents"], [`/guardian/${inc.id}`, inc.id]]}
         title={<><span className="icon-orb red" style={{ width: 38, height: 38 }}><Icon name="alert" size={19} /></span> {inc.title}</>}
         sub={<>Opened {inc.createdAt.slice(0, 16).replace("T", " ")} · mode: {inc.mode} · baseline suspicious events: {inc.baselineSuspicious} <Badge tone={inc.severity}>{inc.severity}</Badge> <Badge tone={inc.status}>{inc.status}</Badge></>}
       />
@@ -29,7 +29,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
           {STEPS.map((s, i) => (
             <span key={s} className="row" style={{ flexWrap: "nowrap", flex: 1, minWidth: 140 }}>
               <span className={`icon-orb ${i <= stepIdx ? "violet" : ""}`}><Icon name={i < stepIdx || inc.status === "resolved" ? "check" : "clock"} /></span>
-              <span className="small"><strong>{s}</strong><br /><span className="muted">{i <= stepIdx ? "Done" : "Pending"}</span></span>
+              <span className="small"><strong>{s}</strong><br /><span className="muted">{i < stepIdx || inc.status === "resolved" ? "Done" : i === stepIdx ? "In progress" : "Pending"}</span></span>
               {i < STEPS.length - 1 && <span className="progress" style={{ flex: 1 }}><i style={{ width: i < stepIdx ? "100%" : "0%" }} /></span>}
             </span>
           ))}

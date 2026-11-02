@@ -13,7 +13,7 @@ async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: 
   return { ok: res.ok, ...data };
 }
 
-export function NewTicketForm({ defaultTarget = "" }: { defaultTarget?: string }) {
+export function NewTicketForm({ defaultTarget = "", onSuccess }: { defaultTarget?: string; onSuccess?: (ticketId: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [recFile, setRecFile] = useState<File | null>(null);
@@ -53,6 +53,7 @@ export function NewTicketForm({ defaultTarget = "" }: { defaultTarget?: string }
       return;
     }
     const tkt = (await res.json()) as { id: string };
+    if (onSuccess) { onSuccess(tkt.id); return; }
     location.href = `/tickets/${tkt.id}`;
   }
   const [phSubject, phBody] = placeholders[kind] ?? placeholders.bug;

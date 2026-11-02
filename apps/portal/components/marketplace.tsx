@@ -29,6 +29,12 @@ export function AppLogo({ app }: { app: string }) {
       return <svg {...s}><path d="M12 2s1 3.2-1.6 6C8.2 10.3 6.5 12 6.5 15a5.5 5.5 0 0 0 11 0c0-2-1-3.6-2-5-.3 1-1 1.8-2 2.3.6-2.8-.3-7.3-1.5-10.3z" /></svg>;
     case "linear":
       return <svg {...s}><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M5.5 15.5a9 9 0 0 1 13-7M4 12h16M8 5.8a9 9 0 0 1 10.2 10.4" stroke="currentColor" strokeWidth="1.6" fill="none" /></svg>;
+    case "azure":
+      return <svg {...s}><path d="M9.5 3h8.2l3.3 18h-6.2l-1.5-3.4H6.6L4.9 21H1.6zm1.8 5.2L8.2 14h4.4l-1-5.8z" transform="scale(0.95)" /></svg>;
+    case "cloudflare":
+      return <svg {...s}><path d="M7 18a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18.3 10 3.8 3.8 0 0 1 17.5 18zM8 21h11l-1.2-2.6H9.4z" /></svg>;
+    case "supabase":
+      return <svg {...s}><path d="M13.4 2L4.6 13.5h5.6L9.4 22l8.8-11.5h-5.6z" /></svg>;
     case "discord":
       return <svg {...s}><path d="M6.5 5.5A13 13 0 0 1 9.6 4.6l.5 1a10.7 10.7 0 0 0-5 4.6A13.4 13.4 0 0 1 6.6 9.9c.1.2.2.5.3.7a10.8 10.8 0 0 0 3.3 5.7c.2.2.6.1.6-.4a7.7 7.7 0 0 1-.8-1.2c-.1-.2 0-.4.2-.5l.6-.3c.2-.1.4 0 .6.1a8.7 8.7 0 0 0 6.8 0c.2-.1.4-.2.6-.1l.6.3c.2.1.3.3.2.5l-.8 1.3c-.1.4.4.5.6.3a10.8 10.8 0 0 0 3.3-5.7c.1-.2.2-.5.3-.7-.5-.2-1-.4-1.5-.7a10.7 10.7 0 0 0-5-4.6l.5-1c1 .2 2.1.5 3.1.9a2 2 0 0 1 1.2 1.4l1.2 7a2.3 2.3 0 0 1-1 2.4 14.7 14.7 0 0 1-3.4 1.7c-.3.1-.6 0-.7-.3l-.6-1.2a10.6 10.6 0 0 1-3 0l-.6 1.2c-.1.3-.4.4-.7.3a14.7 14.7 0 0 1-3.4-1.7 2.3 2.3 0 0 1-1-2.4l1.2-7A2 2 0 0 1 6.5 5.5zM9.7 15.8a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zm4.6 0a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z" transform="scale(0.92) translate(1 0)" /></svg>;
     default:
@@ -40,16 +46,22 @@ const APP_COLORS: Record<string, [string, string]> = {
   github: ["#24292f", "#fff"], gitlab: ["#fc6d26", "#fff"], jira: ["#2684ff", "#fff"],
   slack: ["#611f69", "#fff"], sentry: ["#362d59", "#fff"], datadog: ["#632ca6", "#fff"],
   aws: ["#ff9900", "#232f3e"], gcp: ["#4285f4", "#fff"], firebase: ["#ffca28", "#5f4300"],
-  linear: ["#5e6ad2", "#fff"], discord: ["#5865f2", "#fff"], webhook: ["#202949", "#c9b3ff"],
+  linear: ["#5e6ad2", "#fff"], discord: ["#5865f2", "#fff"], webhook: ["#1d2a36", "#6ee7d8"],
+  azure: ["#0078d4", "#fff"], cloudflare: ["#f48120", "#fff"], supabase: ["#1c1c1c", "#3ecf8e"],
 };
 
-export function AppTiles({ githubConnected, jiraConnected }: { githubConnected: boolean; jiraConnected: boolean }) {
+export function AppTiles({ githubConnected, jiraConnected, azureConnected, cloudflareConnected, supabaseConnected }: {
+  githubConnected: boolean; jiraConnected: boolean; azureConnected?: boolean; cloudflareConnected?: boolean; supabaseConnected?: boolean;
+}) {
   const apps: Array<[string, string, string, string, string]> = [
     ["github", "GitHub", "Repos, PRs, issues and actions", githubConnected ? "connected" : "connect", "/repos"],
     ["jira", "Jira", "Sync issues, epics and sprints", jiraConnected ? "connected" : "connect", "#connect-jira"],
     ["webhook", "Webhooks", "Prod apps report errors with ingest keys", "active", "/team"],
     ["gcp", "Google Cloud", "Logs, builds and hosting via GCP", "via gcp", "/settings"],
     ["firebase", "Firebase", "Build, run and monitor apps", "via gcp", "/settings"],
+    ["azure", "Azure", "Subscriptions, resources and deployments", azureConnected ? "connected" : "connect", "#connect-azure"],
+    ["cloudflare", "Cloudflare", "Zones, DNS, Workers and edge deploys", cloudflareConnected ? "connected" : "connect", "#connect-cloudflare"],
+    ["supabase", "Supabase", "Projects, Postgres and auth health", supabaseConnected ? "connected" : "connect", "#connect-supabase"],
     ["slack", "Slack", "Alerts, updates and approvals", "soon", "#"],
     ["gitlab", "GitLab", "Manage code, MRs and pipelines", "soon", "#"],
     ["sentry", "Sentry", "Errors, crashes and performance", "soon", "#"],
@@ -61,8 +73,8 @@ export function AppTiles({ githubConnected, jiraConnected }: { githubConnected: 
   return (
     <>
       <div className="tabs">
-        <span className="tab on" style={{ padding: "7px 14px" }}>All (12)</span>
-        <span className="small muted" style={{ alignSelf: "center" }}>Dev & Code (4) · CI/CD (3) · Monitoring (3)</span>
+        <span className="tab on" style={{ padding: "7px 14px" }}>All (15)</span>
+        <span className="small muted" style={{ alignSelf: "center" }}>Dev & Code (4) · Cloud (5) · Monitoring (3)</span>
         <span className="spacer" />
         <span className="small muted" style={{ alignSelf: "center" }}>Only live connectors run actions; the rest are on the roadmap.</span>
       </div>
@@ -232,7 +244,7 @@ export function ConnectorActions({ id, kind }: { id: string; kind: string }) {
   }
   return (
     <span className="row">
-      {kind === "jira" && <button type="button" className="secondary sm" disabled={busy} onClick={test}>Test</button>}
+      {kind !== "webhook-in" && kind !== "github" && <button type="button" className="secondary sm" disabled={busy} onClick={test}>Test</button>}
       <button type="button" className="danger-ghost sm" disabled={busy} onClick={remove}>Disconnect</button>
       {msg && <span className="small muted">{msg}</span>}
     </span>
@@ -370,6 +382,109 @@ export function ContextForm() {
         {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
       </div>
     </form>
+  );
+}
+
+type VendorKindUi = "azure" | "cloudflare" | "supabase";
+
+const VENDOR_FIELDS: Record<VendorKindUi, Array<{ key: string; label: string; placeholder: string; secret?: boolean; optional?: boolean }>> = {
+  cloudflare: [
+    { key: "apiToken", label: "API token", placeholder: "Cloudflare API token (stored server-side, never shown)", secret: true },
+  ],
+  supabase: [
+    { key: "projectRef", label: "Project ref", placeholder: "abcdwxyz (from your Supabase project URL)" },
+    { key: "serviceRoleKey", label: "Service role key", placeholder: "Service role key (stored server-side, never shown)", secret: true },
+  ],
+  azure: [
+    { key: "tenantId", label: "Tenant (directory) ID", placeholder: "00000000-0000-0000-0000-000000000000" },
+    { key: "clientId", label: "Application (client) ID", placeholder: "Service principal app ID" },
+    { key: "clientSecret", label: "Client secret", placeholder: "Service principal secret (stored server-side, never shown)", secret: true },
+    { key: "subscriptionId", label: "Subscription ID (optional)", placeholder: "Scope checks to one subscription", optional: true },
+  ],
+};
+
+const VENDOR_BLURB: Record<VendorKindUi, string> = {
+  cloudflare: "Charie verifies the token against Cloudflare before saving. Zone, DNS, and Worker syncs build on this connection.",
+  supabase: "Charie checks project health with the service role key before saving. The key stays server-side and is never shown again.",
+  azure: "Charie exchanges the service principal for an ARM token and lists visible subscriptions before saving. Secrets stay server-side.",
+};
+
+/** Connect form for Azure / Cloudflare / Supabase, cloned from the Jira
+ *  test-before-save pattern: POST /api/connectors, reload on success. */
+export function VendorConnectForm({ kind, label }: { kind: VendorKindUi; label: string }) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function run(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    const res = await fetch("/api/connectors", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kind, ...values }),
+    });
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    setBusy(false);
+    if (!res.ok) {
+      setError(j.error ?? "connect failed");
+      return;
+    }
+    location.reload();
+  }
+  return (
+    <form onSubmit={run}>
+      <p className="small muted" style={{ marginTop: 0 }}>{VENDOR_BLURB[kind]}</p>
+      {VENDOR_FIELDS[kind].map((f) => (
+        <span key={f.key}>
+          <label htmlFor={`${kind}-${f.key}`}>{f.label}</label>
+          <input
+            id={`${kind}-${f.key}`}
+            type={f.secret ? "password" : "text"}
+            autoComplete="off"
+            required={!f.optional}
+            value={values[f.key] ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+            placeholder={f.placeholder}
+          />
+        </span>
+      ))}
+      <div className="row" style={{ marginTop: 10 }}>
+        <button disabled={busy}>{busy ? "Testing connection…" : `Connect ${label}`}</button>
+        {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
+      </div>
+    </form>
+  );
+}
+
+/** Connected-vendor card: status table with Test / Disconnect, or the form. */
+export function VendorSection({ kind, label, conns }: {
+  kind: VendorKindUi;
+  label: string;
+  conns: Array<{ id: string; status: string; detail?: string; lastSyncStatus?: string; config: Record<string, string | undefined> }>;
+}) {
+  return (
+    <div className="card" id={`connect-${kind}`} style={{ marginTop: 16 }}>
+      <div className="card-title">{label}</div>
+      {conns.length === 0 ? (
+        <VendorConnectForm kind={kind} label={label} />
+      ) : (
+        <table>
+          <thead><tr><th>Account</th><th>Status</th><th>Detail</th><th></th></tr></thead>
+          <tbody>
+            {conns.map((c) => (
+              <tr key={c.id}>
+                <td className="small">{c.config.projectRef ?? c.config.tenantId ?? c.config.subscriptionId ?? label}</td>
+                <td><Badge tone={c.status === "connected" ? "done" : "major"}>{c.status}</Badge></td>
+                <td className="small muted">{c.lastSyncStatus ?? c.detail ?? "never"}</td>
+                <td><ConnectorActions id={c.id} kind={kind} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 

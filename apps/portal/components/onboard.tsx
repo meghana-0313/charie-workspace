@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Icon } from "./icons";
 
 export function GetStarted({ hasRepo, hasTicket, hasRun }: { hasRepo: boolean; hasTicket: boolean; hasRun: boolean }) {
   const [dismissed, setDismissed] = useState(true);
@@ -33,9 +34,13 @@ export function GetStarted({ hasRepo, hasTicket, hasRun }: { hasRepo: boolean; h
       </div>
       <div className="stack" style={{ marginTop: 8 }}>
         {steps.map((s) => (
-          <p key={s.label} className="small">
-            {s.done ? <span className="proof-pass">done</span> : <span className="muted">todo</span>}{" "}
-            <Link href={s.href}>{s.label}</Link> <span className="muted">({s.hint})</span>
+          <p key={s.label} className="small row" style={{ flexWrap: "nowrap" }}>
+            <span className={`check-dot ${s.done ? "done" : "todo"}`} role="img" aria-label={s.done ? "Done" : "To do"}>
+              {s.done ? <Icon name="check" size={12} /> : ""}
+            </span>
+            <span>
+              <Link href={s.href}>{s.label}</Link> <span className="muted">({s.hint})</span>
+            </span>
           </p>
         ))}
       </div>

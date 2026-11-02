@@ -56,7 +56,7 @@ export default async function AgentsPage() {
         crumbs={[["/", "Home"], ["/agents", "Coding Agents"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="code" size={19} /></span> Coding Agents</>}
         sub="Run autonomous coding agents to investigate, fix, test, and ship changes."
-        actions={<Link href="/tickets#new" className="btn">+ New Run</Link>}
+        actions={<Link href="/tickets?new=1" className="btn">+ New Run</Link>}
       />
       <div className="tabs">
         <span className="tab on" style={{ padding: "7px 16px" }}>Runs</span>

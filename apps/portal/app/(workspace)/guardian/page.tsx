@@ -33,8 +33,8 @@ export default async function GuardianPage() {
   return (
     <>
       <PageHead
-        crumbs={[["/", "Home"], ["/guardian", "Threats"]]}
-        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="shield" size={19} /></span> Threats <Badge>simulated environment</Badge></>}
+        crumbs={[["/", "Home"], ["/guardian", "Incidents"]]}
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="shield" size={19} /></span> Incidents <Badge>simulated environment</Badge></>}
         sub="Charie Guard watches production after every deploy. Detectors flag attack patterns, Meta models investigate, and approved responses execute against a simulation, never real prod."
         actions={<><SeedButton /><AnalyzeButton /><SweepButton /><PushButton /></>}
       />

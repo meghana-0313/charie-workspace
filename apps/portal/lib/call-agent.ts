@@ -15,6 +15,41 @@ import {
   addAction, addThought, getAgent, getLive, setAgentEnabled, speak, updateAction,
   type AgentAction, type LiveLine,
 } from "./livecall";
+import { charieShouldReply } from "./room-status";
+
+/**
+ * Ask the engine for a spoken reply to one utterance, using recent transcript
+ * as context. Returns null when the engine is unreachable or has no text, so
+ * the caller can fall back. Bounded to 15s so a live call never stalls.
+ * analysisSource stays heuristic until this returns real model text.
+ */
+async function engineReply(roomId: string, line: LiveLine): Promise<string | null> {
+  const base = (process.env.ENGINE_URL ?? "http://localhost:3103").replace(/\/$/, "");
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (process.env.ENGINE_TOKEN) headers["x-engine-token"] = process.env.ENGINE_TOKEN;
+  const { lines } = getLive(roomId);
+  const history = lines.slice(-10).map((l) => ({
+    role: l.role === "agent" ? "assistant" as const : "user" as const,
+    content: `${l.speaker}: ${l.text}`,
+  }));
+  try {
+    const res = await fetch(`${base}/chat/turn`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        history,
+        snapshot: { surface: "meet-call", roomId },
+        contextNotes: ["You are Charie in a live video call. Answer the last speaker briefly, in one or two spoken sentences."],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { kind?: string; text?: string };
+    return j.kind === "text" && j.text?.trim() ? j.text.trim().slice(0, 400) : null;
+  } catch {
+    return null;
+  }
+}
 
 const BUG_RE = /(bug|error|fail|broken|crash|not working|doesn.?t work|issue|checkout|payment|500|timeout)/i;
 
@@ -34,10 +69,10 @@ export function disableAgent(roomId: string) {
 }
 
 /** React to a fresh transcript line. Called from the live relay. */
-export function onLiveLine(roomId: string, line: LiveLine) {
+export async function onLiveLine(roomId: string, line: LiveLine) {
   const a = getAgent(roomId);
   if (!a.enabled || line.role === "agent") return;
-  if (line.role === "customer" && BUG_RE.test(line.text) && !a.proposedInvestigate) {
+  if (BUG_RE.test(line.text) && !a.proposedInvestigate) {
     a.proposedInvestigate = true;
     addThought(roomId, `Heard a likely failure from ${line.speaker}: "${line.text.slice(0, 120)}". Proposing a live investigation.`);
     addAction(roomId, {
@@ -46,8 +81,20 @@ export function onLiveLine(roomId: string, line: LiveLine) {
       detail: "Charie drives the product like a first-time user, collects screenshots and repro steps, and reports findings here.",
     });
     speak(roomId, "That sounds like a real failure. I can investigate it live if you approve the card on the right.");
-  } else if (line.text.trim().endsWith("?") && line.role === "customer") {
-    addThought(roomId, `Question from ${line.speaker}. I'm tracking it for the summary.`);
+    return;
+  }
+  // Speak back: Charie answers any participant (teammate or customer) who
+  // asks a question or addresses her by name. Engine text when reachable,
+  // an honest heuristic acknowledgement otherwise - never silent.
+  if (charieShouldReply(line.text)) {
+    addThought(roomId, `Replying to ${line.speaker}: "${line.text.slice(0, 120)}"`);
+    const reply = await engineReply(roomId, line);
+    if (reply) {
+      speak(roomId, reply);
+    } else {
+      speak(roomId, `Good question, ${line.speaker}. I am tracking that and will cover it in the summary. Add any detail you have and I will pick it up.`);
+      addThought(roomId, "Engine unreachable, so that reply was heuristic (analysisSource: heuristic), not a model answer.");
+    }
   }
 }
 

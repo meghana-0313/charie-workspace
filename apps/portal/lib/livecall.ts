@@ -155,3 +155,21 @@ export function setSummary(roomId: string, summary: string): void {
 export function clearRoom(roomId: string): void {
   rooms.delete(roomId);
 }
+
+/**
+ * Seed the ephemeral live memory from a room's persisted transcript, notes,
+ * and summary (saved when the room last ended). Lets a re-opened room carry
+ * its full prior context instead of starting blank. No-op when the room
+ * already has live lines, so rejoining a live call never duplicates history.
+ */
+export function hydrateRoom(
+  roomId: string,
+  saved?: { transcript?: LiveLine[]; summary?: string },
+): void {
+  if (!saved?.transcript?.length && !saved?.summary) return;
+  const r = get(roomId);
+  if (r.lines.length > 0) return;
+  r.lines = (saved.transcript ?? []).slice(-MAX_LINES);
+  if (saved.summary) r.summary = saved.summary;
+  r.updatedAt = Date.now();
+}

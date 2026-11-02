@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
-import { AppTiles, ConnectorActions, ContextForm, ContextRow, JiraConnectForm, McpConfigCard, RuleForm, RuleRow } from "@/components/marketplace";
+import { AppTiles, ConnectorActions, ContextForm, ContextRow, JiraConnectForm, McpConfigCard, RuleForm, RuleRow, VendorSection } from "@/components/marketplace";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,13 @@ export default async function MarketplacePage() {
   ]);
   const gh = id?.uid ? await store.getGithubToken(id.uid).catch(() => null) : null;
   const jiraConns = connectors.filter((c) => c.kind === "jira");
+  const azureConns = connectors.filter((c) => c.kind === "azure");
+  const cloudflareConns = connectors.filter((c) => c.kind === "cloudflare");
+  const supabaseConns = connectors.filter((c) => c.kind === "supabase");
+  const vendorView = (list: typeof connectors) => list.map((c) => ({
+    id: c.id, status: c.status, detail: c.detail, lastSyncStatus: c.lastSyncStatus,
+    config: { projectRef: c.config.projectRef, tenantId: c.config.tenantId, subscriptionId: c.config.subscriptionId } as Record<string, string | undefined>,
+  }));
   return (
     <>
       <PageHead
@@ -31,7 +38,13 @@ export default async function MarketplacePage() {
         title="Integrations"
         sub="Connect the systems Charie works with. Jira issues flow in as investigated tickets; verified fixes flow back as comments and transitions."
       />
-      <AppTiles githubConnected={!!gh} jiraConnected={jiraConns.length > 0} />
+      <AppTiles
+        githubConnected={!!gh}
+        jiraConnected={jiraConns.length > 0}
+        azureConnected={azureConns.length > 0}
+        cloudflareConnected={cloudflareConns.length > 0}
+        supabaseConnected={supabaseConns.length > 0}
+      />
       <div className="grid2">
         <div className="card">
           <div className="card-title">GitHub</div>
@@ -70,7 +83,10 @@ export default async function MarketplacePage() {
           </table>
         )}
       </div>
-      <div className="card">
+      <VendorSection kind="cloudflare" label="Cloudflare" conns={vendorView(cloudflareConns)} />
+      <VendorSection kind="supabase" label="Supabase" conns={vendorView(supabaseConns)} />
+      <VendorSection kind="azure" label="Azure" conns={vendorView(azureConns)} />
+      <div className="card" style={{ marginTop: 16 }}>
         <div className="card-title">Jira pull rules</div>
         <p className="small muted">
           Each rule pulls matching issues on a schedule, files them as Charie tickets against your app URL,

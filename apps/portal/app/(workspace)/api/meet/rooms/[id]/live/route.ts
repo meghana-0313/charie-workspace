@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkInvite } from "@/lib/auth";
 import { store } from "@/lib/store";
-import { getLive, postLine } from "@/lib/livecall";
+import { getLive, hydrateRoom, postLine } from "@/lib/livecall";
 import { onLiveLine } from "@/lib/call-agent";
 import { displayName, identity } from "@/lib/who";
 
@@ -22,6 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
   if ((await caller(req, roomId)) === null) return NextResponse.json({ error: "login or invite required" }, { status: 401 });
   if (room.liveNotes !== true) return NextResponse.json({ enabled: false, lines: [], notes: [], summary: "" });
+  hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary });
   return NextResponse.json({ enabled: true, ...getLive(roomId) });
 }
 
@@ -43,8 +44,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const clean = String(text ?? "").trim().slice(0, 500);
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });
   const speaker = who.role === "teammate" ? who.name : String(name ?? "").trim().slice(0, 60) || "Guest";
+  hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary });
   const line = postLine(roomId, { speaker, role: who.role, text: clean });
-  // Charie listens along and may propose a consent card (never acts alone).
-  try { onLiveLine(roomId, line); } catch { /* agent is best effort */ }
+  // Charie listens along: may propose a consent card (never acts alone) and
+  // now speaks a reply to questions. Awaited so the reply lands in the
+  // transcript before the client's next poll; engine call is time-bounded.
+  try { await onLiveLine(roomId, line); } catch { /* agent is best effort */ }
   return NextResponse.json(line, { status: 201 });
 }

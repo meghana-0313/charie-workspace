@@ -132,11 +132,26 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <div className="card login-card">
+      <div className="login-shell">
+        <div className="login-panel">
+          <div className="row" style={{ flexWrap: "nowrap" }}>
+            <span className="side-mark"><CharieMark /></span>
+            <div>
+              <div className="login-name">CHARIE</div>
+              <div className="small muted">Autonomous engineering intelligence</div>
+            </div>
+          </div>
+          <p className="muted" style={{ margin: 0 }}>Ticket to evidence to fix to proof. Charie investigates, fixes, and verifies - you approve.</p>
+          <div className="proof">
+            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Evidence first: screenshots and repro steps on every finding</p>
+            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Nothing ships without your approval</p>
+            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Verified fixes, re-tested before they are called done</p>
+          </div>
+        </div>
+        <div className="login-card">
         <div className="login-brand">
-          <span className="side-mark"><CharieMark /></span>
-          <div className="login-name">CHARIE</div>
-          <p className="muted small" style={{ marginTop: 4 }}>Autonomous engineering intelligence.<br />Ticket to evidence to fix to proof.</p>
+          <div className="login-name" style={{ fontSize: 22 }}>Welcome back</div>
+          <p className="muted small" style={{ marginTop: 4 }}>Sign in to your workspace.</p>
         </div>
         <div className="stack" style={{ marginTop: 14 }}>
           {mode === "reset" ? (
@@ -186,6 +201,7 @@ export default function LoginPage() {
               press Get started, enable a provider, then reload this page.
             </p>
           )}
+        </div>
         </div>
       </div>
     </div>

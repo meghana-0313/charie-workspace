@@ -64,7 +64,7 @@ interface Peer {
   stream: MediaStream | null;
 }
 
-export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true, initialEnded = false }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean; initialEnded?: boolean }) {
+export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true, initialEnded = false, savedTranscript = [], savedNotes = [], savedSummary = "" }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean; initialEnded?: boolean; savedTranscript?: Array<{ speaker: string; role: string; text: string; at: string }>; savedNotes?: string[]; savedSummary?: string }) {
   const [name, setName] = useState(initialName);
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
   const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
@@ -86,6 +86,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const localVideo = useRef<HTMLVideoElement>(null);
   const previewVideo = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const screenRef = useRef<MediaStream | null>(null);
+  const joinedRef = useRef(false);
   const pcs = useRef<Record<string, RTCPeerConnection>>({});
   const since = useRef(0);
   const me = useRef(peerId());
@@ -127,6 +129,13 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     pcs.current = {};
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    // Screen share lives outside streamRef: stop it too or the browser
+    // keeps capturing the screen after Leave / End / unmount.
+    screenRef.current?.getTracks().forEach((t) => t.stop());
+    screenRef.current = null;
+    setSharing(false);
+    try { window.speechSynthesis?.cancel(); } catch { /* not supported */ }
+    joinedRef.current = false;
     lastSeen.current = {};
     setPeers({});
   };
@@ -251,6 +260,13 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     })();
     return () => {
       cancelled = true;
+      // Leaving the page before Join must release the camera/mic, or the
+      // browser keeps them live. Skipped once joined: the joined effect's
+      // teardown owns the stream from there.
+      if (!joinedRef.current) {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     };
   }, [joined, audioOnly]);
 
@@ -297,6 +313,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
       setMuted(startMuted);
       setCamOff(audioOnly || startCamOff);
       nameRef.current = name.trim();
+      joinedRef.current = true;
       setJoined(true);
       await send("*", "join", JSON.stringify({ name: nameRef.current, role: token ? "guest" : "member" }));
     } catch {
@@ -366,6 +383,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     if (sharing) return;
     try {
       const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      screenRef.current = screen;
       const track = screen.getVideoTracks()[0];
       for (const pc of Object.values(pcs.current)) {
         const sender = pc.getSenders().find((s) => s.track?.kind === "video");
@@ -376,6 +394,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
       }
       setSharing(true);
       track.onended = async () => {
+        screenRef.current = null;
         const cam = streamRef.current?.getVideoTracks()[0] ?? null;
         for (const pc of Object.values(pcs.current)) {
           const sender = pc.getSenders().find((s) => s.track?.kind === "video");
@@ -391,14 +410,45 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
 
   if (ended) {
     return (
-      <div className="card">
-        <div className="card-title">Meeting ended</div>
-        <p className="muted small">
-          {token
-            ? "The host ended this meeting for everyone. Thanks for joining; you can close this tab."
-            : "This meeting has ended for everyone. Start a new room from the Meet page when you need one."}
-        </p>
-        {!token && <p style={{ marginBottom: 0 }}><a className="btn" href="/guardian/zoom">Back to Meet</a></p>}
+      <div className="stack">
+        <div className="card">
+          <div className="card-title">Meeting ended</div>
+          <p className="muted small">
+            {token
+              ? "The host ended this meeting for everyone. Thanks for joining; you can close this tab."
+              : "This meeting has ended. Its transcript and notes are saved below, and you can re-open this same room to keep discussing the same issue with full context."}
+          </p>
+          {!token && (
+            <p className="row" style={{ marginBottom: 0 }}>
+              <ReopenButton roomId={roomId} />
+              <a className="btn secondary" href="/guardian/zoom">Back to Meet</a>
+            </p>
+          )}
+        </div>
+        {!token && savedSummary && (
+          <div className="card">
+            <div className="card-title">Summary</div>
+            <p className="small" style={{ whiteSpace: "pre-wrap" }}>{savedSummary}</p>
+          </div>
+        )}
+        {!token && savedNotes.length > 0 && (
+          <div className="card">
+            <div className="card-title">Notes and actions</div>
+            <ul className="small">
+              {savedNotes.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+          </div>
+        )}
+        {!token && savedTranscript.length > 0 && (
+          <div className="card">
+            <div className="card-title">Transcript ({savedTranscript.length})</div>
+            <div className="live-lines" style={{ maxHeight: 380 }}>
+              {savedTranscript.map((l, i) => (
+                <p key={i} className="small"><strong>{l.speaker}</strong> <span className="muted">({l.role})</span>: {l.text}</p>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -452,7 +502,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
             <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} />
           ))}
           {agentOn && (
-            <div className="meet-tile" style={{ background: "radial-gradient(120% 120% at 50% 0%, #241448 0%, #12081f 70%)", borderColor: "rgba(167,139,250,.5)" }}>
+            <div className="meet-tile" style={{ background: "radial-gradient(120% 120% at 50% 0%, #0b2e2a 0%, #071417 70%)", borderColor: "rgba(110,231,216,.45)" }}>
               <div className="orb-wrap" style={{ width: 130, height: 130, marginTop: 18 }}>
                 <span className="orb-ring" />
                 <span className="orb-core" />
@@ -486,6 +536,29 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         />
       </aside>
     </div>
+  );
+}
+
+export function ReopenButton({ roomId }: { roomId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <>
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError("");
+          const res = await fetch(`/api/meet/rooms/${roomId}/reopen`, { method: "POST" }).catch(() => null);
+          if (res?.ok) { location.reload(); return; }
+          setBusy(false);
+          setError("Only the host can re-open this room.");
+        }}
+      >
+        {busy ? "Re-opening…" : "Re-open room"}
+      </button>
+      {error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}
+    </>
   );
 }
 

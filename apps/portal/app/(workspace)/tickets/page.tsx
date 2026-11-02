@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
-import { NewTicketForm } from "@/components/forms";
+import { NewInvestigationButton } from "@/components/modal";
 import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function TicketsPage() {
+export default async function TicketsPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
+  const { new: newParam } = await searchParams;
   const myUid = scopeUid(await identity());
   const tickets = await store.listTickets(myUid);
   const defaultTarget = (await store.getSetting("defaultTargetUrl").catch(() => null)) ?? "";
@@ -20,6 +21,7 @@ export default async function TicketsPage() {
         crumbs={[["/", "Home"], ["/tickets", "Tickets and fixes"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="ticket" size={19} /></span> Tickets and fixes</>}
         sub="Every issue from customer report to verified fix. Open one to watch the investigation, read findings, and approve fixes."
+        actions={<NewInvestigationButton defaultTarget={defaultTarget} autoOpen={newParam === "1"} />}
       />
       <div className="stats">
         <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="ticket" size={20} /></span><div><div className="stat-num">{open}</div><div className="stat-label">Open tickets</div></div></div></div>
@@ -28,11 +30,11 @@ export default async function TicketsPage() {
         <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="layers" size={20} /></span><div><div className="stat-num">{tickets.length}</div><div className="stat-label">Total tickets</div></div></div></div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "var(--space-4)", alignItems: "start" }} className="home-grid">
+      <div>
         <div className="card">
           <div className="card-title">All tickets ({tickets.length})</div>
           {tickets.length === 0 ? (
-            <EmptyState title="No tickets yet" body="File one on the right. Example: Checkout button does nothing." />
+            <EmptyState title="No tickets yet" body="Use New investigation above. Example: Checkout button does nothing." />
           ) : (
             <table>
               <thead><tr><th>Ticket</th><th>Goal</th><th>Status</th><th>Opened</th><th></th></tr></thead>
@@ -52,13 +54,6 @@ export default async function TicketsPage() {
               </tbody>
             </table>
           )}
-        </div>
-        <div className="card" id="new">
-          <div className="card-title"><span className="icon-orb violet"><Icon name="plus" /></span> File a ticket</div>
-          <p className="muted small">
-            Describe the customer problem, or hold the mic and talk. A room opens immediately and the investigation starts by itself.
-          </p>
-          <NewTicketForm defaultTarget={defaultTarget} />
         </div>
       </div>
     </>

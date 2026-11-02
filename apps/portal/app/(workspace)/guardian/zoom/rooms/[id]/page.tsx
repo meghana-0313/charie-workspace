@@ -21,7 +21,14 @@ export default async function MeetRoomPage({ params }: { params: Promise<{ id: s
         title={room.title}
         sub="Native Charie room. Media flows peer to peer; the portal only exchanges connection setup."
       />
-      <MeetRoom roomId={room.id} roomTitle={room.title} initialEnded={Boolean(room.endedAt)} />
+      <MeetRoom
+        roomId={room.id}
+        roomTitle={room.title}
+        initialEnded={Boolean(room.endedAt)}
+        savedTranscript={room.transcript ?? []}
+        savedNotes={room.notes ?? []}
+        savedSummary={room.summary ?? ""}
+      />
     </>
   );
 }

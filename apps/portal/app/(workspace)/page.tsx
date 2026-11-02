@@ -54,7 +54,7 @@ export default async function Dashboard() {
         </div>
         <div className="row">
           <span className="badge"><Icon name="calendar" size={13} /> {today}</span>
-          <Link href="/tickets#new" className="btn">+ New investigation</Link>
+          <Link href="/tickets?new=1" className="btn">+ New investigation</Link>
         </div>
       </div>
 
