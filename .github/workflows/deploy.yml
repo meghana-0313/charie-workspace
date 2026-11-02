@@ -72,40 +72,73 @@ jobs:
         with:
           workload_identity_provider: projects/591747902299/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: circle-back-agent@project-8b9ab843-d0d6-4ea4-a11.iam.gserviceaccount.com
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - uses: google-github-actions/setup-gcloud@v2
         with:
-          service: charie-engine
-          region: ${{ env.REGION }}
-          image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/engine:${{ github.sha }}
-          env_vars: |
-            GCP_PROJECT_ID=${{ env.PROJECT_ID }}
-            GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
-            PORTAL_URL=https://charie-portal-ehfuotlisq-uc.a.run.app
-            ENGINE_PUBLIC_URL=${{ env.ENGINE_URL }}
-          flags: --memory=4Gi --cpu=2 --concurrency=1 --timeout=3600 --max-instances=2 --allow-unauthenticated --service-account=${{ env.SERVICE_ACCOUNT }}
-      - uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: charie-demo
-          region: ${{ env.REGION }}
-          image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/demo:${{ github.sha }}
-          flags: --memory=512Mi --cpu=1 --timeout=300 --allow-unauthenticated --service-account=${{ env.SERVICE_ACCOUNT }}
-      - uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: charie-portal
-          region: ${{ env.REGION }}
-          image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/portal:${{ github.sha }}
-          env_vars: |
-            GCP_PROJECT_ID=${{ env.PROJECT_ID }}
-            GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa
-            PORTAL_STORE=firestore
-            ENGINE_URL=${{ env.ENGINE_URL }}
-            PORTAL_PUBLIC_URL=https://charie-portal-ehfuotlisq-uc.a.run.app
-          secrets: |
-            ENGINE_TOKEN=ENGINE_TOKEN:latest
-            FIREBASE_WEB_CONFIG=FIREBASE_WEB_CONFIG:latest
-            AUTOMATION_KEY=AUTOMATION_KEY:latest
-            CRON_KEY=CRON_KEY:latest
-            SESSION_KEY=SESSION_KEY:latest
-            VAPID_PUBLIC=VAPID_PUBLIC:latest
-            VAPID_PRIVATE=VAPID_PRIVATE:latest
-          flags: --memory=1Gi --cpu=1 --timeout=300 --allow-unauthenticated --service-account=${{ env.SERVICE_ACCOUNT }}
+          project_id: ${{ env.PROJECT_ID }}
+      # WIF token refresh can drop transiently (RemoteDisconnected from the
+      # token endpoint). gcloud run deploy is idempotent, so retry it instead
+      # of failing the whole deploy on one aborted connection. The
+      # deploy-cloudrun action has no retry, so deploy with gcloud directly.
+      - name: Verify gcloud auth
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gcloud auth print-access-token > /dev/null; then
+              echo "gcloud auth ok"
+              exit 0
+            fi
+            echo "gcloud auth attempt $attempt failed, retrying"
+            sleep $((attempt * 15))
+          done
+          echo "::error::gcloud auth failed after 5 attempts"
+          exit 1
+      - name: Deploy charie-engine
+        run: |
+          for attempt in 1 2 3; do
+            if gcloud run deploy charie-engine \
+              --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/engine:${{ github.sha }} \
+              --region ${{ env.REGION }} \
+              --update-env-vars "GCP_PROJECT_ID=${{ env.PROJECT_ID }},GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa,PORTAL_URL=https://charie-portal-ehfuotlisq-uc.a.run.app,ENGINE_PUBLIC_URL=${{ env.ENGINE_URL }}" \
+              --update-labels "managed-by=github-actions,commit-sha=${{ github.sha }}" \
+              --memory 4Gi --cpu 2 --concurrency 1 --timeout 3600 --max-instances 2 \
+              --allow-unauthenticated --service-account ${{ env.SERVICE_ACCOUNT }}; then
+              exit 0
+            fi
+            echo "deploy attempt $attempt failed, retrying"
+            sleep $((attempt * 20))
+          done
+          echo "::error::charie-engine deploy failed after 3 attempts"
+          exit 1
+      - name: Deploy charie-demo
+        run: |
+          for attempt in 1 2 3; do
+            if gcloud run deploy charie-demo \
+              --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/demo:${{ github.sha }} \
+              --region ${{ env.REGION }} \
+              --update-labels "managed-by=github-actions,commit-sha=${{ github.sha }}" \
+              --memory 512Mi --cpu 1 --timeout 300 \
+              --allow-unauthenticated --service-account ${{ env.SERVICE_ACCOUNT }}; then
+              exit 0
+            fi
+            echo "deploy attempt $attempt failed, retrying"
+            sleep $((attempt * 20))
+          done
+          echo "::error::charie-demo deploy failed after 3 attempts"
+          exit 1
+      - name: Deploy charie-portal
+        run: |
+          for attempt in 1 2 3; do
+            if gcloud run deploy charie-portal \
+              --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/portal:${{ github.sha }} \
+              --region ${{ env.REGION }} \
+              --update-env-vars "GCP_PROJECT_ID=${{ env.PROJECT_ID }},GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa,PORTAL_STORE=firestore,ENGINE_URL=${{ env.ENGINE_URL }},PORTAL_PUBLIC_URL=https://charie-portal-ehfuotlisq-uc.a.run.app" \
+              --update-secrets "ENGINE_TOKEN=ENGINE_TOKEN:latest,FIREBASE_WEB_CONFIG=FIREBASE_WEB_CONFIG:latest,AUTOMATION_KEY=AUTOMATION_KEY:latest,CRON_KEY=CRON_KEY:latest,SESSION_KEY=SESSION_KEY:latest,VAPID_PUBLIC=VAPID_PUBLIC:latest,VAPID_PRIVATE=VAPID_PRIVATE:latest" \
+              --update-labels "managed-by=github-actions,commit-sha=${{ github.sha }}" \
+              --memory 1Gi --cpu 1 --timeout 300 \
+              --allow-unauthenticated --service-account ${{ env.SERVICE_ACCOUNT }}; then
+              exit 0
+            fi
+            echo "deploy attempt $attempt failed, retrying"
+            sleep $((attempt * 20))
+          done
+          echo "::error::charie-portal deploy failed after 3 attempts"
+          exit 1
