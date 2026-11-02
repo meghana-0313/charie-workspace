@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { Fraunces } from "next/font/google";
 import "./globals.css";
 import { themeInitScript } from "@/components/theme";
-
-const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
 
 export const metadata: Metadata = {
   title: "Charie: Autonomous Engineering Intelligence",
@@ -31,9 +28,10 @@ export const viewport = { themeColor: "#0b0c0f" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={display.variable}>
+    <html lang="en">
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <link rel="preload" href="/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
       </head>
