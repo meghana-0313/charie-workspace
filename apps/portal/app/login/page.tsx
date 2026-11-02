@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CharieMark } from "@/components/mark";
+import { ThemeToggle } from "@/components/theme";
 import { sendReset, signInWithEmail, signUpWithEmail } from "@/lib/firebase-client";
 
 interface Config {
@@ -141,19 +142,26 @@ export default function LoginPage() {
               <div className="small muted">Autonomous engineering intelligence</div>
             </div>
           </div>
-          <p className="muted" style={{ margin: 0 }}>Ticket to evidence to fix to proof. Charie investigates, fixes, and verifies - you approve.</p>
+          <p className="muted" style={{ margin: 0 }}>Your autonomous engineering team: QA, security, and production, in one workspace.</p>
           <div className="proof">
-            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Evidence first: screenshots and repro steps on every finding</p>
+            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Build: UX, accessibility and first-run checks with redesigns you can approve</p>
+            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Guard: threat hunting and a graded security suite, day and night</p>
+            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Ops + Meet: live signals, night shift, and video rooms where Charie joins the call</p>
             <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Nothing ships without your approval</p>
-            <p className="small" style={{ margin: 0 }}><span className="check-dot done"><span aria-hidden="true">✓</span></span> Verified fixes, re-tested before they are called done</p>
           </div>
         </div>
         <div className="login-card">
+        <div style={{ display: "flex", justifyContent: "flex-end" }}><ThemeToggle /></div>
         <div className="login-brand">
-          <div className="login-name" style={{ fontSize: 22 }}>Welcome back</div>
-          <p className="muted small" style={{ marginTop: 4 }}>Sign in to your workspace.</p>
+          <div className="login-name" style={{ fontSize: 22 }}>{mode === "signup" ? "Create your workspace" : mode === "reset" ? "Reset your password" : "Welcome back"}</div>
+          <p className="muted small" style={{ marginTop: 4 }}>{mode === "signup" ? "Start with Charie in about a minute." : mode === "reset" ? "We will email you a reset link." : "Sign in to your workspace."}</p>
         </div>
         <div className="stack" style={{ marginTop: 14 }}>
+          {cfg?.devLogin && (
+            <button onClick={local} disabled={busy !== null}>
+              {busy === "local" ? "Signing in…" : "Continue as local owner (dev only)"}
+            </button>
+          )}
           {mode === "reset" ? (
             <form onSubmit={reset}>
               <label htmlFor="login-email">Email</label>
@@ -182,11 +190,6 @@ export default function LoginPage() {
               )}
             </form>
           )}
-          {cfg?.devLogin && (
-            <button className="secondary" onClick={local} disabled={busy !== null}>
-              {busy === "local" ? "Signing in…" : "Continue as local owner (dev only)"}
-            </button>
-          )}
           {cfgFailed && (
             <button type="button" className="ghost sm" onClick={loadCfg} disabled={busy !== null}>
               Retry loading sign-in
@@ -196,9 +199,7 @@ export default function LoginPage() {
           {info && <p className="small" style={{ color: "var(--accent-ink)" }}>{info}</p>}
           {setupNeeded && cfg && (
             <p className="small" style={{ color: "var(--warn)" }}>
-              Sign-in is not switched on for this project yet. One step: open{" "}
-              <a href={cfg.setupUrl} target="_blank" rel="noreferrer">Authentication</a>,
-              press Get started, enable a provider, then reload this page.
+              Sign-in is not enabled yet. <a href={cfg.setupUrl} target="_blank" rel="noreferrer">Enable Authentication</a>, then reload.
             </p>
           )}
         </div>

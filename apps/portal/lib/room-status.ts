@@ -12,6 +12,13 @@ export function meetRoomStatus(room: { endedAt?: string }): MeetRoomStatus {
  * Charie answers spoken lines that are questions or address her by name.
  * Ordinary statements are only tracked for notes, so she never spams a call.
  */
+/** A typed "Ask Charie" line from the Meet panel always addresses Charie. */
+export function charieAskLine(text: string): string {
+  const t = text.trim();
+  if (!t) return "";
+  return /\bcharie\b/i.test(t) ? t : `Charie, ${t}`;
+}
+
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

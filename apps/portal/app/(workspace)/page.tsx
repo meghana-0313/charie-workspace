@@ -58,6 +58,8 @@ export default async function Dashboard() {
         </div>
       </div>
 
+      <GetStarted hasRepo={repos.length > 0} hasTicket={tickets.length > 0} hasRun={runs.length > 0} />
+
       <div className="status-banner">
         <span className="icon-orb green"><Icon name="check" size={22} /></span>
         <div style={{ flex: 1, minWidth: 220 }}>
@@ -68,8 +70,6 @@ export default async function Dashboard() {
         <span className="small"><span className="env-dot" style={{ display: "inline-block", marginRight: 6 }} />Production</span>
         <span className="small muted">Last check: {lastSweep ? when(lastSweep.at) : "never"} <span className="spark">╱╲╱╲</span></span>
       </div>
-
-      <GetStarted hasRepo={repos.length > 0} hasTicket={tickets.length > 0} hasRun={runs.length > 0} />
 
       <div className="stats">
         <div className="stat"><div className="icon-stat"><span className="icon-orb red"><Icon name="alert" size={20} /></span><div><div className="stat-num">{openIncidents.length}</div><div className="stat-label">Open incidents</div></div><span className="spacer" /><span className="delta-up">{openIncidents.length ? "↑ open" : ""}</span></div></div>

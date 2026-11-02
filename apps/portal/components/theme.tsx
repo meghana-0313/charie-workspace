@@ -9,13 +9,11 @@ import { signOutFirebase } from "@/lib/firebase-client";
 export const themeInitScript = `(function(){try{var t=localStorage.getItem("charie-theme");if(!t&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.dataset.theme="light";}catch(e){}})();`;
 
 export function ThemeToggle() {
-  const [light, setLight] = useState(false);
-  useEffect(() => {
-    setLight(document.documentElement.dataset.theme === "light");
-  }, []);
+  const [light, setLight] = useState(() => typeof document !== "undefined" && document.documentElement.dataset.theme === "light");
   return (
     <button
       className="icon-btn"
+      aria-pressed={light}
       aria-label={light ? "Switch to dark theme" : "Switch to light theme"}
       title={light ? "Dark theme" : "Light theme"}
       onClick={() => {
