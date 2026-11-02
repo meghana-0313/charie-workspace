@@ -13,7 +13,7 @@ async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: 
   return { ok: res.ok, ...data };
 }
 
-export function NewTicketForm() {
+export function NewTicketForm({ defaultTarget = "" }: { defaultTarget?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [recFile, setRecFile] = useState<File | null>(null);
@@ -22,11 +22,11 @@ export function NewTicketForm() {
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     try {
-      setTarget(localStorage.getItem("charie-target") ?? "");
+      setTarget(localStorage.getItem("charie-target") ?? defaultTarget);
     } catch {
-      /* private mode */
+      setTarget(defaultTarget);
     }
-  }, []);
+  }, [defaultTarget]);
   const placeholders: Record<string, [string, string]> = {
     bug: ["Checkout button does nothing", "Customer tried 3 times, gave up. Order lost."],
     ux: ["Checkout flow feels confusing", "Users hesitate at the payment step and drop off. Review the journey."],

@@ -1,14 +1,18 @@
-// Chat with Charie: thread panel with action receipts and model badges.
+// Chat with Charie: messenger layout with action receipts, model details,
+// attachments (screenshots, videos, files), and voice messages that Charie
+// transcribes before answering.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ChatAttachment } from "@/lib/types";
 
 export interface ChatMsg {
   role: "user" | "assistant";
   text: string;
   model?: string;
   actions?: string[];
+  attachments?: ChatAttachment[];
   at: string;
 }
 
@@ -37,32 +41,108 @@ function modelLabel(model?: string): string {
   return m ? m[0] : model.slice(0, 24);
 }
 
+function clock(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function Attachments({ items }: { items: ChatAttachment[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="chat-attach">
+      {items.map((a) => (
+        a.kind === "image" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <a key={a.url} href={a.url} target="_blank" rel="noreferrer"><img className="chip-img" src={a.url} alt={a.name} /></a>
+        ) : a.kind === "video" ? (
+          <video key={a.url} className="chip-vid" src={a.url} controls preload="metadata" />
+        ) : a.kind === "audio" ? (
+          <audio key={a.url} src={a.url} controls preload="metadata" />
+        ) : (
+          <a key={a.url} className="chip-file" href={a.url} target="_blank" rel="noreferrer">{a.name}</a>
+        )
+      ))}
+    </div>
+  );
+}
+
 export function ChatPanel({ threadId, initial }: { threadId: string | null; initial: ChatMsg[] }) {
   const [msgs, setMsgs] = useState<ChatMsg[]>(initial);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [tid, setTid] = useState<string | null>(threadId);
+  const [pending, setPending] = useState<ChatAttachment[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const [recording, setRecording] = useState(false);
+  const [error, setError] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const recStream = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [msgs.length]);
+  }, [msgs.length, busy]);
+
+  async function upload(file: File) {
+    setUploading((n) => n + 1);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/chat/upload", { method: "POST", body: fd });
+      const j = (await res.json()) as ChatAttachment & { error?: string };
+      if (!res.ok) throw new Error(j.error ?? "upload failed");
+      setPending((p) => [...p, j]);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setUploading((n) => n - 1);
+  }
+
+  async function toggleRecord() {
+    if (recording) {
+      recorder.current?.stop();
+      return;
+    }
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recStream.current = stream;
+      const mr = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
+        const blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
+        void upload(new File([blob], `voice-note-${Date.now()}.webm`, { type: blob.type }));
+      };
+      recorder.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch {
+      setError("Mic blocked. Allow microphone access to send a voice message.");
+    }
+  }
 
   async function send(text: string) {
     const clean = text.trim();
-    if (!clean || busy) return;
+    if ((!clean && pending.length === 0) || busy || uploading > 0) return;
+    const atts = pending;
     setBusy(true);
     setInput("");
+    setPending([]);
     const at = new Date().toISOString();
-    setMsgs((m) => [...m, { role: "user", text: clean, at }]);
+    setMsgs((m) => [...m, { role: "user", text: clean, attachments: atts.length > 0 ? atts : undefined, at }]);
     const ctl = new AbortController();
     abort.current = ctl;
     try {
       const res = await fetch("/api/chat/turn", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ threadId: tid, text: clean }),
+        body: JSON.stringify({ threadId: tid, text: clean, attachments: atts }),
         signal: ctl.signal,
       });
       const j = (await res.json()) as { threadId?: string; text?: string; model?: string; actions?: string[]; error?: string };
@@ -94,12 +174,16 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
   ];
 
   return (
-    <div>
-      <div className="chat-log">
+    <div className="chat-shell">
+      <div className="chat-scroll">
         {msgs.length === 0 && (
-          <div>
-            <p className="muted small">Ask Charie to check status, file tickets, or run scans. It acts with tools and shows receipts.</p>
-            <div className="row" style={{ flexWrap: "wrap" }}>
+          <div className="chat-empty">
+            <div className="big">Talk to Charie</div>
+            <p className="muted small" style={{ maxWidth: "52ch", margin: "0 auto 14px" }}>
+              Ask for status, file tickets, or run scans. Attach a screenshot, a screen
+              recording, or hold the mic and just talk: voice notes are transcribed automatically.
+            </p>
+            <div className="row" style={{ flexWrap: "wrap", justifyContent: "center" }}>
               {suggestions.map((s) => (
                 <button key={s} type="button" className="secondary sm" disabled={busy} onClick={() => send(s)}>{s}</button>
               ))}
@@ -107,22 +191,27 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
           </div>
         )}
         {msgs.map((m, i) => (
-          <div key={i} className={`chat-msg ${m.role}`}>
-            <div className="chat-bubble">
-              <Rich text={m.text} />
-              {m.role === "assistant" && ((m.actions?.length ?? 0) > 0 || m.model) && (
-                <div className="chat-meta">
-                  {(m.actions ?? []).map((a) => (
-                    <code key={a} className="small" style={{ marginLeft: 6 }}>{a}</code>
-                  ))}
-                  {m.model && (
-                    <details style={{ marginLeft: 6 }}>
-                      <summary className="small muted" style={{ cursor: "pointer" }}>Details</summary>
-                      <span className="small muted">Model: {modelLabel(m.model)}</span>
-                    </details>
-                  )}
-                </div>
-              )}
+          <div key={i} className={`chat-row ${m.role}`}>
+            <span className="chat-avatar" aria-hidden>{m.role === "assistant" ? "C" : "You"}</span>
+            <div className="chat-body">
+              <div className="chat-bubble2">
+                {m.text && <Rich text={m.text} />}
+                {m.attachments && <Attachments items={m.attachments} />}
+                {m.role === "assistant" && ((m.actions?.length ?? 0) > 0 || m.model) && (
+                  <div className="chat-meta">
+                    {(m.actions ?? []).map((a) => (
+                      <code key={a} className="small" style={{ marginLeft: 6 }}>{a}</code>
+                    ))}
+                    {m.model && (
+                      <details style={{ marginLeft: 6 }}>
+                        <summary className="small muted" style={{ cursor: "pointer" }}>Details</summary>
+                        <span className="small muted">Model: {modelLabel(m.model)}</span>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="chat-time">{m.role === "assistant" ? "Charie" : "You"} · {clock(m.at)}</div>
             </div>
           </div>
         ))}
@@ -134,23 +223,75 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
         )}
         <div ref={bottom} />
       </div>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void send(input);
         }}
       >
-        <div className="row" style={{ marginTop: 10 }}>
-          <input
+        <div className="composer">
+          {pending.length > 0 && (
+            <div className="pending-attach">
+              {pending.map((a) => (
+                <span key={a.url} className="chip-file">
+                  {a.name}
+                  <button
+                    type="button" className="ghost sm" aria-label={`Remove ${a.name}`}
+                    onClick={() => setPending((p) => p.filter((x) => x.url !== a.url))}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Charie…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send(input);
+              }
+            }}
+            placeholder="Message Charie… (Enter to send, Shift+Enter for a new line)"
             aria-label="Chat message"
-            style={{ flex: 1 }}
             disabled={busy}
+            rows={2}
           />
-          <button disabled={busy || !input.trim()}>{busy ? "Sending…" : "Send"}</button>
+          <div className="composer-bar">
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept="image/*,video/*,audio/*,.pdf,.txt,.log,.md,.json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                for (const f of Array.from(e.target.files ?? [])) void upload(f);
+                e.target.value = "";
+              }}
+            />
+            <button type="button" className="secondary sm" onClick={() => fileInput.current?.click()} disabled={busy}>
+              Attach
+            </button>
+            <button
+              type="button"
+              className={recording ? "sm recording" : "secondary sm"}
+              onClick={() => void toggleRecord()}
+              disabled={busy}
+              aria-pressed={recording}
+            >
+              {recording ? "Stop recording" : "Voice"}
+            </button>
+            {uploading > 0 && <span className="small muted">Uploading…</span>}
+            <span className="spacer" />
+            <button disabled={busy || uploading > 0 || (!input.trim() && pending.length === 0)}>
+              {busy ? "Sending…" : "Send"}
+            </button>
+          </div>
         </div>
+        {error && <p className="small" style={{ color: "var(--danger)", marginTop: 6 }}>{error}</p>}
       </form>
     </div>
   );

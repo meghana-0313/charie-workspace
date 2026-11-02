@@ -12,7 +12,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const threads = await store.listThreads(myUid);
   const active = activeId ? threads.find((t) => t.id === activeId) ?? null : null;
   const initial: ChatMsg[] = (active?.messages ?? []).map((m) => ({
-    role: m.role, text: m.text, model: m.model, actions: m.actions, at: m.at,
+    role: m.role, text: m.text, model: m.model, actions: m.actions, attachments: m.attachments, at: m.at,
   }));
   return (
     <>

@@ -47,7 +47,7 @@ function active(path: string, href: string): boolean {
   return path === href || path.startsWith(`${href}/`);
 }
 
-export function Sidebar({ env }: { env: string }) {
+export function Sidebar({ env, workspaceName }: { env: string; workspaceName?: string }) {
   const path = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => {
@@ -64,7 +64,7 @@ export function Sidebar({ env }: { env: string }) {
       <Link href="/" className="side-brand">
         <span className="side-mark"><CharieMark /></span>
         <span>
-          <span className="side-name">CHARIE</span>
+          <span className="side-name">{workspaceName ?? "CHARIE"}</span>
           <div className="side-sub">Autonomous engineering intelligence</div>
         </span>
       </Link>

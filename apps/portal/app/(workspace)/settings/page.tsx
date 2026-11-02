@@ -1,6 +1,7 @@
 import { store } from "@/lib/store";
-import { identity, scopeUid } from "@/lib/who";
+import { identity, isAdmin, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
+import { SettingsForm } from "@/components/settings-form";
 import { Badge, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +17,17 @@ export default async function SettingsPage() {
   }
   const zoom = await zoomStatus();
   const subs = await store.listPushSubscriptions().catch(() => []);
-  const myUid = scopeUid(await identity());
+  const me = await identity();
+  const myUid = scopeUid(me);
   const repos = await store.listRepos(myUid).catch(() => []);
   const env = process.env.PORTAL_STORE === "firestore" ? "Production" : "Development";
+  const canEdit = await isAdmin(store).catch(() => false);
+  const initial = {
+    workspaceName: (await store.getSetting("workspaceName").catch(() => null)) ?? "",
+    defaultTargetUrl: (await store.getSetting("defaultTargetUrl").catch(() => null)) ?? "",
+    prodProjectId: (await store.getSetting("prodProjectId").catch(() => null)) ?? "",
+    autopilotPaused: (await store.getSetting("autopilotPaused").catch(() => null)) ?? "0",
+  };
 
   const rows: Array<[string, React.ReactNode, string]> = [
     ["Environment", <Badge tone={env === "Production" ? "minor" : "major"}>{env}</Badge>, process.env.PORTAL_STORE === "firestore" ? "Firestore + Cloud Storage" : "Local JSON files + uploads"],
@@ -36,21 +45,28 @@ export default async function SettingsPage() {
       <PageHead
         crumbs={[["/", "Home"], ["/settings", "Settings"]]}
         title="Settings"
-        sub="Environment and integrations. Secrets stay in Secret Manager; this page only reports live status."
+        sub="Make the workspace yours, then check that everything underneath is healthy. Secrets stay in Secret Manager; this page never sees them."
       />
-      <div className="card">
-        <table>
-          <thead><tr><th>Area</th><th>Status</th><th>Detail</th></tr></thead>
-          <tbody>
-            {rows.map(([area, status, detail]) => (
-              <tr key={area}>
-                <td><strong>{area}</strong></td>
-                <td>{status}</td>
-                <td className="small muted">{detail}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="settings-grid">
+        <div className="card">
+          <div className="card-title">Workspace</div>
+          <SettingsForm initial={initial} canEdit={canEdit} />
+        </div>
+        <div className="card">
+          <div className="card-title">System status</div>
+          <table>
+            <thead><tr><th>Area</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody>
+              {rows.map(([area, status, detail]) => (
+                <tr key={area}>
+                  <td><strong>{area}</strong></td>
+                  <td>{status}</td>
+                  <td className="small muted">{detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

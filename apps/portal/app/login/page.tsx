@@ -133,11 +133,11 @@ export default function LoginPage() {
   return (
     <div className="login-wrap">
       <div className="card login-card">
-        <div className="row" style={{ marginBottom: 4 }}>
+        <div className="login-brand">
           <span className="side-mark"><CharieMark /></span>
-          <strong style={{ fontSize: "var(--text-lg)" }}>CHARIE</strong>
+          <div className="login-name">CHARIE</div>
+          <p className="muted small" style={{ marginTop: 4 }}>Autonomous engineering intelligence.<br />Ticket to evidence to fix to proof.</p>
         </div>
-        <p className="muted small">Autonomous engineering intelligence. Sign in to reach your workspace.</p>
         <div className="stack" style={{ marginTop: 14 }}>
           {mode === "reset" ? (
             <form onSubmit={reset}>

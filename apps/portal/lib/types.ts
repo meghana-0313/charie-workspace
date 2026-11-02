@@ -369,11 +369,19 @@ export interface GithubToken {
 
 
 // Chat with Charie: persistent threads per account.
+export interface ChatAttachment {
+  name: string;
+  url: string; // /api/uploads/<file>, session gated readback
+  path: string; // uploads/<file> blob key
+  kind: "image" | "video" | "audio" | "file";
+}
+
 export interface ChatMessageView {
   role: "user" | "assistant";
   text: string;
   model?: string; // serving model id or "heuristic"
   actions?: string[]; // tool calls made, e.g. "ticket_status tkt_x"
+  attachments?: ChatAttachment[];
   at: string;
 }
 

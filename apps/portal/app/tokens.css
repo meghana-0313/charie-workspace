@@ -1,26 +1,26 @@
-/* Charie design tokens. Dark charcoal enterprise theme, violet accent.
-   Single source of truth: every component below references these. */
+/* Charie design tokens. Warm charcoal surfaces, ember accent, editorial
+   display type. Single source of truth: components reference these vars. */
 
 :root {
-  /* Surfaces (dark charcoal, layered by elevation) */
-  --bg: #0b0c0f;
-  --bg-sunken: #08090c;
-  --surface: #12141a;
-  --surface-raised: #181b23;
-  --surface-overlay: #1f232d;
-  --line: #242832;
-  --line-strong: #31363f;
+  /* Surfaces (warm charcoal, layered by elevation) */
+  --bg: #100d0a;
+  --bg-sunken: #0a0806;
+  --surface: #171310;
+  --surface-raised: #1e1813;
+  --surface-overlay: #2a211a;
+  --line: #2c251d;
+  --line-strong: #423729;
 
   /* Text */
-  --ink: #e9ebf1;
-  --ink-muted: #a2a9bb;
-  --ink-faint: #69707f;
+  --ink: #f4ede3;
+  --ink-muted: #b8ab9a;
+  --ink-faint: #857562;
 
-  /* Brand accent: violet, used sparingly for primary actions + active states */
-  --accent: #8b7cf6;
-  --accent-hover: #9c8ff7;
-  --accent-dim: rgba(139, 124, 246, 0.14);
-  --accent-ink: #cfc8ff;
+  /* Brand accent: ember, for primary actions + active states */
+  --accent: #ff5c38;
+  --accent-hover: #ff7150;
+  --accent-dim: rgba(255, 92, 56, 0.13);
+  --accent-ink: #ffb59d;
 
   /* Status */
   --ok: #3ddc97;
@@ -34,18 +34,19 @@
 
   /* Type */
   --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
   --text-lg: 16px;
   --text-xl: 20px;
-  --text-2xl: 24px;
+  --text-2xl: 26px;
 
   /* Shape + space */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -55,37 +56,39 @@
   --space-8: 32px;
 
   /* Layout */
-  --sidebar-w: 236px;
-  --content-w: 1120px;
-  --topbar-h: 52px;
+  --sidebar-w: 248px;
+  --content-w: 1160px;
+  --topbar-h: 54px;
 
   /* Elevation */
-  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.28);
 
   /* Theme dependent paint */
-  --topbar-bg: rgba(11, 12, 15, 0.88);
+  --topbar-bg: rgba(16, 13, 10, 0.88);
   --row-hover: rgba(255, 255, 255, 0.03);
-  --scrollbar: #2c313c;
+  --scrollbar: #3a2f24;
+  --dot: rgba(244, 237, 227, 0.05);
 }
 
-/* Light theme: same tokens, paper surfaces. Toggled via data-theme on <html>. */
+/* Light theme: cool paper so the ember accent carries the warmth. */
 [data-theme="light"] {
-  --bg: #f2f3f7;
-  --bg-sunken: #e9ebf1;
+  --bg: #eceff4;
+  --bg-sunken: #e0e5ec;
   --surface: #ffffff;
-  --surface-raised: #f7f8fc;
-  --surface-overlay: #eceef5;
-  --line: #e0e3ec;
-  --line-strong: #c9cfdd;
+  --surface-raised: #f6f8fb;
+  --surface-overlay: #e7ecf3;
+  --line: #d8dee8;
+  --line-strong: #bcc6d4;
 
-  --ink: #151824;
-  --ink-muted: #4d5568;
-  --ink-faint: #8a93a9;
+  --ink: #171a21;
+  --ink-muted: #4c5566;
+  --ink-faint: #8892a3;
 
-  --accent: #6a5ae0;
-  --accent-hover: #5a4cd2;
-  --accent-dim: rgba(106, 90, 224, 0.12);
-  --accent-ink: #4a3fb8;
+  --accent: #d94325;
+  --accent-hover: #c7391f;
+  --accent-dim: rgba(217, 67, 37, 0.1);
+  --accent-ink: #b23518;
 
   --ok: #0f9d6c;
   --ok-dim: rgba(15, 157, 108, 0.12);
@@ -96,10 +99,12 @@
   --info: #1f7ad1;
   --info-dim: rgba(31, 122, 209, 0.12);
 
-  --shadow-pop: 0 12px 32px rgba(21, 24, 36, 0.16);
-  --topbar-bg: rgba(242, 243, 247, 0.9);
+  --shadow-pop: 0 16px 40px rgba(21, 24, 36, 0.18);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 26px rgba(21, 24, 36, 0.08);
+  --topbar-bg: rgba(236, 239, 244, 0.9);
   --row-hover: rgba(21, 24, 36, 0.035);
   --scrollbar: #c3c9d8;
+  --dot: rgba(23, 26, 33, 0.05);
 }
 
 * { box-sizing: border-box; }
@@ -108,6 +113,8 @@ html, body { margin: 0; padding: 0; }
 
 body {
   background: var(--bg);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.1px);
+  background-size: 22px 22px;
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -118,7 +125,7 @@ body {
 a { color: var(--accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-::selection { background: rgba(139, 124, 246, 0.35); }
+::selection { background: rgba(255, 92, 56, 0.35); }
 
 :focus-visible {
   outline: 2px solid var(--accent);

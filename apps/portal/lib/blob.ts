@@ -15,6 +15,12 @@ export function voiceContentType(fileName: string): string {
     : ext === "ogg" ? "audio/ogg"
     : ext === "m4a" ? "audio/mp4"
     : ext === "webm" ? "audio/webm"
+    : ext === "png" ? "image/png"
+    : ext === "jpg" || ext === "jpeg" ? "image/jpeg"
+    : ext === "webp" ? "image/webp"
+    : ext === "gif" ? "image/gif"
+    : ext === "mp4" ? "video/mp4"
+    : ext === "mov" ? "video/quicktime"
     : "application/octet-stream";
 }
 
