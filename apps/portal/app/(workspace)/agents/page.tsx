@@ -4,6 +4,7 @@ import { store } from "@/lib/store";
 import { readFindings } from "@/lib/engine";
 import { identity, scopeUid } from "@/lib/who";
 import { CopyButton } from "@/components/agents";
+import { DateRangePicker } from "@/components/date-range";
 import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
@@ -27,9 +28,15 @@ function when(iso: string): string {
   return iso.slice(5, 16).replace("T", " ");
 }
 
-export default async function AgentsPage() {
+export default async function AgentsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const myUid = scopeUid(await identity());
-  const runs = await store.listRuns(12, myUid);
+  const sp = await searchParams;
+  const fromDay = sp.from ?? new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+  const toDay = sp.to ?? new Date().toISOString().slice(0, 10);
+  const runs = (await store.listRuns(50, myUid)).filter((r) => {
+    const day = r.createdAt.slice(0, 10);
+    return day >= fromDay && day <= toDay;
+  });
   const cards = await Promise.all(
     runs.map(async (r) => {
       const findings = (await readFindings(r.id).catch(() => null)) ?? [];
@@ -70,7 +77,7 @@ export default async function AgentsPage() {
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>
             <strong>All Runs ({cards.length})</strong>
-            <span className="small muted">Last 7 days · newest first</span>
+            <DateRangePicker />
           </div>
           {cards.length === 0 ? (
             <EmptyState title="No runs yet" body="File a ticket and the investigation starts by itself." />

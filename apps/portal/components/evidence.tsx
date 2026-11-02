@@ -11,7 +11,7 @@ const clampPct = (v: number) => Math.min(100, Math.max(0, v));
 export function GroundedShot({ src, alt, boxes }: { src: string; alt: string; boxes: Box[] }) {
   return (
     <span className="shot-wrap">
-      <img className="shot" src={src} alt={alt} />
+      <a href={src} target="_blank" rel="noreferrer" title="Click to view full size"><img className="shot thumb" src={src} alt={alt} /></a>
       {boxes.map((b, i) => (
         <span
           key={i}
@@ -54,7 +54,7 @@ export function RedesignBriefs({ briefs, runId }: { briefs: BriefView[]; runId: 
           {b.images.length > 0 ? (
             <div className="row">
               {b.images.map((img) => (
-                <img key={img} className="shot" src={`/api/artifacts/${runId}/${img}`} alt={`${b.findingId} redesign`} />
+                <a key={img} href={`/api/artifacts/${runId}/${img}`} target="_blank" rel="noreferrer" title="Click to view full size"><img className="shot thumb" src={`/api/artifacts/${runId}/${img}`} alt={`${b.findingId} redesign`} /></a>
               ))}
             </div>
           ) : (

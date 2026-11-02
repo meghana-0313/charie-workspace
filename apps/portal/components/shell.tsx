@@ -17,6 +17,7 @@ const SECTIONS: Array<[string, NavLink[]]> = [
     ["/", "Overview", "home"],
     ["/tickets", "Tickets & Fixes", "ticket"],
     ["/chat", "Chat with Charie", "chat"],
+    ["/guardian/zoom", "Meet", "video"],
   ]],
   ["CHARIE BUILD", [
     ["/ux", "UX & Redesign", "eye"],
@@ -24,17 +25,16 @@ const SECTIONS: Array<[string, NavLink[]]> = [
     ["/firstrun", "First Run", "play"],
     ["/repos", "Repositories", "layers"],
   ]],
-  ["CHARIE GUARD", [
-    ["/guardian", "Threats", "alert"],
-    ["/guardian/security", "Security Tests", "lock"],
-    ["/guardian/work", "Fix Tasks", "order"],
-  ]],
   ["CHARIE OPS", [
     ["/guardian/night", "Night Shift", "moon"],
     ["/guardian/signals", "Live Signals", "signal"],
     ["/autopilot", "Autopilot", "bolt"],
-    ["/guardian/zoom", "Meet", "video"],
     ["/agents", "Coding Agents", "code"],
+  ]],
+  ["CHARIE GUARD", [
+    ["/guardian", "Threats", "alert"],
+    ["/guardian/security", "Security Tests", "lock"],
+    ["/guardian/work", "Fix Tasks", "order"],
   ]],
   ["INTEGRATIONS", [
     ["/marketplace", "Integrations", "plug"],

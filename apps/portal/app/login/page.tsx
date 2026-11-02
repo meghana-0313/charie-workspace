@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [info, setInfo] = useState("");
   const [setupNeeded, setSetupNeeded] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
+  const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -54,7 +55,7 @@ export default function LoginPage() {
     const res = await fetch("/api/session", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify({ idToken, userName: userName.trim() || undefined }),
     });
     const j = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
@@ -92,7 +93,7 @@ export default function LoginPage() {
     setInfo("");
     try {
       const idToken = mode === "signup"
-        ? await signUpWithEmail(email.trim(), password)
+        ? await signUpWithEmail(email.trim(), password, userName)
         : await signInWithEmail(email.trim(), password);
       await exchange(idToken);
     } catch (err) {
@@ -173,7 +174,13 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={emailAuth}>
-              <label htmlFor="login-email">Email</label>
+                            {mode === "signup" && (
+                <>
+                  <label htmlFor="login-name">User name</label>
+                  <input id="login-name" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="e.g. Meghana" autoComplete="name" maxLength={60} />
+                </>
+              )}
+<label htmlFor="login-email">Email</label>
               <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required autoComplete="email" />
               <label htmlFor="login-password">Password</label>
               <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === "signup" ? "6+ characters" : "Your password"} required autoComplete={mode === "signup" ? "new-password" : "current-password"} />

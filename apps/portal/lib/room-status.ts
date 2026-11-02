@@ -35,6 +35,7 @@ export function speakableText(text: string): string {
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
-  if (/\bcharie\b/i.test(t)) return true;
+  if (/\bchari(?:e)?\b/i.test(t)) return true;
+  if (/\b(how are you|how's it going|good morning|good afternoon|good evening|hello|hi there)\b/i.test(t) && t.length < 60) return true;
   return t.endsWith("?");
 }

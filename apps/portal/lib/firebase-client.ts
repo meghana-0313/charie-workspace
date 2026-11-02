@@ -6,10 +6,14 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   getAuth,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
+  updateProfile,
 } from "firebase/auth";
 
 export interface WebConfig {
@@ -38,10 +42,22 @@ export async function signInWithEmail(email: string, password: string): Promise<
 }
 
 /** Create an email + password account. Resolves with the Firebase ID token. */
-export async function signUpWithEmail(email: string, password: string): Promise<string> {
+export async function signUpWithEmail(email: string, password: string, userName?: string): Promise<string> {
   const a = await firebaseApp();
   const cred = await createUserWithEmailAndPassword(getAuth(a), email, password);
-  return cred.user.getIdToken();
+  const name = (userName ?? "").trim();
+  if (name) await updateProfile(cred.user, { displayName: name }).catch(() => {});
+  return cred.user.getIdToken(true);
+}
+
+/** Change password for the signed-in Firebase user (reauthenticates first). */
+export async function changePassword(email: string, current: string, next: string): Promise<void> {
+  const a = await firebaseApp();
+  const auth = getAuth(a);
+  const user = auth.currentUser;
+  if (!user) throw new Error("not-signed-in");
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(email, current));
+  await updatePassword(user, next);
 }
 
 /** Send the Firebase password-reset email. */
