@@ -10,7 +10,7 @@ modal setup
 modal deploy services/modal-tts/modal_app.py
 ```
 
-Modal prints an endpoint URL. Set it on the portal:
+Modal prints an endpoint URL. In GCP Secret Manager (project project-8b9ab843-d0d6-4ea4-a11) create one secret, CHARIE_TTS_URL, with that URL as its value. The portal deploy mounts it as the CHARIE_TTS_URL env var, so no login is needed anywhere else. Create the secret before merging the deploy change: Cloud Run fails a deploy that references a missing secret.
 
 - `CHARIE_TTS_URL` - the printed `speak` URL.
 - Optional proxy-token auth: `CHARIE_TTS_MODAL_KEY` and `CHARIE_TTS_MODAL_SECRET`.
