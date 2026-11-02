@@ -39,6 +39,10 @@ const P: Record<string, string> = {
   download: '<path d="M12 4v11M7 11l5 5 5-5M4 20h16"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13"/>',
   brain: '<circle cx="12" cy="12" r="8.5"/><path d="M9 10.2h.01M15 10.2h.01M9.5 15.2c1.6 1.1 3.4 1.1 5 0"/>',
+  bug: '<ellipse cx="12" cy="13" rx="5" ry="6"/><path d="M12 7V5a3 3 0 0 1 6 0M12 7V5a3 3 0 0 0-6 0"/><path d="M7 11L3.5 9M7.5 15H3M7 17l-3 2.5M17 11l3.5-2M16.5 15H21M17 17l3 2.5M9 10.5h.01M15 10.5h.01"/>',
+  key: '<circle cx="8" cy="15" r="4.5"/><path d="M11.5 11.5L20 3M16.5 6.5l3 3M14 9l2.5 2.5"/>',
+  arrow: '<path d="M4 12h15M13.5 6L19.5 12l-6 6"/>',
+  plus: '<path d="M12 4v16M4 12h16"/>',
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof P & string; size?: number }) {

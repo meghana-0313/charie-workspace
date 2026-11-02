@@ -2,6 +2,7 @@ import { store } from "@/lib/store";
 import { identity, isAdmin, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
 import { SettingsForm } from "@/components/settings-form";
+import { Icon } from "@/components/icons";
 import { Badge, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ export default async function SettingsPage() {
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/settings", "Settings"]]}
-        title="Settings"
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="gear" size={19} /></span> Settings</>}
         sub="Make the workspace yours, then check that everything underneath is healthy. Secrets stay in Secret Manager; this page never sees them."
       />
       <div className="settings-grid">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
 import { ScheduleForm, ScheduleRow, TickButton } from "@/components/autopilot";
+import { Icon } from "@/components/icons";
 import { EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +14,15 @@ export default async function AutopilotPage() {
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/autopilot", "Autopilot"]]}
-        title="Autopilot"
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="bolt" size={19} /></span> Autopilot</>}
         sub="Charie working while you are away. Schedules run on their own; new tickets investigate themselves; pushed branches rebuild and retest."
       />
+      <div className="stats">
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="calendar" size={20} /></span><div><div className="stat-num">{schedules.length}</div><div className="stat-label">Schedules</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div className="stat-num">{schedules.filter((s) => s.enabled).length}</div><div className="stat-label">Enabled</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="clock" size={20} /></span><div><div className="stat-num">{ticking ? "15 min" : "Manual"}</div><div className="stat-label">Platform ticker</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="moon" size={20} /></span><div><div className="stat-num">On</div><div className="stat-label">Night shift ready</div></div></div></div>
+      </div>
       <div className="grid2">
         <div className="card">
           <div className="card-title">Add a schedule</div>
