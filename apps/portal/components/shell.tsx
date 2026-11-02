@@ -94,18 +94,63 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
   );
 }
 
-export function Topbar({ workspaceName, repoName, env, userLabel }: {
-  workspaceName?: string; repoName?: string; env: string; userLabel?: string;
+export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, alerts = [] }: {
+  workspaceName?: string;
+  repoName?: string;
+  repos?: Array<{ id: string; name: string }>;
+  env: string;
+  userLabel?: string;
+  alerts?: Array<{ href: string; label: string; sub: string }>;
 }) {
   const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState<string | null>(null);
   const initials = (userLabel ?? "C").split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("") || "C";
+  const toggle = (m: string) => setMenu((cur) => (cur === m ? null : m));
+  const close = () => setMenu(null);
   return (
     <>
       <div className="topbar">
         <div className="top-chips">
-          <div className="chip-select"><span><div className="k">Workspace</div><div className="v">{workspaceName ?? "Charie"}</div></span><span className="chev">▾</span></div>
-          <div className="chip-select"><span><div className="k">Repository</div><div className="v">{repoName ?? "No repo connected"}</div></span><span className="chev">▾</span></div>
-          <div className="chip-select"><span><div className="k">Environment</div><div className="v"><span className="env-dot" style={{ display: "inline-block", marginRight: 6 }} />{env}</div></span><span className="chev">▾</span></div>
+          <div className="menu-wrap">
+            <button type="button" className="chip-select" aria-haspopup="menu" aria-expanded={menu === "ws"} onClick={() => toggle("ws")}>
+              <span><div className="k">Workspace</div><div className="v">{workspaceName ?? "Charie"}</div></span><span className="chev">▾</span>
+            </button>
+            {menu === "ws" && (
+              <div className="menu" role="menu">
+                <div className="menu-head"><strong className="small">{workspaceName ?? "Charie"}</strong><br /><span className="sub small muted">Autonomous Engineering Intelligence</span></div>
+                <Link className="menu-item" href="/settings" onClick={close}><Icon name="gear" /> Workspace settings</Link>
+                <Link className="menu-item" href="/team" onClick={close}><Icon name="users" /> Team and access</Link>
+                <Link className="menu-item" href="/marketplace" onClick={close}><Icon name="plug" /> Integrations</Link>
+              </div>
+            )}
+          </div>
+          <div className="menu-wrap">
+            <button type="button" className="chip-select" aria-haspopup="menu" aria-expanded={menu === "repo"} onClick={() => toggle("repo")}>
+              <span><div className="k">Repository</div><div className="v">{repoName ?? "No repo connected"}</div></span><span className="chev">▾</span>
+            </button>
+            {menu === "repo" && (
+              <div className="menu" role="menu">
+                <div className="menu-head"><strong className="small">Repositories</strong><br /><span className="sub small muted">{repos.length} connected</span></div>
+                {repos.length === 0 && <div className="menu-item"><span className="muted small">None yet. Connect one to build and test here.</span></div>}
+                {repos.slice(0, 6).map((r) => (
+                  <Link key={r.id} className="menu-item" href={`/repos/${r.id}`} onClick={close}><Icon name="repo" /> {r.name}</Link>
+                ))}
+                <Link className="menu-item" href="/repos" onClick={close}><Icon name="plus" /> Connect a repository</Link>
+              </div>
+            )}
+          </div>
+          <div className="menu-wrap">
+            <button type="button" className="chip-select" aria-haspopup="menu" aria-expanded={menu === "env"} onClick={() => toggle("env")}>
+              <span><div className="k">Environment</div><div className="v"><span className="env-dot" style={{ display: "inline-block", marginRight: 6 }} />{env}</div></span><span className="chev">▾</span>
+            </button>
+            {menu === "env" && (
+              <div className="menu" role="menu">
+                <div className="menu-head"><strong className="small">{env}</strong><br /><span className="sub small muted">{env === "Production" ? "Hosted data: Firestore + Cloud Storage" : "Local data: JSON files on this machine"}</span></div>
+                <Link className="menu-item" href="/settings" onClick={close}><Icon name="signal" /> System status</Link>
+                <Link className="menu-item" href="/autopilot" onClick={close}><Icon name="bolt" /> Autopilot and schedules</Link>
+              </div>
+            )}
+          </div>
           <button className="search-trigger" onClick={() => setOpen(true)} aria-label="Search and commands">
             <Icon name="search" size={14} />
             <span className="txt">Search or ask Charie…</span>
@@ -114,11 +159,36 @@ export function Topbar({ workspaceName, repoName, env, userLabel }: {
           </button>
         </div>
         <div className="topbar-right">
-          <Link href="/guardian" className="icon-btn btn secondary" aria-label="Notifications" style={{ width: 36, height: 36, justifyContent: "center" }}><Icon name="bell" /></Link>
+          <div className="menu-wrap">
+            <span className="bell-wrap">
+              <button type="button" className="icon-btn btn secondary" aria-label="Notifications" aria-haspopup="menu" aria-expanded={menu === "bell"} onClick={() => toggle("bell")} style={{ width: 36, height: 36, justifyContent: "center" }}><Icon name="bell" /></button>
+              {alerts.length > 0 && <span className="bell-dot">{alerts.length}</span>}
+            </span>
+            {menu === "bell" && (
+              <div className="menu right" role="menu">
+                <div className="menu-head"><strong className="small">Needs attention</strong><br /><span className="sub small muted">{alerts.length} open item(s)</span></div>
+                {alerts.length === 0 && <div className="menu-item"><span className="muted small">All clear. No open incidents or tickets.</span></div>}
+                {alerts.slice(0, 6).map((a, i) => (
+                  <Link key={i} className="menu-item" href={a.href} onClick={close}><span style={{ flex: 1 }}><span>{a.label}</span><br /><span className="sub">{a.sub}</span></span><Icon name="arrow" /></Link>
+                ))}
+              </div>
+            )}
+          </div>
           <ThemeToggle />
-          <span className="avatar-dot" title={userLabel ?? "You"}>{initials}</span>
+          <div className="menu-wrap">
+            <button type="button" className="avatar-dot" title={userLabel ?? "You"} aria-haspopup="menu" aria-expanded={menu === "me"} onClick={() => toggle("me")}>{initials}</button>
+            {menu === "me" && (
+              <div className="menu right" role="menu">
+                <div className="menu-head"><strong className="small">{userLabel ?? "You"}</strong><br /><span className="sub small muted">Signed in</span></div>
+                <Link className="menu-item" href="/settings" onClick={close}><Icon name="gear" /> Settings</Link>
+                <Link className="menu-item" href="/team" onClick={close}><Icon name="users" /> Team and access</Link>
+                <LogoutButton />
+              </div>
+            )}
+          </div>
         </div>
       </div>
+      {menu && <button type="button" className="menu-backdrop" aria-label="Close menu" onClick={close} />}
       {open && <Palette close={() => setOpen(false)} />}
     </>
   );

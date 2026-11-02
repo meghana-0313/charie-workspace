@@ -249,6 +249,7 @@ export interface MeetRoom {
   title: string;
   createdBy: string;
   liveNotes?: boolean; // opt-in: Charie joins with live transcription + notes
+  endedAt?: string; // set when the host ends the meeting for everyone
   seq: number; // last signal sequence number
   createdAt: string;
   updatedAt: string;
@@ -286,7 +287,7 @@ export interface ApiKey {
   revoked: boolean;
 }
 
-export type MeetSignalKind = "join" | "leave" | "offer" | "answer" | "candidate";
+export type MeetSignalKind = "join" | "leave" | "offer" | "answer" | "candidate" | "ping" | "end";
 
 export interface MeetSignal {
   seq: number;

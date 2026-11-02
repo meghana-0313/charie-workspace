@@ -34,15 +34,16 @@ export function ConnectForm() {
     <form onSubmit={submit}>
       <label htmlFor="repo-url">Repository URL or owner/repo</label>
       <input id="repo-url" name="url" required placeholder="https://github.com/acme/shop" />
-      <label htmlFor="repo-token">Token (private repos only, commit statuses need it)</label>
-      <input id="repo-token" name="token" type="password" placeholder="ghp_… (stored server-side)" autoComplete="off" />
+      <p className="field-hint">Public repos connect with no credentials at all. Private repos need one of: GitHub connected above, or an access token below.</p>
       <div style={{ marginTop: 8 }}>
-        <button type="button" className="ghost sm" onClick={() => setAdvanced(!advanced)}>
-          {advanced ? "Hide build options" : "Build options (subdir, start command)"}
+        <button type="button" className="ghost sm" onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}>
+          {advanced ? "Hide options" : "Private repo token and build options"}
         </button>
       </div>
       {advanced && (
         <>
+          <label htmlFor="repo-token">Access token (private repos only, stored server-side)</label>
+          <input id="repo-token" name="token" type="password" placeholder="ghp_… (optional when GitHub is connected above)" autoComplete="off" />
           <label htmlFor="repo-branch">Branch (blank = default)</label>
           <input id="repo-branch" name="branch" placeholder="main" />
           <label htmlFor="repo-subdir">Subdirectory (app lives in a subfolder)</label>
@@ -178,18 +179,28 @@ export function GithubConnect() {
   }
   if (!status) return <p className="small muted">Checking GitHub…</p>;
   if (!status.configured) {
+    const callback = `${location.origin}/api/github/oauth/callback`;
     return (
-      <p className="small muted">
-        One-click GitHub connect needs an OAuth App on the server (client id + secret).
-        Paste a repo URL + PAT below meanwhile; nothing else changes.
-      </p>
+      <div>
+        <button disabled style={{ width: "100%", justifyContent: "center" }}>Connect GitHub</button>
+        <p className="small muted" style={{ marginTop: 10 }}>
+          One-click connect switches on after a one-time OAuth App setup by the workspace owner (2 minutes, once ever):
+        </p>
+        <ol className="repro small">
+          <li>GitHub → Settings → Developer settings → OAuth Apps → New OAuth App.</li>
+          <li>Homepage URL: <code>{location.origin}</code></li>
+          <li>Authorization callback URL: <code>{callback}</code></li>
+          <li>Put the Client ID and Secret in the portal secrets as <code>GITHUB_OAUTH_CLIENT_ID</code> and <code>GITHUB_OAUTH_CLIENT_SECRET</code>, then reload.</li>
+        </ol>
+        <p className="small muted">Until then, paste any public repo URL below. It connects immediately with nothing else needed.</p>
+      </div>
     );
   }
   if (!status.connected) {
     return (
-      <div className="row">
-        <button onClick={() => { location.href = "/api/github/oauth/start"; }}>Connect with GitHub</button>
-        <span className="small muted">One click, no tokens to paste.</span>
+      <div>
+        <button onClick={() => { location.href = "/api/github/oauth/start"; }} style={{ width: "100%", justifyContent: "center" }}>Connect GitHub</button>
+        <p className="small muted" style={{ marginTop: 8 }}>One click on GitHub, pick a repo here, done. No tokens to create, paste, or rotate.</p>
       </div>
     );
   }

@@ -29,7 +29,7 @@ export default async function ReposPage() {
       />
       <div className="card" style={{ padding: "var(--space-4) var(--space-5)" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto 1fr auto 1fr", gap: 10, alignItems: "center" }} className="steps-row">
-          {[["1", "Connect repository", "Link your codebase", true], ["2", "Configure", "Set branch and stack", false], ["3", "Select tests", "Choose test suites", false], ["4", "Review", "Confirm and run", false]].map(([n, t, s, on]) => (
+          {[["1", "Connect repository", "Link your codebase", true], ["2", "Configure", "Set branch and stack", repos.length > 0], ["3", "Select tests", "Choose test suites", repos.length > 0], ["4", "Review", "Confirm and run", false]].map(([n, t, s, on]) => (
             <div key={String(n)} style={{ display: "contents" }}>
               <div className="row" style={{ flexWrap: "nowrap" }}>
                 <span className="initials" style={{ width: 34, height: 34, background: on ? "var(--accent)" : "var(--surface-overlay)", color: on ? "#fff" : "var(--ink-muted)" }}>{n}</span>
@@ -47,7 +47,7 @@ export default async function ReposPage() {
             <div className="card-title">1. Choose a Git provider</div>
             {!buildsReady && <p className="small" style={{ color: "var(--warn)" }}>Builds need GCP_PROJECT_ID + GCS_BUCKET on the portal. Connecting works anywhere; building runs in prod (or ADC locally).</p>}
             <div className="grid2">
-              <div style={{ border: "1px solid var(--accent)", background: "var(--accent-dim)", borderRadius: "var(--radius-md)", padding: "var(--space-4)" }}>
+              <div id="connect-github" style={{ border: "1px solid var(--accent)", background: "var(--accent-dim)", borderRadius: "var(--radius-md)", padding: "var(--space-4)" }}>
                 <div className="row"><span className="icon-orb" style={{ background: "#fff", color: "#111" }}><Icon name="repo" /></span><div><strong>GitHub</strong><br /><span className="small muted">Connect a GitHub repository</span></div><span className="spacer" /><Badge tone="minor">Selected</Badge></div>
                 <div style={{ marginTop: 12 }}><GithubConnect /></div>
               </div>
@@ -107,7 +107,7 @@ export default async function ReposPage() {
             </tbody>
           </table>
           <p className="small muted" style={{ background: "var(--accent-dim)", borderRadius: "var(--radius-md)", padding: 10 }}>Charie will run the selected tests, analyze results, and create actionable findings with fixes.</p>
-          {primary ? <Link href={`/repos/${primary.id}`} className="btn" style={{ width: "100%", justifyContent: "center" }}>Run tests</Link> : <Link href="#top" className="btn" style={{ width: "100%", justifyContent: "center" }}>Connect to run</Link>}
+          {primary ? <Link href={`/repos/${primary.id}`} className="btn" style={{ width: "100%", justifyContent: "center" }}>Run tests</Link> : <a href="#connect-github" className="btn" style={{ width: "100%", justifyContent: "center" }}>Connect GitHub to run</a>}
         </div>
       </div>
     </>
