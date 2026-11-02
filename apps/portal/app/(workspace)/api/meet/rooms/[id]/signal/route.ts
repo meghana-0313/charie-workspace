@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkInvite } from "@/lib/auth";
+import { identity } from "@/lib/who";
 import { store } from "@/lib/store";
-import type { MeetSignalKind } from "@/lib/types";
+import type { MeetRoom, MeetSignalKind } from "@/lib/types";
 
 const KINDS: MeetSignalKind[] = ["join", "leave", "offer", "answer", "candidate"];
 
@@ -18,9 +19,20 @@ async function guestAllowed(req: Request, roomId: string): Promise<boolean> {
   return guestOk(req, roomId) && (await store.hasMeetCheckin(roomId));
 }
 
+/** Member callers (session cookie) must own the room; legacy rooms without an owner stay open. */
+async function memberOk(req: Request, room: MeetRoom): Promise<boolean> {
+  if (!room.uid) return true;
+  const me = await identity(req);
+  return Boolean(me?.uid) && me!.uid === room.uid;
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: roomId } = await params;
-  if (!(await store.getMeetRoom(roomId))) return NextResponse.json({ error: "no such room" }, { status: 404 });
+  const room = await store.getMeetRoom(roomId);
+  if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
+  if (!new URL(req.url).searchParams.get("token") && !(await memberOk(req, room))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const since = Number(new URL(req.url).searchParams.get("since") ?? "0");
   if (!Number.isFinite(since) || since < 0) return NextResponse.json({ error: "bad since" }, { status: 400 });
   if (!(await guestAllowed(req, roomId))) {
@@ -31,7 +43,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: roomId } = await params;
-  if (!(await store.getMeetRoom(roomId))) return NextResponse.json({ error: "no such room" }, { status: 404 });
+  const room = await store.getMeetRoom(roomId);
+  if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
+  if (!new URL(req.url).searchParams.get("token") && !(await memberOk(req, room))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   if (!(await guestAllowed(req, roomId))) {
     return NextResponse.json({ error: "check in with consent first" }, { status: 403 });
   }

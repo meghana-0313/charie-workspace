@@ -1,12 +1,13 @@
 import { listDigests, listWorkOrders } from "@/lib/guardian";
+import { identity, scopeUid } from "@/lib/who";
 import { NightShiftButton } from "@/components/suite";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function NightPage() {
-  const digests = await listDigests();
-  const orders = await listWorkOrders();
+  const digests = await listDigests(scopeUid(await identity()));
+  const orders = await listWorkOrders(scopeUid(await identity()));
   const eligible = orders.filter((o) => o.status === "approved" || o.status === "scheduled");
   const latest = digests.at(-1);
   return (

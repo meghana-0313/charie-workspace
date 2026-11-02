@@ -106,6 +106,16 @@ export function createApp(opts: ServerOpts): RequestListener {
   const jobs = new Map<string, JobState>();
   const root = opts.reportsRoot;
   const dataRoot = join(root, "_guardian");
+  // Guardian data is stored per account (x-charie-account header); callers
+  // without an account share the legacy root so old data stays readable.
+  function accountOf(req: IncomingMessage): string {
+    const raw = String(req.headers["x-charie-account"] ?? "").trim();
+    return /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : "shared";
+  }
+  function acctData(req: IncomingMessage): string {
+    const a = accountOf(req);
+    return a === "shared" ? dataRoot : join(dataRoot, "acct", a);
+  }
   let warnedNoAuth = false;
   let activeRuns = 0;
   let shiftRunning = false;
@@ -365,7 +375,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "GET" && url.pathname === "/guardian/sweeps") {
-          send(res, 200, { sweeps: loadSweeps(dataRoot).slice(-50) });
+          send(res, 200, { sweeps: loadSweeps(acctData(req)).slice(-50) });
           return;
         }
 
@@ -376,12 +386,12 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 400, { error: "portalUrl + engineUrl required (body or PORTAL_URL/ENGINE_PUBLIC_URL env)" });
             return;
           }
-          send(res, 200, await runSweep(t, dataRoot));
+          send(res, 200, await runSweep(t, acctData(req)));
           return;
         }
 
         if (req.method === "GET" && url.pathname === "/workorders") {
-          send(res, 200, { workorders: loadWorkOrders(dataRoot) });
+          send(res, 200, { workorders: loadWorkOrders(acctData(req)) });
           return;
         }
 
@@ -399,7 +409,7 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 400, { error: "title, source guardian|signals|pentest|manual, sourceRef, plan[1..10] with kind/label/ref required" });
             return;
           }
-          send(res, 201, createWorkOrder(dataRoot, {
+          send(res, 201, createWorkOrder(acctData(req), {
             title: b.title,
             source: b.source as "guardian",
             sourceRef: b.sourceRef,
@@ -410,7 +420,7 @@ export function createApp(opts: ServerOpts): RequestListener {
 
         const woMatch = url.pathname.match(/^\/workorders\/([^/]+)(\/(approve|schedule))?$/);
         if (woMatch && ((req.method === "GET" && !woMatch[2]) || (req.method === "POST" && woMatch[2]))) {
-          const wo = getWorkOrder(dataRoot, decodeURIComponent(woMatch[1]));
+          const wo = getWorkOrder(acctData(req), decodeURIComponent(woMatch[1]));
           if (!wo) {
             send(res, 404, { error: "unknown work order" });
             return;
@@ -423,12 +433,12 @@ export function createApp(opts: ServerOpts): RequestListener {
             if (woMatch[3] === "approve") {
               const parsed = await jsonBody(req);
               const by = (parsed.ok ? parsed.body.by : null) as string | undefined;
-              send(res, 200, approveWorkOrder(dataRoot, wo.id, by?.trim() || "reviewer"));
+              send(res, 200, approveWorkOrder(acctData(req), wo.id, by?.trim() || "reviewer"));
             } else {
               const parsed = await jsonBody(req);
               const forRaw = (parsed.ok ? parsed.body.scheduledFor : null) as string | undefined;
               const scheduledFor = forRaw ?? new Date(Date.now() + 8 * 3600 * 1000).toISOString();
-              send(res, 200, updateWorkOrder(dataRoot, wo.id, { status: "scheduled", scheduledFor }));
+              send(res, 200, updateWorkOrder(acctData(req), wo.id, { status: "scheduled", scheduledFor }));
             }
           } catch (e) {
             send(res, 409, { error: (e as Error).message });
@@ -447,7 +457,7 @@ export function createApp(opts: ServerOpts): RequestListener {
           shiftRunning = true;
           try {
             const report = await runNightShift({
-              dataRoot,
+              dataRoot: acctData(req),
               reportsRoot: root,
               portalUrl: t.portalUrl,
               engineUrl: t.engineUrl,
@@ -472,7 +482,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "GET" && url.pathname === "/nightshift/digests") {
-          send(res, 200, { digests: loadDigests(dataRoot).slice(-10) });
+          send(res, 200, { digests: loadDigests(acctData(req)).slice(-10) });
           return;
         }
 
@@ -496,13 +506,13 @@ export function createApp(opts: ServerOpts): RequestListener {
             m.sentiment = g.sentiment;
             if (g.theme) m.theme = g.theme;
           }
-          const all = appendMessages(dataRoot, stamped);
+          const all = appendMessages(acctData(req), stamped);
           send(res, 201, { ingested: stamped.length, total: all.length, clusters: clusterMessages(all).slice(0, 12) });
           return;
         }
 
         if (req.method === "GET" && url.pathname === "/signals/clusters") {
-          const all = loadMessages(dataRoot);
+          const all = loadMessages(acctData(req));
           send(res, 200, { total: all.length, clusters: clusterMessages(all).slice(0, 12) });
           return;
         }
@@ -516,7 +526,7 @@ export function createApp(opts: ServerOpts): RequestListener {
             m.sentiment = g.sentiment;
             if (g.theme) m.theme = g.theme;
           }
-          const all = appendMessages(dataRoot, stamped);
+          const all = appendMessages(acctData(req), stamped);
           send(res, 201, { ingested: stamped.length, total: all.length, clusters: clusterMessages(all).slice(0, 12) });
           return;
         }
@@ -529,14 +539,14 @@ export function createApp(opts: ServerOpts): RequestListener {
             return;
           }
           const report = await runPentest({ ...t, engineToken: secret("ENGINE_TOKEN") ?? undefined });
-          const pf = join(dataRoot, "pentest.json");
+          const pf = join(acctData(req), "pentest.json");
           let prior: unknown[] = [];
           try {
             prior = JSON.parse(readFileSync(pf, "utf8")) as unknown[];
           } catch {
             /* first report */
           }
-          mkdirSync(dataRoot, { recursive: true });
+          mkdirSync(acctData(req), { recursive: true });
           writeFileSync(pf, JSON.stringify([...prior, report].slice(-10), null, 2));
           send(res, 200, report);
           return;
@@ -545,7 +555,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         if (req.method === "GET" && url.pathname === "/pentest/reports") {
           let reports: unknown[] = [];
           try {
-            reports = JSON.parse(readFileSync(join(dataRoot, "pentest.json"), "utf8")) as unknown[];
+            reports = JSON.parse(readFileSync(join(acctData(req), "pentest.json"), "utf8")) as unknown[];
           } catch {
             /* none yet */
           }
@@ -565,21 +575,21 @@ export function createApp(opts: ServerOpts): RequestListener {
           }
         }
 
-        function saveReport(file: string, report: unknown): void {
-          const pf = join(dataRoot, file);
+        function saveReport(file: string, report: unknown, inDir: string): void {
+          const pf = join(inDir, file);
           let prior: unknown[] = [];
           try {
             prior = JSON.parse(readFileSync(pf, "utf8")) as unknown[];
           } catch {
             /* first report */
           }
-          mkdirSync(dataRoot, { recursive: true });
+          mkdirSync(inDir, { recursive: true });
           writeFileSync(pf, JSON.stringify([...prior, report].slice(-10), null, 2));
         }
 
-        function loadReports(file: string): unknown[] {
+        function loadReports(file: string, inDir: string): unknown[] {
           try {
-            return JSON.parse(readFileSync(join(dataRoot, file), "utf8")) as unknown[];
+            return JSON.parse(readFileSync(join(inDir, file), "utf8")) as unknown[];
           } catch {
             return [];
           }
@@ -594,7 +604,7 @@ export function createApp(opts: ServerOpts): RequestListener {
           }
           try {
             const report = await runA11y(targetUrl);
-            saveReport("a11y.json", report);
+            saveReport("a11y.json", report, acctData(req));
             send(res, 200, report);
           } catch (e) {
             send(res, 502, { error: `accessibility run failed: ${(e as Error).message}` });
@@ -603,7 +613,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "GET" && url.pathname === "/a11y/reports") {
-          send(res, 200, { reports: loadReports("a11y.json") });
+          send(res, 200, { reports: loadReports("a11y.json", acctData(req)) });
           return;
         }
 
@@ -616,7 +626,7 @@ export function createApp(opts: ServerOpts): RequestListener {
           }
           try {
             const report = await runFirstRun(targetUrl);
-            saveReport("firstrun.json", report);
+            saveReport("firstrun.json", report, acctData(req));
             send(res, 200, report);
           } catch (e) {
             send(res, 502, { error: `first run failed: ${(e as Error).message}` });
@@ -625,7 +635,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "GET" && url.pathname === "/firstrun/reports") {
-          send(res, 200, { reports: loadReports("firstrun.json") });
+          send(res, 200, { reports: loadReports("firstrun.json", acctData(req)) });
           return;
         }
 
@@ -639,7 +649,7 @@ export function createApp(opts: ServerOpts): RequestListener {
           }
           try {
             const report = await runLogWatch(projectId);
-            saveReport("logwatch.json", report);
+            saveReport("logwatch.json", report, acctData(req));
             if (report.configured && report.groups.length > 0) {
               const stamped: SignalMessage[] = report.groups.slice(0, 5).map((g, i) => ({
                 id: `lw_${Date.now().toString(36)}_${i}`,
@@ -653,7 +663,7 @@ export function createApp(opts: ServerOpts): RequestListener {
                 m.sentiment = gr.sentiment;
                 if (gr.theme) m.theme = gr.theme;
               }
-              appendMessages(dataRoot, stamped);
+              appendMessages(acctData(req), stamped);
             }
             send(res, 200, report);
           } catch (e) {
@@ -663,7 +673,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "GET" && url.pathname === "/guardian/logwatch") {
-          const reports = loadReports("logwatch.json");
+          const reports = loadReports("logwatch.json", acctData(req));
           send(res, 200, { report: reports.at(-1) ?? null });
           return;
         }

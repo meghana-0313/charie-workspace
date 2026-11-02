@@ -1,11 +1,12 @@
 import { listFirstRunReports } from "@/lib/guardian";
+import { identity, scopeUid } from "@/lib/who";
 import { FirstRunForm } from "@/components/scans";
 import { EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function FirstRunPage() {
-  const reports = await listFirstRunReports();
+  const reports = await listFirstRunReports(scopeUid(await identity()));
   const latest = reports.at(-1);
   return (
     <>

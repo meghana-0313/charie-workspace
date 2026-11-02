@@ -1,65 +1,35 @@
-# Demo script (5 minutes, for judges)
+# Demo script (3 minutes, hosted portal)
 
-**Setup:** demo-target running on `localhost:3101`, agent-engine ready. No API keys
-required for the deterministic core; with `META_API_KEY` the diagnosis and redesigns
-upgrade to live Meta models.
+**Format:** screen recording of the live portal (charie-portal on Cloud Run).
+Pre-stage everything below before hitting record; each beat should already be
+loaded in a tab. If a beat misbehaves live, cut to the pre-recorded tab and keep
+narrating; never fake a result.
 
-## Beat 1 - The ticket (30s)
+| Time | Screen | Say |
+|---|---|---|
+| 0:00 | Home, Night shift digest card | "Your software broke at 3am. Nobody paged you. Charie investigated anyway. This is the morning digest." |
+| 0:20 | Ticket room: findings with screenshots | "A customer complaint became a ticket. Charie drove the real app, hit the same wall the customer did, and filed evidence: screenshots, repro steps, the failing request. Not vibes. Proof." |
+| 0:50 | Finding detail, SAM grounding boxes | "Every claim is grounded in the screenshot it came from. Muse models read the evidence; the trace is the receipt." |
+| 1:10 | Approve instruction, MCP packet | "I approve one instruction. The fix packet goes to my coding agent over MCP, cloud or local, scoped to my account. I never paste logs into a chat window again." |
+| 1:35 | Verify run, before/after proof | "Then Charie re-runs the exact journey and diffs it. Fixed, regressed, or inconclusive. The ticket only closes with proof. Proof, or it did not happen." |
+| 2:00 | Live signals, hot cluster | "Meanwhile your customers are shouting in support. Charie clusters the themes, grades the heat, and one click files it as a ticket with the product URL. Complaint to investigation in one click." |
+| 2:25 | Security page, grade A | "And it attacks itself like a bug bounty hunter: 35 checks, recon, OWASP. That is our own dashboard earning its grade A." |
+| 2:45 | Meet room, guest joining | "A customer joins from a link. No account, consent first, nothing recorded. Charie takes live notes, knows the customer from the teammate, and saves the summary to the ticket." |
+| 2:55 | Chat with Charie | "Or I just ask Charie. It answers from my tickets, my runs, my context, on Muse Spark." |
+| 3:00 | Logo | "Ticket to evidence to fix to proof. Meet Charie." |
 
-Show the support ticket:
+## Pre-stage checklist
 
-> "Checkout button does nothing. Customer tried 3 times, gave up. Order lost."
+- One ticket investigated end to end, verification green (the ShopFast demo).
+- Night shift digest present (run one manually the hour before if needed).
+- A seeded signals cluster with hot angry share for the one-click beat.
+- Security page showing the latest grade A pentest of the demo target.
+- A second browser (or phone) ready off camera to join the Meet room as guest.
+- Demo target running (`npm run demo:target` or the hosted charie-demo).
 
-Say: *"Every support team knows this ticket. Today it burns support time, then
-engineering repro time, then back-and-forth. Watch the whole thing close itself."*
+## Fallback
 
-## Beat 2 - The agent investigates (90s)
-
-Run:
-
-```bash
-npm run agent:run
-```
-
-Narrate while it runs: the machine tester drives the real store, adds 3 items, hits
-checkout; the first-time-user sim tries the same goal without knowing the UI. Point at
-screenshots appearing in `reports/<ts>/`.
-
-## Beat 3 - Evidence, not vibes (60s)
-
-Open `report.md`:
-
-- **Finding #1 (functional, blocker):** "Place order silently fails with 3+ items" -
-  repro steps, failed `POST /api/checkout` (500), swallowed error, screenshot.
-- **Finding #2 (usability, major):** "Two identical 'Continue' buttons; user sim
-  clicked the wrong one twice" - action trace + hesitation signals.
-- **Finding #3 (accessibility, major):** "Place-order control not keyboard reachable."
-- **Finding #4 (accessibility, minor):** "3 inputs lack accessible labels" - DOM scan.
-- **Finding #5 (security, minor):** "Missing security headers" - passive surface check, honestly labeled.
-
-Say: *"Three perspectives, one trace. And note the label: AI simulation, not a claim
-about real humans - human validation is a separate step."*
-
-## Beat 4 - The fix + the redesign (45s)
-
-Show the MCP fix packet for finding #1 (paste-ready for Muse Code / any coding agent)
-and the Muse Image redesign alternatives for the checkout step with trade-offs.
-
-## Beat 5 - Verified (45s)
-
-Flip the demo-target to the fixed build (`FIXED_BUILD=1 npm run demo:target`), run:
-
-```bash
-npm run agent:run -- --target http://localhost:3101 --verify --baseline ./reports/<first-run-ts>
-```
-
-Show `verification.json`: BUG-1 + UX-2 fixed, journey completes, no regressions.
-Ticket state: `verified`.
-
-**Closer:** *"Ticket to proof-of-fix, one loop. Meet CHARIE: your software's autonomous companion."*
-
-## If something breaks live
-
-Fall back to the checked-in sample: `services/agent-engine/sample-report/` - a real
-past run's report + screenshots. Never fake a live run; narrate the recording as a
-recording.
+If the live portal stalls, the local stack tells the same story: demo target on
+`localhost:3101`, engine on `localhost:3103`, portal on `localhost:3102`, and
+`services/agent-engine/sample-report/` holds a real past run. Narrate honestly:
+a recording is a recording.

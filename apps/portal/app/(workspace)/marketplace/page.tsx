@@ -1,10 +1,18 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
-import { ConnectorActions, ContextForm, ContextRow, JiraConnectForm, RuleForm, RuleRow } from "@/components/marketplace";
+import { ConnectorActions, ContextForm, ContextRow, JiraConnectForm, McpConfigCard, RuleForm, RuleRow } from "@/components/marketplace";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+async function McpPortal() {
+  const h = await headers();
+  const host = h.get("host") ?? "localhost:3100";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return <McpConfigCard portalUrl={`${proto}://${host}`} />;
+}
 
 export default async function MarketplacePage() {
   const id = await identity();
@@ -40,7 +48,8 @@ export default async function MarketplacePage() {
           </p>
         </div>
       </div>
-      <div className="card" id="connect-jira">
+      <McpPortal />
+      <div className="card" id="connect-jira" style={{ marginTop: 16 }}>
         <div className="card-title">Jira</div>
         {jiraConns.length === 0 ? (
           <JiraConnectForm />

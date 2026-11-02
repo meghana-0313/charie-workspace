@@ -26,7 +26,7 @@ export function scheduleDue(s: Pick<Schedule, "preset" | "enabled" | "lastRunAt"
 export async function executeSchedule(s: Schedule): Promise<string> {
   try {
     if (s.kind === "sweep") {
-      const r = await runSweep();
+      const r = await runSweep(s.uid);
       if (!r) return "engine unreachable";
       if (!r.pass) {
         await pushToAll(
@@ -38,7 +38,7 @@ export async function executeSchedule(s: Schedule): Promise<string> {
       return r.pass ? "pass" : "failing";
     }
     if (s.kind === "pentest") {
-      const r = await runPentest();
+      const r = await runPentest(s.uid);
       if (!r) return "engine unreachable";
       if (r.grade === "F" || r.grade === "D") {
         await pushToAll(`Security re-scan: grade ${r.grade}`, `${r.failed} checks failing. Open the report.`, "/guardian/security").catch(() => {});
@@ -46,13 +46,13 @@ export async function executeSchedule(s: Schedule): Promise<string> {
       return `grade ${r.grade}`;
     }
     if (s.kind === "nightshift") {
-      const r = await runNightShift();
+      const r = await runNightShift(undefined, s.uid);
       if (!r) return "engine unreachable";
       return `${r.orders.length} orders`;
     }
     const projectId = (await store.getSetting("prodProjectId").catch(() => null)) || process.env.GCP_PROJECT_ID || "";
     if (!projectId) return "no GCP project set";
-    const r = await runLogWatch(projectId);
+    const r = await runLogWatch(projectId, s.uid);
     if (!r) return "engine unreachable";
     return r.configured ? `${r.total} errors` : "log watch unconfigured";
   } catch (e) {

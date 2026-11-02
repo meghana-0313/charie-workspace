@@ -1,11 +1,12 @@
 import { listA11yReports } from "@/lib/guardian";
+import { identity, scopeUid } from "@/lib/who";
 import { A11yRunForm } from "@/components/scans";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function A11yPage() {
-  const reports = await listA11yReports();
+  const reports = await listA11yReports(scopeUid(await identity()));
   const latest = reports.at(-1);
   return (
     <>

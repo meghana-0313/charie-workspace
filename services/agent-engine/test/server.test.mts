@@ -180,6 +180,24 @@ const zs = await call("GET", "/zoom/status", H);
 ok(zs.code === 200 && (zs.json() as { configured: boolean }).configured === false, "zoom unconfigured without key");
 ok((await call("POST", "/zoom/join", H, JSON.stringify({ meetingUrl: "https://zoom.us/j/1" }))).code === 501, "zoom join refuses without key");
 
+// Per-account Guardian partitions: header x-charie-account selects the data
+// dir; anything suspicious falls back to the shared bucket.
+const HA = { ...H, "x-charie-account": "acctZ" };
+const HB = { ...H, "x-charie-account": "acctY" };
+const acctWo = await call("POST", "/workorders", HA, JSON.stringify({
+  title: "Account scoped WO", source: "manual", sourceRef: "acct-probe",
+  plan: [{ kind: "docs-note", label: "step", ref: "acct-probe" }],
+}));
+ok(acctWo.code === 201, "account work order created");
+const listZA = await call("GET", "/workorders", HA);
+ok(listZA.text.includes("Account scoped WO"), "owner account sees its work order");
+const listYB = await call("GET", "/workorders", HB);
+ok(!listYB.text.includes("Account scoped WO"), "other account cannot see it");
+const listSharedAcct = await call("GET", "/workorders", H);
+ok(!listSharedAcct.text.includes("Account scoped WO"), "shared bucket cannot see it");
+const listTraversal = await call("GET", "/workorders", { ...H, "x-charie-account": "../acctZ" });
+ok(!listTraversal.text.includes("Account scoped WO"), "traversal header falls back to shared");
+
 delete process.env.ENGINE_TOKEN;
 if (savedMetaKey !== undefined) process.env.META_API_KEY = savedMetaKey;
 if (savedBasetenKey !== undefined) process.env.BASETEN_API_KEY = savedBasetenKey;

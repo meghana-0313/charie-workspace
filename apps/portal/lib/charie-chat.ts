@@ -105,13 +105,13 @@ async function executeTool(tool: string, args: Record<string, unknown>, uid: str
       if (kind === "a11y" || kind === "firstrun") {
         const targetUrl = validUrl(args.targetUrl);
         if (!targetUrl) return "Need a valid http(s) targetUrl for this scan.";
-        const r = kind === "a11y" ? await runA11y(targetUrl) : await runFirstRun(targetUrl);
+        const r = kind === "a11y" ? await runA11y(targetUrl, uid) : await runFirstRun(targetUrl, uid);
         if (!r) return "Engine unreachable. Try again in a bit.";
         return "grade" in r
           ? `Accessibility: grade ${r.grade}, ${r.passed}/${r.passed + r.failed} checks. Details on /a11y.`
           : `First run: score ${r.score}, ${r.passed}/${r.passed + r.failed} steps. Details on /firstrun.`;
       }
-      const r = await runPentest();
+      const r = await runPentest(uid);
       if (!r) return "Engine unreachable. Try again in a bit.";
       return `Security re-scan: grade ${r.grade}, ${r.passed}/${r.passed + r.failed} checks. Details on /guardian/security.`;
     }

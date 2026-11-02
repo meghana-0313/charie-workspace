@@ -1,11 +1,12 @@
 import { listPentestReports } from "@/lib/guardian";
+import { identity, scopeUid } from "@/lib/who";
 import { PentestButton, ProposeWorkOrderButton } from "@/components/suite";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function SecurityPage() {
-  const reports = await listPentestReports();
+  const reports = await listPentestReports(scopeUid(await identity()));
   const latest = reports.at(-1);
   return (
     <>

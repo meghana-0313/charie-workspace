@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { identity, scopeUid } from "@/lib/who";
 import { listWorkOrders } from "@/lib/guardian";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkOrdersPage() {
-  const orders = await listWorkOrders();
+  const orders = await listWorkOrders(scopeUid(await identity()));
   const open = orders.filter((o) => !["done", "failed", "rolledback"].includes(o.status));
   return (
     <>

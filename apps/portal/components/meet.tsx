@@ -73,7 +73,12 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [startMuted, setStartMuted] = useState(false);
+  const [startCamOff, setStartCamOff] = useState(false);
+  const [audioOnly, setAudioOnly] = useState(false);
+  const [previewErr, setPreviewErr] = useState("");
   const localVideo = useRef<HTMLVideoElement>(null);
+  const previewVideo = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pcs = useRef<Record<string, RTCPeerConnection>>({});
   const since = useRef(0);
@@ -183,6 +188,31 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     if (localVideo.current && streamRef.current) localVideo.current.srcObject = streamRef.current;
   }, [joined]);
 
+  // Pre-join device preview: see yourself before anyone else does. The same
+  // stream is reused on Join so the permission prompt only fires once.
+  useEffect(() => {
+    if (joined) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: !audioOnly, audio: true });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = stream;
+        if (previewVideo.current) previewVideo.current.srcObject = stream;
+        setPreviewErr("");
+      } catch {
+        if (!cancelled) setPreviewErr("Camera or mic unavailable here. You can still try joining below.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [joined, audioOnly]);
+
   const join = async () => {
     if (!name.trim()) {
       setError("Enter your name first.");
@@ -190,8 +220,19 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     }
     setError("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      streamRef.current = stream;
+      // Reuse the preview stream when it matches the chosen mode; only prompt
+      // again when the caller switched between camera and audio only.
+      let stream = streamRef.current;
+      const hasVideo = (stream?.getVideoTracks().length ?? 0) > 0;
+      if (!stream || hasVideo === audioOnly) {
+        stream?.getTracks().forEach((t) => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({ video: !audioOnly, audio: true });
+        streamRef.current = stream;
+      }
+      stream.getAudioTracks().forEach((t) => { t.enabled = !startMuted; });
+      stream.getVideoTracks().forEach((t) => { t.enabled = !startCamOff; });
+      setMuted(startMuted);
+      setCamOff(audioOnly || startCamOff);
       nameRef.current = name.trim();
       setJoined(true);
       await send("*", "join", JSON.stringify({ name: nameRef.current, role: token ? "guest" : "member" }));
@@ -253,11 +294,27 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     return (
       <div className="card">
         <div className="card-title">Join “{roomTitle}”</div>
-        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Native Charie room. Camera and mic stay between peers; the portal only exchanges connection setup.</p>
+        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Check how you look and sound, then join. Camera and mic stay between peers; the portal only exchanges connection setup.</p>
+        {!audioOnly && <video ref={previewVideo} autoPlay playsInline muted className="meet-preview" aria-label="Camera preview" />}
         <div className="row">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" style={{ flex: 1, minWidth: 160 }} />
-          <button onClick={join}>Join with camera</button>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 160 }} />
+          <button onClick={join}>{audioOnly ? "Join audio only" : "Join call"}</button>
         </div>
+        <div className="row small" style={{ marginTop: 8 }}>
+          <label className="row" style={{ fontWeight: 400 }}>
+            <input type="checkbox" checked={startMuted} onChange={(e) => setStartMuted(e.target.checked)} />
+            Start muted
+          </label>
+          <label className="row" style={{ fontWeight: 400 }}>
+            <input type="checkbox" checked={startCamOff} disabled={audioOnly} onChange={(e) => setStartCamOff(e.target.checked)} />
+            Camera off
+          </label>
+          <label className="row" style={{ fontWeight: 400 }}>
+            <input type="checkbox" checked={audioOnly} onChange={(e) => setAudioOnly(e.target.checked)} />
+            Audio only
+          </label>
+        </div>
+        {previewErr && <p className="small" style={{ color: "var(--danger)" }}>{previewErr}</p>}
         {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       </div>
     );
@@ -268,11 +325,11 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     <>
       <div className="meet-grid">
         <div className="meet-tile">
-          <video ref={localVideo} autoPlay playsInline muted />
+          {audioOnly ? <div className="meet-wait">Audio only</div> : <video ref={localVideo} autoPlay playsInline muted />}
           <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
         </div>
         {tiles.map((p) => (
-          <PeerTile key={p.id} peer={p} />
+          <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} />
         ))}
       </div>
       <div className="meet-controls">
@@ -288,14 +345,32 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   );
 }
 
-function PeerTile({ peer }: { peer: Peer }) {
+function PeerTile({ peer, onRemove }: { peer: Peer; onRemove: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [stuck, setStuck] = useState(false);
   useEffect(() => {
     if (ref.current && peer.stream) ref.current.srcObject = peer.stream;
   }, [peer.stream]);
+  useEffect(() => {
+    if (peer.stream) {
+      setStuck(false);
+      return;
+    }
+    const t = setTimeout(() => setStuck(true), 15000);
+    return () => clearTimeout(t);
+  }, [peer.stream, peer.id]);
   return (
     <div className="meet-tile">
-      {peer.stream ? <video ref={ref} autoPlay playsInline /> : <div className="meet-wait">Connecting…</div>}
+      {peer.stream ? (
+        <video ref={ref} autoPlay playsInline />
+      ) : stuck ? (
+        <div className="meet-wait">
+          No media yet. They may have blocked their camera, or the network is slow.
+          <button className="secondary" style={{ marginTop: 8 }} onClick={onRemove}>Remove tile</button>
+        </div>
+      ) : (
+        <div className="meet-wait">Connecting…</div>
+      )}
       <span className="meet-name">{peer.name} {peer.role === "guest" ? "(customer)" : "(teammate)"}</span>
     </div>
   );
