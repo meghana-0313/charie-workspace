@@ -7,12 +7,22 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatAttachment } from "@/lib/types";
 
+export interface ChatConsent {
+  id: string;
+  tool: string;
+  title: string;
+  detail: string;
+  status: "pending" | "approved" | "denied" | "done" | "failed";
+  result?: string;
+}
+
 export interface ChatMsg {
   role: "user" | "assistant";
   text: string;
   model?: string;
   actions?: string[];
   attachments?: ChatAttachment[];
+  consent?: ChatConsent;
   at: string;
 }
 
@@ -145,7 +155,7 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
         body: JSON.stringify({ threadId: tid, text: clean, attachments: atts }),
         signal: ctl.signal,
       });
-      const j = (await res.json()) as { threadId?: string; text?: string; model?: string; actions?: string[]; error?: string };
+      const j = (await res.json()) as { threadId?: string; text?: string; model?: string; actions?: string[]; consent?: ChatConsent; error?: string };
       if (!res.ok) {
         setMsgs((m) => [...m, { role: "assistant", text: `Chat failed: ${j.error ?? res.status}`, at: new Date().toISOString() }]);
       } else {
@@ -153,7 +163,7 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
           setTid(j.threadId);
           window.history.replaceState(null, "", `/chat?thread=${j.threadId}`);
         }
-        setMsgs((m) => [...m, { role: "assistant", text: j.text ?? "", model: j.model, actions: j.actions ?? [], at: new Date().toISOString() }]);
+        setMsgs((m) => [...m, { role: "assistant", text: j.text ?? "", model: j.model, actions: j.actions ?? [], consent: j.consent, at: new Date().toISOString() }]);
       }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") {
@@ -163,6 +173,23 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
       }
     }
     abort.current = null;
+    setBusy(false);
+  }
+
+  async function decideConsent(consentId: string, decision: "approved" | "denied") {
+    if (!tid || busy) return;
+    setBusy(true);
+    const res = await fetch("/api/chat/consent", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ threadId: tid, consentId, decision }),
+    }).catch(() => null);
+    const j = (await res?.json().catch(() => ({}))) as { status?: ChatConsent["status"]; text?: string; error?: string };
+    setMsgs((m) => m.map((x) => (x.consent?.id === consentId ? { ...x, consent: { ...x.consent, status: j.status ?? x.consent.status } } : x)));
+    if (res?.ok && j.text) {
+      setMsgs((m) => [...m, { role: "assistant", text: j.text ?? "", at: new Date().toISOString() }]);
+    } else {
+      setError(j.error ?? "That decision did not go through.");
+    }
     setBusy(false);
   }
 
@@ -211,6 +238,21 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
                   </div>
                 )}
               </div>
+              {m.consent && (
+                <div className="consent-card">
+                  <strong className="small">{m.consent.title}</strong>
+                  <p className="small muted" style={{ margin: "4px 0 8px" }}>{m.consent.detail}</p>
+                  {m.consent.status === "pending" ? (
+                    <div className="row">
+                      <button type="button" className="sm" disabled={busy} onClick={() => void decideConsent(m.consent!.id, "approved")}>Approve</button>
+                      <button type="button" className="secondary sm" disabled={busy} onClick={() => void decideConsent(m.consent!.id, "denied")}>Deny</button>
+                    </div>
+                  ) : (
+                    <span className="badge">{m.consent.status === "done" ? "Ran after your approval" : m.consent.status}</span>
+                  )}
+                  <p className="small muted" style={{ margin: "6px 0 0" }}>Charie never runs this silently. Nothing happens until you approve.</p>
+                </div>
+              )}
               <div className="chat-time">{m.role === "assistant" ? "Charie" : "You"} · {clock(m.at)}</div>
             </div>
           </div>

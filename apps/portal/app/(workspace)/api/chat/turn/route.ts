@@ -69,8 +69,14 @@ export async function POST(req: Request) {
   const ans = await answerMessage({ history, uid: mine });
   const at = new Date().toISOString();
   thread.messages.push({ role: "user", text: clean, ...(atts.length > 0 ? { attachments: atts } : {}), at });
-  thread.messages.push({ role: "assistant", text: ans.text, model: ans.model, actions: ans.actions, at });
+  thread.messages.push({
+    role: "assistant", text: ans.text, model: ans.model, actions: ans.actions, at,
+    ...(ans.consent ? { consent: ans.consent } : {}),
+  });
   thread.updatedAt = at;
   await store.saveThread(thread);
-  return NextResponse.json({ threadId: thread.id, text: ans.text, model: ans.model, actions: ans.actions });
+  return NextResponse.json({
+    threadId: thread.id, text: ans.text, model: ans.model, actions: ans.actions,
+    ...(ans.consent ? { consent: { id: ans.consent.id, tool: ans.consent.tool, title: ans.consent.title, detail: ans.consent.detail, status: ans.consent.status } } : {}),
+  });
 }

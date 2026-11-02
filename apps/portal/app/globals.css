@@ -301,7 +301,11 @@ code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surfa
 .meet-tile { position: relative; background: #101318; border: 1px solid var(--line); border-radius: var(--radius-md); aspect-ratio: 16 / 10; overflow: hidden; }
 .meet-tile video { width: 100%; height: 100%; object-fit: cover; }
 .meet-wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 100%; padding: 12px; text-align: center; color: var(--ink-faint); font-size: var(--text-sm); }
-.meet-preview { width: 100%; aspect-ratio: 16 / 9; max-height: 300px; object-fit: cover; border-radius: var(--radius-md); background: #101318; margin-bottom: 10px; display: block; }
+.meet-preview { width: 100%; height: 100%; object-fit: cover; background: #101318; display: block; }
+.meet-preview-card { position: relative; width: min(400px, 100%); aspect-ratio: 16 / 10; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--line); background: #101318; margin-bottom: 10px; }
+.meet-grid.has-spot { display: flex; flex-wrap: wrap; }
+.meet-grid.has-spot .meet-tile { flex: 0 0 180px; }
+.meet-grid.has-spot .meet-tile.spot { flex: 1 1 100%; order: -1; aspect-ratio: 16 / 9; max-height: 68vh; }
 .meet-name { position: absolute; left: 8px; bottom: 8px; background: rgba(11, 12, 15, 0.72); color: #fff; font-size: var(--text-xs); padding: 2px 8px; border-radius: var(--radius-sm); }
 .meet-controls { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
 .side-desc { display: block; font-size: 11px; color: var(--ink-faint); font-weight: 400; }

@@ -3,6 +3,7 @@
 // Bounded: max 5 tool turns, then the last text wins.
 
 import { store } from "./store";
+import { consentCard, needsConsent, type ConsentCard } from "./consent";
 import { readFindings } from "./engine";
 import { runA11y, runFirstRun, runPentest } from "./guardian";
 import { fileTicketAndInvestigate } from "./tickets";
@@ -155,6 +156,12 @@ export interface ChatAnswer {
   text: string;
   model: string;
   actions: string[];
+  consent?: ConsentCard & { args: Record<string, unknown> };
+}
+
+/** Run one tool immediately (used after a human approves its consent card). */
+export async function executeChatTool(tool: string, args: Record<string, unknown>, uid: string | undefined): Promise<string> {
+  return executeTool(tool, args, uid);
 }
 
 /** Run one user message through the loop. Never throws (fails soft). */
@@ -162,6 +169,7 @@ export async function answerMessage(opts: {
   history: LoopTurn[];
   uid: string | undefined;
   extraNotes?: string[];
+  surface?: string;
 }): Promise<ChatAnswer> {
   const actions: string[] = [];
   let model = "heuristic";
@@ -173,6 +181,7 @@ export async function answerMessage(opts: {
       store.listContextDocs(opts.uid).catch(() => []),
     ]);
     const snapshot = {
+      ...(opts.surface ? { surface: opts.surface } : {}),
       tickets: tickets.slice(0, 10).map((t) => ({ id: t.id, subject: t.subject, status: t.status })),
       schedules: schedules.map((s) => `${s.kind}/${s.preset}/${s.enabled ? "on" : "off"}`),
       repos: repos.map((r) => `${r.owner}/${r.repo}:${r.status}`),
@@ -185,6 +194,17 @@ export async function answerMessage(opts: {
       model = turn.model ?? model;
       if (turn.kind === "text") return { text: turn.text ?? "Done.", model, actions };
       const args = turn.args && typeof turn.args === "object" ? (turn.args as Record<string, unknown>) : {};
+      // Side-effect tools never run silently in chat: propose a consent
+      // card and stop. The tool runs only after an Approve click, which
+      // calls executeChatTool from the consent endpoint.
+      if (turn.tool && needsConsent(turn.tool)) {
+        const card = consentCard(turn.tool, args);
+        return {
+          text: `I can do that, but I will not run it without your say-so. ${card.title}: ${card.detail}. Approve the card below and I will run it.`,
+          model, actions,
+          consent: { ...card, args },
+        };
+      }
       actions.push([turn.tool ?? "?", ...Object.values(args).map((v) => String(v).slice(0, 60))].join(" ").slice(0, 160));
       try {
         const result = await executeTool(turn.tool ?? "", args, opts.uid);

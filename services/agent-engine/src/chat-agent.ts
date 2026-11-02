@@ -206,7 +206,8 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   // Baseten first: Muse Spark Open on the user's Baseten credits.
   if (hasBasetenKey()) {
     try {
-      const out = await sparkOpenChat(messages, { maxTokens: 2500, temperature: 0.4, fetchImpl: input.fetchImpl });
+      const meetCall = typeof input.snapshot === "object" && input.snapshot !== null && (input.snapshot as { surface?: string }).surface === "meet-call";
+      const out = await sparkOpenChat(messages, { maxTokens: meetCall ? 1200 : 2500, temperature: 0.4, fetchImpl: input.fetchImpl });
       const parsed = parseTurnReply(out);
       const label = `${sparkOpenModelId()} (baseten)`;
       return { ...parsed, model: parsed.model === "spark" ? label : parsed.model };

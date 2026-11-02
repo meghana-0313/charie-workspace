@@ -382,12 +382,23 @@ export interface ChatAttachment {
   kind: "image" | "video" | "audio" | "file";
 }
 
+export interface ChatConsentView {
+  id: string;
+  tool: string;
+  title: string;
+  detail: string;
+  status: "pending" | "approved" | "denied" | "done" | "failed";
+  result?: string;
+  args?: Record<string, unknown>; // server-side: what Approve will run
+}
+
 export interface ChatMessageView {
   role: "user" | "assistant";
   text: string;
   model?: string; // serving model id or "heuristic"
   actions?: string[]; // tool calls made, e.g. "ticket_status tkt_x"
   attachments?: ChatAttachment[];
+  consent?: ChatConsentView;
   at: string;
 }
 
