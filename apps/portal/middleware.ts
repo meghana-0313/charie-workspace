@@ -62,7 +62,7 @@ export async function middleware(req: NextRequest) {
   // SDK/app ingestion carries its own key; the route validates it strictly.
   if (path === "/api/guardian/events" && req.headers.get("x-charie-key")) return NextResponse.next();
   // MCP over HTTP carries a Bearer API key; the route validates it strictly.
-  if (path === "/api/mcp" && req.headers.get("authorization")) return NextResponse.next();
+  if (path === "/api/mcp") return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = "/login";
   return NextResponse.redirect(url);
