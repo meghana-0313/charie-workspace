@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { automationKeyOk } from "@/lib/auth";
 import { tickAutopilot } from "@/lib/autopilot";
+import { store } from "@/lib/store";
 
 export const maxDuration = 300;
 
@@ -19,6 +20,10 @@ function cronOk(req: Request): boolean {
 
 async function tick(req: Request) {
   if (!cronOk(req)) return NextResponse.json({ error: "bad cron key" }, { status: 403 });
+  // Master pause from Settings: the scheduler still answers, nothing runs.
+  if ((await store.getSetting("autopilotPaused").catch(() => null)) === "1") {
+    return NextResponse.json({ ok: true, paused: true, results: [] });
+  }
   return NextResponse.json(await tickAutopilot());
 }
 

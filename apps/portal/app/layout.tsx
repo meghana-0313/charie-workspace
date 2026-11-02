@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { Fraunces } from "next/font/google";
 import "./globals.css";
 import { themeInitScript } from "@/components/theme";
+
+const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
 
 export const metadata: Metadata = {
   title: "Charie: Autonomous Engineering Intelligence",
@@ -28,7 +31,7 @@ export const viewport = { themeColor: "#0b0c0f" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={display.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <link rel="manifest" href="/manifest.json" />
