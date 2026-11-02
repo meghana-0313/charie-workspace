@@ -16,6 +16,48 @@ products:
 | Charie Guard | Runtime security and threat response | Threats, Fix tasks, Security tests |
 | Charie Ops | Production intelligence and reliability | Live signals, Night shift, Meet |
 
+## Why Charie stands out (the wow factors)
+
+Existing tools each do one slice: a test runner, a pentest scanner, a meeting
+bot, a ticket queue. Charie closes the whole loop in one workspace, and
+proves every step instead of just reporting it:
+
+1. **Ticket to evidence to fix to proof.** Charie drives the real app like a
+   first-time user, files screenshots and repro steps, gets human approval,
+   fixes, then re-runs the exact journey and diffs before/after.
+2. **Charie joins your video call.** In Meet she listens (with consent),
+   answers questions out loud, proposes actions as consent cards, and never
+   runs anything until a human approves. Camera starts off; she is a
+   participant, not a recorder.
+3. **She works while you sleep.** Night Shift, Autopilot, live signals and
+   continuous sweeps watch production, triage threats, and leave a morning
+   digest with fix tasks ready for approval.
+4. **Graded, not vibes.** Accessibility grades, first-run scores, a 35-check
+   security suite with recon and OWASP coverage, and UX redesigns generated
+   as real screens you can approve, not text suggestions.
+5. **Your coding agent is in the loop.** Over MCP (cloud or local) agents
+   pull findings and fix packets, and must check verification proof before
+   calling a fix done. Jira and GitHub sync both ways.
+6. **Chat is an operator, not a chatbot.** Chat with Charie uses tools:
+   she files tickets, runs scans, reads findings and checks builds, with a
+   receipt for every action. Meet Charie runs the exact same brain.
+
+## Which credits does Charie use?
+
+- **Chat and Meet conversations: Meta Model API credits.** Both go through
+  the same portal chat loop to the engine, which calls Muse Spark
+  (`muse-spark-1.3`) at `https://api.meta.ai/v1` when `META_API_KEY`
+  resolves (env first, then GCP Secret Manager). With no key, both fall
+  back to the free built-in heuristic and say so (`analysisSource: heuristic`).
+- **Baseten credits: second opinions only.** Muse Spark Open
+  (`meta-models/muse-spark-open-1026`) on Baseten re-grades investigation
+  findings. It never powers chat or calls.
+- **Modal: not used.** There is no Modal code path in this repo; it is only
+  mentioned in planning docs as a backup that was never wired in.
+- **Meet voice itself costs nothing extra:** speech recognition and speech
+  synthesis run in the browser. Chat voice notes transcribe through Meta
+  Muse Voice (`muse-voice-transcribe-1.0`).
+
 Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google or email; ask the team for an invite if your account is new).
 
 ## Hackathon submission

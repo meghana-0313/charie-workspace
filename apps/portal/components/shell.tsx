@@ -13,28 +13,28 @@ import { useEffect, useState } from "react";
 type NavLink = [string, string, string, number?];
 
 const SECTIONS: Array<[string, NavLink[]]> = [
-  ["WORKSPACE", [
+  ["START HERE", [
     ["/", "Overview", "home"],
-    ["/chat", "Chat with Charie", "chat"],
-    ["/repos", "Repositories", "layers"],
-  ]],
-  ["OPERATIONS", [
     ["/tickets", "Tickets & Fixes", "ticket"],
-    ["/guardian", "Incidents", "alert"],
-    ["/guardian/security", "Security Tests", "lock"],
-    ["/guardian/work", "Fix Tasks", "order"],
+    ["/chat", "Chat with Charie", "chat"],
   ]],
-  ["AUTOMATION", [
-    ["/agents", "Coding Agents", "code"],
-    ["/autopilot", "Autopilot", "bolt"],
-    ["/guardian/signals", "Live Signals", "signal"],
-    ["/guardian/night", "Night Shift", "moon"],
-  ]],
-  ["COLLABORATION", [
-    ["/guardian/zoom", "Meet (War Rooms)", "video"],
+  ["CHARIE BUILD", [
     ["/ux", "UX & Redesign", "eye"],
     ["/a11y", "Accessibility", "access"],
     ["/firstrun", "First Run", "play"],
+    ["/repos", "Repositories", "layers"],
+  ]],
+  ["CHARIE GUARD", [
+    ["/guardian", "Threats", "alert"],
+    ["/guardian/security", "Security Tests", "lock"],
+    ["/guardian/work", "Fix Tasks", "order"],
+  ]],
+  ["CHARIE OPS", [
+    ["/guardian/night", "Night Shift", "moon"],
+    ["/guardian/signals", "Live Signals", "signal"],
+    ["/autopilot", "Autopilot", "bolt"],
+    ["/guardian/zoom", "Meet", "video"],
+    ["/agents", "Coding Agents", "code"],
   ]],
   ["INTEGRATIONS", [
     ["/marketplace", "Integrations", "plug"],
@@ -47,7 +47,7 @@ const SECTIONS: Array<[string, NavLink[]]> = [
 
 function active(path: string, href: string, label: string): boolean {
   if (href === "/") return path === "/";
-  if (label === "Incidents") return path === "/guardian" || /^\/guardian\/[^/]+$/.test(path) && !path.startsWith("/guardian/work") && !path.startsWith("/guardian/security") && !path.startsWith("/guardian/signals") && !path.startsWith("/guardian/night") && !path.startsWith("/guardian/zoom");
+  if (label === "Threats") return path === "/guardian" || /^\/guardian\/[^/]+$/.test(path) && !path.startsWith("/guardian/work") && !path.startsWith("/guardian/security") && !path.startsWith("/guardian/signals") && !path.startsWith("/guardian/night") && !path.startsWith("/guardian/zoom");
   return path === href || path.startsWith(`${href}/`);
 }
 
@@ -63,10 +63,10 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
     document.querySelector(".shell")?.classList.toggle("nav-collapsed", collapsed);
     try { localStorage.setItem("charie-nav-collapsed", collapsed ? "1" : "0"); } catch { /* private mode */ }
   }, [collapsed]);
-  const badge = (label: string) => label === "Tickets & Fixes" && ticketsOpen ? ticketsOpen : label === "Incidents" && incidentsOpen ? incidentsOpen : undefined;
+  const badge = (label: string) => label === "Tickets & Fixes" && ticketsOpen ? ticketsOpen : label === "Threats" && incidentsOpen ? incidentsOpen : undefined;
   return (
     <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+      <div className="row brand-row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
         <Link href="/" className="side-brand">
           <span className="side-mark"><CharieMark /></span>
           <span>
@@ -74,26 +74,26 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
             <div className="side-sub">Autonomous Engineering Intelligence</div>
           </span>
         </Link>
-        <button type="button" className="icon-btn nav-toggle" aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((c) => !c)}>
+        <button type="button" className="icon-btn nav-toggle" aria-expanded={!collapsed} aria-controls="charie-sidebar-nav" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((c) => !c)}>
           <Icon name={collapsed ? "chev-r" : "chev-l"} />
         </button>
       </div>
-      {SECTIONS.map(([title, links], si) => (
+      <nav id="charie-sidebar-nav" aria-label="Primary">{SECTIONS.map(([title, links], si) => (
         <div key={`${title}-${si}`}>
           <div className="side-section">{title}</div>
           {links.map(([href, label, icon]) => {
             const on = active(path, href, label);
             const b = badge(label);
             return (
-              <Link key={`${label}-${href}`} href={href} title={label} className={`side-link${on ? " on" : ""}`}>
+              <Link key={`${label}-${href}`} href={href} title={label} aria-label={label} aria-current={on ? "page" : undefined} className={`side-link${on ? " on" : ""}`}>
                 <Icon name={icon} />
-                <span style={{ flex: 1 }}>{label}</span>
+                <span className="side-label" style={{ flex: 1 }}>{label}</span>
                 {b !== undefined && <span className="badge accent">{b}</span>}
               </Link>
             );
           })}
         </div>
-      ))}
+      ))}</nav>
       <div className="side-foot">
         <LogoutButton />
         <span className={`env${env === "Development" ? " env-dev" : ""}`}>
