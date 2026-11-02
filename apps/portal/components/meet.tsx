@@ -68,6 +68,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
   const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
   const [joined, setJoined] = useState(false);
+  const [agentOn, setAgentOn] = useState(false);
+  const [agentSpeaking, setAgentSpeaking] = useState(false);
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [error, setError] = useState("");
   const [muted, setMuted] = useState(false);
@@ -322,26 +324,49 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
 
   const tiles = Object.values(peers);
   return (
-    <>
-      <div className="meet-grid">
-        <div className="meet-tile">
-          {audioOnly ? <div className="meet-wait">Audio only</div> : <video ref={localVideo} autoPlay playsInline muted />}
-          <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
+    <div className="war-layout">
+      <div className="war-main">
+        <div className="meet-grid">
+          <div className="meet-tile">
+            {audioOnly ? <div className="meet-wait">Audio only</div> : <video ref={localVideo} autoPlay playsInline muted />}
+            <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
+          </div>
+          {tiles.map((p) => (
+            <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} />
+          ))}
+          {agentOn && (
+            <div className="meet-tile" style={{ background: "radial-gradient(120% 120% at 50% 0%, #241448 0%, #12081f 70%)", borderColor: "rgba(167,139,250,.5)" }}>
+              <div className="orb-wrap" style={{ width: 130, height: 130, marginTop: 18 }}>
+                <span className="orb-ring" />
+                <span className="orb-core" />
+                <span className="orb-eyes"><i /><i /></span>
+              </div>
+              <span className="meet-name"><span className="wave-bars"><i /><i /><i /><i /><i /></span> CHARIE AI · {agentSpeaking ? "Speaking" : "Listening"}</span>
+            </div>
+          )}
         </div>
-        {tiles.map((p) => (
-          <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} />
-        ))}
+        <div className="meet-controls">
+          <button onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>
+          <button onClick={toggleCam}>{camOff ? "Camera on" : "Camera off"}</button>
+          <button onClick={shareScreen} disabled={sharing}>{sharing ? "Sharing…" : "Share screen"}</button>
+          {!token && <InviteButton roomId={roomId} />}
+          <button className="danger-ghost" onClick={leave}>Leave call</button>
+        </div>
+        <p className="muted small">{tiles.length === 0 ? (token ? "You are in. Waiting for the host to join." : "Alone here. Invite a guest with the button above, or send the room link to your team.") : `${tiles.length} peer(s) connected.`}</p>
       </div>
-      <div className="meet-controls">
-        <button onClick={toggleMute}>{muted ? "Unmute" : "Mute"}</button>
-        <button onClick={toggleCam}>{camOff ? "Camera on" : "Camera off"}</button>
-        <button onClick={shareScreen} disabled={sharing}>{sharing ? "Sharing…" : "Share screen"}</button>
-        {!token && <InviteButton roomId={roomId} />}
-        <button className="danger-ghost" onClick={leave}>Leave call</button>
-      </div>
-      <p className="muted small">{tiles.length === 0 ? (token ? "You are in. Waiting for the host to join." : "Alone here. Invite a guest with the button above, or send the room link to your team.") : `${tiles.length} peer(s) connected.`}</p>
-      <LiveNotes roomId={roomId} token={token} canManage={!token} transcribe={transcribeOk} localName={nameRef.current || name} />
-    </>
+      <aside className="side-panel">
+        <LiveNotes
+          roomId={roomId}
+          token={token}
+          canManage={!token}
+          transcribe={transcribeOk}
+          localName={nameRef.current || name}
+          onAgentChange={setAgentOn}
+          onAgentSpeak={setAgentSpeaking}
+          onRequestShare={() => { void shareScreen().catch(() => {}); }}
+        />
+      </aside>
+    </div>
   );
 }
 
@@ -439,39 +464,77 @@ declare global {
 
 interface LiveLineView {
   speaker: string;
-  role: "teammate" | "customer";
+  role: "teammate" | "customer" | "agent";
   text: string;
   at: string;
 }
 
-/** Charie live notes: opt-in transcription with speaker roles, action notes,
- *  Spark summaries, read-aloud, and save-to-ticket. Transcript lives in call
- *  memory only; nothing is stored unless the team presses Save. */
-export function LiveNotes({ roomId, token = "", canManage, transcribe, localName }: { roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string }) {
+interface AgentActionView {
+  id: string;
+  kind: "investigate" | "share-screen" | "workorder" | "summarize";
+  title: string;
+  detail: string;
+  status: "pending" | "approved" | "denied" | "done" | "failed";
+  at: string;
+  result?: string;
+}
+
+interface AgentStateView {
+  enabled: boolean;
+  thoughts: Array<{ at: string; text: string }>;
+  actions: AgentActionView[];
+}
+
+/** War-room side panel: Transcript | Charie (thinking + consent cards) |
+ *  Notes & Actions. Charie only acts after a human approves a card. */
+export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare }: {
+  roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string;
+  onAgentChange?: (on: boolean) => void; onAgentSpeak?: (speaking: boolean) => void; onRequestShare?: () => void;
+}) {
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
+  const [tab, setTab] = useState<"transcript" | "charie" | "notes">("transcript");
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [lines, setLines] = useState<LiveLineView[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const [summary, setSummary] = useState("");
   const [model, setModel] = useState("");
+  const [agent, setAgent] = useState<AgentStateView>({ enabled: false, thoughts: [], actions: [] });
+  const [voice, setVoice] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
   const [supported] = useState(() => typeof window !== "undefined" && Boolean(window.SpeechRecognition ?? window.webkitSpeechRecognition));
   const nameRef = useRef(localName);
   nameRef.current = localName;
+  const spokenRef = useRef(0);
+  const voiceRef = useRef(false);
+  voiceRef.current = voice;
+  const onAgentChangeRef = useRef(onAgentChange);
+  onAgentChangeRef.current = onAgentChange;
+  const onAgentSpeakRef = useRef(onAgentSpeak);
+  onAgentSpeakRef.current = onAgentSpeak;
 
   useEffect(() => {
     let stop = false;
     const poll = async () => {
       try {
-        const res = await fetch(`/api/meet/rooms/${roomId}/live${qp}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const j = (await res.json()) as { enabled?: boolean; lines?: LiveLineView[]; notes?: string[]; summary?: string };
+        const [liveRes, agentRes] = await Promise.all([
+          fetch(`/api/meet/rooms/${roomId}/live${qp}`, { cache: "no-store" }),
+          fetch(`/api/meet/rooms/${roomId}/agent${qp}`, { cache: "no-store" }),
+        ]);
         if (stop) return;
-        setEnabled(j.enabled === true);
-        setLines(j.lines ?? []);
-        setNotes(j.notes ?? []);
-        setSummary(j.summary ?? "");
+        if (liveRes.ok) {
+          const j = (await liveRes.json()) as { enabled?: boolean; lines?: LiveLineView[]; notes?: string[]; summary?: string };
+          setEnabled(j.enabled === true);
+          setLines(j.lines ?? []);
+          setNotes(j.notes ?? []);
+          setSummary(j.summary ?? "");
+        }
+        if (agentRes.ok) {
+          const a = (await agentRes.json()) as AgentStateView;
+          setAgent(a);
+          onAgentChangeRef.current?.(a.enabled === true);
+        }
       } catch {
         /* retry next tick */
       }
@@ -483,6 +546,25 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       clearInterval(t);
     };
   }, [roomId, qp]);
+
+  // Charie speaks her transcript lines aloud when voice is on.
+  useEffect(() => {
+    const agentLines = lines.filter((l) => l.role === "agent");
+    if (agentLines.length < spokenRef.current) spokenRef.current = agentLines.length;
+    if (!voiceRef.current || agentLines.length <= spokenRef.current) return;
+    const fresh = agentLines.slice(spokenRef.current);
+    spokenRef.current = agentLines.length;
+    try {
+      for (const l of fresh) {
+        const u = new SpeechSynthesisUtterance(l.text.slice(0, 300));
+        u.onstart = () => onAgentSpeakRef.current?.(true);
+        u.onend = () => onAgentSpeakRef.current?.(false);
+        window.speechSynthesis.speak(u);
+      }
+    } catch {
+      /* speech unavailable */
+    }
+  }, [lines]);
 
   useEffect(() => {
     if (!transcribe || !enabled || !supported) return;
@@ -509,47 +591,59 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     rec.onerror = () => {};
     rec.onend = () => {
       if (!stopped) {
-        try {
-          rec.start();
-        } catch {
-          /* mic busy */
-        }
+        try { rec.start(); } catch { /* mic busy */ }
       }
     };
-    try {
-      rec.start();
-    } catch {
-      /* mic busy */
-    }
+    try { rec.start(); } catch { /* mic busy */ }
     return () => {
       stopped = true;
-      try {
-        rec.stop();
-      } catch {
-        /* already stopped */
-      }
+      try { rec.stop(); } catch { /* already stopped */ }
     };
   }, [transcribe, enabled, supported, roomId, qp]);
 
-  async function toggle() {
-    setBusy("toggle");
+  async function postSettings(on: boolean) {
+    await fetch(`/api/meet/rooms/${roomId}/settings`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ liveNotes: on }),
+    }).catch(() => {});
+  }
+
+  async function agentPost(body: Record<string, unknown>) {
+    const res = await fetch(`/api/meet/rooms/${roomId}/agent${qp}`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+    }).catch(() => null);
+    return res;
+  }
+
+  async function toggleAgent() {
+    setBusy("agent");
     setMsg("");
-    const res = await fetch(`/api/meet/rooms/${roomId}/settings`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ liveNotes: !enabled }),
-    });
-    setBusy("");
-    if (res.ok) {
-      setEnabled(!enabled);
-      if (enabled) {
-        setLines([]);
-        setNotes([]);
-        setSummary("");
-      }
+    if (agent.enabled) {
+      await agentPost({ op: "disable" });
+      setAgent((a) => ({ ...a, enabled: false }));
+      onAgentChangeRef.current?.(false);
     } else {
-      setMsg("Toggle failed.");
+      if (!enabled) { await postSettings(true); setEnabled(true); }
+      const res = await agentPost({ op: "enable" });
+      if (res?.ok) {
+        setAgent((a) => ({ ...a, enabled: true }));
+        onAgentChangeRef.current?.(true);
+        setTab("charie");
+      } else setMsg("Charie could not join.");
     }
+    setBusy("");
+  }
+
+  async function decide(action: AgentActionView, decision: "approved" | "denied") {
+    setBusy(action.id);
+    const res = await agentPost({ op: "decide", actionId: action.id, decision });
+    if (res?.ok) {
+      const out = (await res.json()) as AgentActionView;
+      setAgent((a) => ({ ...a, actions: a.actions.map((x) => (x.id === out.id ? out : x)) }));
+      if (decision === "approved" && action.kind === "share-screen") onRequestShare?.();
+      if (decision === "approved" && action.kind === "summarize") void summarize();
+    } else setMsg("Decision failed.");
+    setBusy("");
   }
 
   async function summarize() {
@@ -558,15 +652,9 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     try {
       const res = await fetch(`/api/meet/rooms/${roomId}/summarize${qp}`, { method: "POST" });
       const j = (await res.json()) as { summary?: string; model?: string; error?: string };
-      if (res.ok && j.summary) {
-        setSummary(j.summary);
-        setModel(j.model ?? "");
-      } else {
-        setMsg(j.error ?? "Summary failed.");
-      }
-    } catch {
-      setMsg("Summary failed.");
-    }
+      if (res.ok && j.summary) { setSummary(j.summary); setModel(j.model ?? ""); setTab("notes"); }
+      else setMsg(j.error ?? "Summary failed.");
+    } catch { setMsg("Summary failed."); }
     setBusy("");
   }
 
@@ -576,9 +664,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       if (!text) return;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(text.slice(0, 1000)));
-    } catch {
-      /* speech unavailable */
-    }
+    } catch { /* speech unavailable */ }
   }
 
   async function save() {
@@ -588,64 +674,141 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       const res = await fetch(`/api/meet/rooms/${roomId}/save`, { method: "POST" });
       const j = (await res.json()) as { savedTo?: string; id?: string; error?: string };
       setMsg(res.ok ? `Saved to ${j.savedTo} (${String(j.id).slice(0, 18)}).` : (j.error ?? "Save failed."));
-    } catch {
-      setMsg("Save failed.");
-    }
+    } catch { setMsg("Save failed."); }
     setBusy("");
   }
 
-  if (enabled === null) return <p className="small muted">Checking live notes…</p>;
-  if (!enabled) {
-    return canManage ? (
-      <div className="card" style={{ marginTop: 12 }}>
-        <div className="card-title">Charie live notes</div>
-        <p className="small muted">Let Charie join with transcription, speaker roles, action notes, and summaries. Transcript stays in call memory; nothing is stored unless you press Save.</p>
-        <button className="secondary" disabled={busy !== ""} onClick={toggle}>{busy === "toggle" ? "…" : "Let Charie join"}</button>
-        {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
-      </div>
-    ) : (
-      <p className="small muted">Live notes are off for this call.</p>
-    );
+  async function deleteMemory() {
+    setBusy("delete");
+    setMsg("");
+    try {
+      const res = await fetch(`/api/meet/rooms/${roomId}/memory`, { method: "DELETE" });
+      const j = (await res.json()) as { deleted?: boolean; error?: string };
+      if (res.ok && j.deleted) {
+        setLines([]); setNotes([]); setSummary("");
+        setAgent({ enabled: false, thoughts: [], actions: [] });
+        setEnabled(false);
+        onAgentChangeRef.current?.(false);
+        setConfirmDelete(false);
+        setMsg("Charie's memory of this room was deleted. An audit tombstone remains on the ticket.");
+      } else setMsg(j.error ?? "Delete failed.");
+    } catch { setMsg("Delete failed."); }
+    setBusy("");
   }
 
+  const pending = agent.actions.filter((a) => a.status === "pending");
+  const decided = agent.actions.filter((a) => a.status !== "pending");
+
   return (
-    <div className="card" style={{ marginTop: 12 }}>
-      <div className="card-title">Charie live notes {canManage && <button type="button" className="ghost sm" disabled={busy !== ""} onClick={toggle}>Remove Charie</button>}</div>
-      <p className="small muted">
-        {transcribe && supported ? "Transcribing your mic · " : transcribe && !supported ? "Transcription needs Chrome or Edge · " : "Your mic is not transcribed · "}
-        teammate vs customer labels come from sign-in vs invite.
-      </p>
-      <div className="live-lines">
-        {lines.length === 0 ? (
-          <p className="small muted">Listening… speak and lines appear here.</p>
-        ) : (
-          lines.slice(-30).map((l, i) => (
-            <p key={i} className="small"><strong>{l.speaker}</strong> <span className="pill">{l.role}</span> {l.text}</p>
-          ))
-        )}
+    <div className="card" style={{ margin: 0 }}>
+      <div className="tabs" role="tablist" aria-label="War room panel" style={{ marginBottom: 10 }}>
+        <button type="button" className={`tab${tab === "transcript" ? " on" : ""}`} onClick={() => setTab("transcript")}>Transcript</button>
+        <button type="button" className={`tab${tab === "charie" ? " on" : ""}`} onClick={() => setTab("charie")}>Charie{pending.length > 0 ? ` (${pending.length})` : ""}</button>
+        <button type="button" className={`tab${tab === "notes" ? " on" : ""}`} onClick={() => setTab("notes")}>Notes & Actions</button>
       </div>
-      {notes.length > 0 && (
-        <div>
-          <div className="section-label">Action notes</div>
-          <ul className="small" style={{ marginTop: 0 }}>
-            {notes.map((n, i) => (
-              <li key={i}>{n}</li>
+
+      {tab === "transcript" && (
+        <>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            {enabled
+              ? (transcribe && supported ? "Live transcript on · teammate vs customer from sign-in vs invite." : "Live transcript on · needs Chrome or Edge on this device.")
+              : "Live notes are off. Turn them on from the Charie tab (host)."}
+          </p>
+          <div className="live-lines">
+            {lines.length === 0 ? <p className="small muted">Listening… speak and lines appear here.</p> : lines.slice(-30).map((l, i) => (
+              <p key={i} className="small"><strong>{l.speaker}</strong> <span className="pill">{l.role}</span> {l.text}</p>
             ))}
-          </ul>
-        </div>
+          </div>
+        </>
       )}
-      {summary && (
-        <div>
-          <div className="section-label">Summary {model && <span className="muted">· {model}</span>}</div>
-          <p className="small" style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
-        </div>
+
+      {tab === "charie" && (
+        <>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <strong className="small">Charie AI {agent.enabled ? "· in this call" : "· not in call"}</strong>
+            {canManage && <button type="button" className={agent.enabled ? "danger-ghost sm" : "sm"} disabled={busy !== ""} onClick={toggleAgent}>{busy === "agent" ? "…" : agent.enabled ? "Remove Charie" : "Bring Charie in"}</button>}
+          </div>
+          <p className="small muted">Charie listens, thinks out loud below, and proposes actions. Nothing runs until a human approves a card.</p>
+          <div className="row">
+            <label className="row small" style={{ fontWeight: 400 }}>
+              <input type="checkbox" checked={voice} onChange={(e) => { setVoice(e.target.checked); if (!e.target.checked) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } onAgentSpeakRef.current?.(false); } }} />
+              Charie speaks aloud
+            </label>
+          </div>
+          {pending.map((a) => (
+            <div key={a.id} className="consent-card">
+              <strong className="small">{a.title}</strong>
+              <p className="small muted" style={{ margin: "4px 0 8px" }}>{a.detail}</p>
+              <div className="row">
+                <button type="button" className="sm" disabled={busy !== ""} onClick={() => decide(a, "approved")}>Approve</button>
+                <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => decide(a, "denied")}>Deny</button>
+              </div>
+            </div>
+          ))}
+          {canManage && agent.enabled && (
+            <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+              <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => agentPost({ op: "propose", kind: "investigate" })}>Propose investigation</button>
+              <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => agentPost({ op: "propose", kind: "share-screen" })}>Ask for screen share</button>
+              <button type="button" className="secondary sm" disabled={busy !== ""} onClick={() => agentPost({ op: "propose", kind: "workorder" })}>Propose fix task</button>
+            </div>
+          )}
+          <div className="section-label" style={{ marginTop: 12 }}>Charie is thinking</div>
+          {agent.thoughts.length === 0 ? <p className="small muted">No thoughts yet. Bring Charie in and talk through the issue.</p> : agent.thoughts.slice(-14).map((t, i) => (
+            <p key={i} className="thought"><b>{t.at.slice(11, 16)}</b> · {t.text}</p>
+          ))}
+          {decided.length > 0 && (
+            <>
+              <div className="section-label" style={{ marginTop: 12 }}>Decisions</div>
+              {decided.slice(-6).map((a) => (
+                <p key={a.id} className="small" style={{ margin: "4px 0" }}>
+                  {a.status === "done" ? "✓" : a.status === "denied" ? "✕" : "!"} {a.title} <span className="muted">· {a.status}</span>
+                  {a.result?.startsWith("/") && <> · <a href={a.result}>open</a></>}
+                </p>
+              ))}
+            </>
+          )}
+        </>
       )}
-      <div className="row" style={{ marginTop: 8 }}>
-        <button type="button" className="secondary sm" disabled={busy !== "" || lines.length === 0} onClick={summarize}>{busy === "sum" ? "Summarizing…" : "Summarize with Charie"}</button>
-        <button type="button" className="secondary sm" disabled={!summary && notes.length === 0} onClick={readAloud}>Read aloud</button>
-        {canManage && <button type="button" className="secondary sm" disabled={busy !== "" || lines.length === 0} onClick={save}>{busy === "save" ? "Saving…" : "Save notes"}</button>}
-        {msg && <span className="small muted">{msg}</span>}
-      </div>
+
+      {tab === "notes" && (
+        <>
+          {notes.length > 0 && (
+            <div>
+              <div className="section-label">Action notes</div>
+              <ul className="small" style={{ marginTop: 0 }}>{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+            </div>
+          )}
+          {summary && (
+            <div>
+              <div className="section-label">Summary {model && <span className="muted">· {model}</span>}</div>
+              <p className="small" style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+            </div>
+          )}
+          <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+            <button type="button" className="secondary sm" disabled={busy !== "" || lines.length === 0} onClick={summarize}>{busy === "sum" ? "Summarizing…" : "Summarize with Charie"}</button>
+            <button type="button" className="secondary sm" disabled={!summary && notes.length === 0} onClick={readAloud}>Read aloud</button>
+            {canManage && <button type="button" className="secondary sm" disabled={busy !== "" || lines.length === 0} onClick={save}>{busy === "save" ? "Saving…" : "Save notes"}</button>}
+          </div>
+          {canManage && (
+            <div style={{ marginTop: 14, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+              <div className="section-label">Privacy: Charie&apos;s memory</div>
+              <p className="small muted">Export keeps everything Charie holds for this room (transcript, notes, thoughts, decisions). Deleting wipes it and leaves only an audit tombstone on the ticket.</p>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <a className="btn secondary sm" href={`/api/meet/rooms/${roomId}/export`}>Export call data</a>
+                {!confirmDelete ? (
+                  <button type="button" className="danger-ghost sm" onClick={() => setConfirmDelete(true)}>Delete Charie&apos;s memory</button>
+                ) : (
+                  <>
+                    <button type="button" className="danger sm" disabled={busy !== ""} onClick={deleteMemory}>{busy === "delete" ? "Deleting…" : "Confirm delete"}</button>
+                    <button type="button" className="ghost sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      {msg && <p className="small" style={{ color: "var(--accent-ink)", marginTop: 8 }}>{msg}</p>}
     </div>
   );
 }

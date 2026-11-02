@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { checkInvite } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { getLive, postLine } from "@/lib/livecall";
+import { onLiveLine } from "@/lib/call-agent";
 import { displayName, identity } from "@/lib/who";
 
 // Live transcript relay (ephemeral memory, never stored). Members use their
@@ -42,5 +43,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const clean = String(text ?? "").trim().slice(0, 500);
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });
   const speaker = who.role === "teammate" ? who.name : String(name ?? "").trim().slice(0, 60) || "Guest";
-  return NextResponse.json(postLine(roomId, { speaker, role: who.role, text: clean }), { status: 201 });
+  const line = postLine(roomId, { speaker, role: who.role, text: clean });
+  // Charie listens along and may propose a consent card (never acts alone).
+  try { onLiveLine(roomId, line); } catch { /* agent is best effort */ }
+  return NextResponse.json(line, { status: 201 });
 }

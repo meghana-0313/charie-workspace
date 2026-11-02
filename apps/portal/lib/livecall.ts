@@ -4,15 +4,41 @@
 
 export interface LiveLine {
   speaker: string;
-  role: "teammate" | "customer";
+  role: "teammate" | "customer" | "agent";
   text: string;
   at: string;
+}
+
+export interface AgentThought {
+  at: string;
+  text: string;
+}
+
+export type AgentActionKind = "investigate" | "share-screen" | "workorder" | "summarize";
+export type AgentActionStatus = "pending" | "approved" | "denied" | "done" | "failed";
+
+export interface AgentAction {
+  id: string;
+  kind: AgentActionKind;
+  title: string;
+  detail: string;
+  status: AgentActionStatus;
+  at: string;
+  result?: string;
 }
 
 interface RoomLive {
   lines: LiveLine[];
   summary: string;
   updatedAt: number;
+  agent: {
+    enabled: boolean;
+    thoughts: AgentThought[];
+    actions: AgentAction[];
+    runId?: string;
+    runAnnounced?: boolean;
+    proposedInvestigate?: boolean;
+  };
 }
 
 const rooms = new Map<string, RoomLive>();
@@ -22,10 +48,62 @@ const IDLE_MS = 45 * 60 * 1000;
 function get(roomId: string): RoomLive {
   let r = rooms.get(roomId);
   if (!r) {
-    r = { lines: [], summary: "", updatedAt: Date.now() };
+    r = {
+      lines: [], summary: "", updatedAt: Date.now(),
+      agent: { enabled: false, thoughts: [], actions: [] },
+    };
     rooms.set(roomId, r);
   }
   return r;
+}
+
+export function getAgent(roomId: string) {
+  return get(roomId).agent;
+}
+
+export function setAgentEnabled(roomId: string, on: boolean) {
+  const a = get(roomId).agent;
+  a.enabled = on;
+  get(roomId).updatedAt = Date.now();
+  return a;
+}
+
+export function addThought(roomId: string, text: string): AgentThought {
+  const a = get(roomId).agent;
+  const t: AgentThought = { at: new Date().toISOString(), text: text.slice(0, 400) };
+  a.thoughts.push(t);
+  a.thoughts = a.thoughts.slice(-60);
+  get(roomId).updatedAt = Date.now();
+  return t;
+}
+
+export function addAction(roomId: string, input: Omit<AgentAction, "id" | "status" | "at">): AgentAction {
+  const a = get(roomId).agent;
+  const action: AgentAction = {
+    ...input,
+    id: `act_${Math.random().toString(36).slice(2, 10)}`,
+    status: "pending",
+    at: new Date().toISOString(),
+  };
+  a.actions.push(action);
+  a.actions = a.actions.slice(-20);
+  get(roomId).updatedAt = Date.now();
+  return action;
+}
+
+export function updateAction(roomId: string, actionId: string, patch: Partial<AgentAction>): AgentAction | null {
+  const a = get(roomId).agent;
+  const action = a.actions.find((x) => x.id === actionId);
+  if (!action) return null;
+  Object.assign(action, patch);
+  get(roomId).updatedAt = Date.now();
+  return action;
+}
+
+/** Charie speaks into the transcript (role: agent) so every participant,
+ *  including guests, sees the same words the room hears. */
+export function speak(roomId: string, text: string): LiveLine {
+  return postLine(roomId, { speaker: "Charie", role: "agent", text });
 }
 
 function prune(): void {

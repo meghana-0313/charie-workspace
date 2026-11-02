@@ -1,8 +1,7 @@
-/* Charie design tokens. Warm charcoal surfaces, ember accent, editorial
-   display type. Single source of truth: components reference these vars. */
+/* Charie design tokens v3: reference war-room system.
+   Deep navy surfaces, violet accent, clean sans display type.
+   Fraunces files remain self-hosted for the login wordmark fallback. */
 
-/* Fraunces (OFL) self-hosted: CI runners cannot fetch Google Fonts at build
-   time, so the files ship in public/fonts. Variable font, weights 500-700. */
 @font-face {
   font-family: "Fraunces";
   font-style: normal;
@@ -29,39 +28,34 @@
 }
 
 :root {
-  /* Surfaces (warm charcoal, layered by elevation) */
-  --bg: #100d0a;
-  --bg-sunken: #0a0806;
-  --surface: #171310;
-  --surface-raised: #1e1813;
-  --surface-overlay: #2a211a;
-  --line: #2c251d;
-  --line-strong: #423729;
+  --bg: #090d1d;
+  --bg-sunken: #060913;
+  --surface: #12172e;
+  --surface-raised: #171e3a;
+  --surface-overlay: #202949;
+  --line: #232b4d;
+  --line-strong: #35406e;
 
-  /* Text */
-  --ink: #f4ede3;
-  --ink-muted: #b8ab9a;
-  --ink-faint: #857562;
+  --ink: #eef1ff;
+  --ink-muted: #9aa6cf;
+  --ink-faint: #68739c;
 
-  /* Brand accent: ember, for primary actions + active states */
-  --accent: #ff5c38;
-  --accent-hover: #ff7150;
-  --accent-dim: rgba(255, 92, 56, 0.13);
-  --accent-ink: #ffb59d;
+  --accent: #7c4dff;
+  --accent-hover: #8f66ff;
+  --accent-dim: rgba(124, 77, 255, 0.16);
+  --accent-ink: #c9b3ff;
 
-  /* Status */
-  --ok: #3ddc97;
-  --ok-dim: rgba(61, 220, 151, 0.12);
-  --warn: #f5b544;
-  --warn-dim: rgba(245, 181, 68, 0.12);
-  --danger: #f26d6d;
-  --danger-dim: rgba(242, 109, 109, 0.12);
-  --info: #6cb2f5;
-  --info-dim: rgba(108, 178, 245, 0.12);
+  --ok: #34d399;
+  --ok-dim: rgba(52, 211, 153, 0.13);
+  --warn: #fbbf24;
+  --warn-dim: rgba(251, 191, 36, 0.13);
+  --danger: #fb7185;
+  --danger-dim: rgba(251, 113, 133, 0.13);
+  --info: #60a5fa;
+  --info-dim: rgba(96, 165, 250, 0.13);
 
-  /* Type */
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 13px;
@@ -70,7 +64,6 @@
   --text-xl: 20px;
   --text-2xl: 26px;
 
-  /* Shape + space */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -82,56 +75,52 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* Layout */
   --sidebar-w: 248px;
-  --content-w: 1160px;
-  --topbar-h: 54px;
+  --content-w: 1240px;
+  --topbar-h: 64px;
 
-  /* Elevation */
-  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.5);
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.32);
 
-  /* Theme dependent paint */
-  --topbar-bg: rgba(16, 13, 10, 0.88);
+  --topbar-bg: rgba(9, 13, 29, 0.92);
   --row-hover: rgba(255, 255, 255, 0.03);
-  --scrollbar: #3a2f24;
-  --dot: rgba(244, 237, 227, 0.05);
+  --scrollbar: #2c3763;
+  --dot: rgba(180, 190, 255, 0.05);
 }
 
-/* Light theme: cool paper so the ember accent carries the warmth. */
 [data-theme="light"] {
-  --bg: #eceff4;
-  --bg-sunken: #e0e5ec;
+  --bg: #eceff7;
+  --bg-sunken: #dde3f0;
   --surface: #ffffff;
-  --surface-raised: #f6f8fb;
-  --surface-overlay: #e7ecf3;
-  --line: #d8dee8;
-  --line-strong: #bcc6d4;
+  --surface-raised: #f5f7fd;
+  --surface-overlay: #e6ebf7;
+  --line: #d3daec;
+  --line-strong: #b6c1dc;
 
-  --ink: #171a21;
-  --ink-muted: #4c5566;
-  --ink-faint: #8892a3;
+  --ink: #141a2e;
+  --ink-muted: #4c5878;
+  --ink-faint: #8490b3;
 
-  --accent: #d94325;
-  --accent-hover: #c7391f;
-  --accent-dim: rgba(217, 67, 37, 0.1);
-  --accent-ink: #b23518;
+  --accent: #6d28d9;
+  --accent-hover: #5b21b6;
+  --accent-dim: rgba(109, 40, 217, 0.1);
+  --accent-ink: #5b21b6;
 
-  --ok: #0f9d6c;
-  --ok-dim: rgba(15, 157, 108, 0.12);
-  --warn: #b97a0f;
-  --warn-dim: rgba(185, 122, 15, 0.14);
-  --danger: #d33f3f;
-  --danger-dim: rgba(211, 63, 63, 0.1);
-  --info: #1f7ad1;
-  --info-dim: rgba(31, 122, 209, 0.12);
+  --ok: #059669;
+  --ok-dim: rgba(5, 150, 105, 0.12);
+  --warn: #b45309;
+  --warn-dim: rgba(180, 83, 9, 0.13);
+  --danger: #e11d48;
+  --danger-dim: rgba(225, 29, 72, 0.1);
+  --info: #2563eb;
+  --info-dim: rgba(37, 99, 235, 0.11);
 
-  --shadow-pop: 0 16px 40px rgba(21, 24, 36, 0.18);
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 26px rgba(21, 24, 36, 0.08);
-  --topbar-bg: rgba(236, 239, 244, 0.9);
-  --row-hover: rgba(21, 24, 36, 0.035);
-  --scrollbar: #c3c9d8;
-  --dot: rgba(23, 26, 33, 0.05);
+  --shadow-pop: 0 16px 40px rgba(21, 24, 54, 0.18);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 26px rgba(21, 24, 54, 0.08);
+  --topbar-bg: rgba(236, 239, 247, 0.92);
+  --row-hover: rgba(21, 24, 54, 0.035);
+  --scrollbar: #c0c9e0;
+  --dot: rgba(20, 26, 46, 0.05);
 }
 
 * { box-sizing: border-box; }
@@ -152,7 +141,7 @@ body {
 a { color: var(--accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-::selection { background: rgba(255, 92, 56, 0.35); }
+::selection { background: rgba(124, 77, 255, 0.4); }
 
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -160,7 +149,6 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-sm);
 }
 
-/* Scrollbars stay quiet. */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; border: 2px solid var(--bg); }
 *::-webkit-scrollbar-track { background: transparent; }
