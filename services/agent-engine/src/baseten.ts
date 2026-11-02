@@ -41,8 +41,11 @@ export async function sparkOpenChat(
     }),
   });
   if (!res.ok) throw new Error(`Baseten error: ${res.status}`);
-  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string | null } }> };
-  return data.choices?.[0]?.message?.content?.trim() ?? "";
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string | null; reasoning_content?: string } }> };
+  const msg = data.choices?.[0]?.message;
+  // Spark Open reasons first: when reasoning eats the token budget the
+  // visible content can be empty, so fall back to reasoning_content.
+  return (msg?.content || msg?.reasoning_content || "").trim();
 }
 
 export interface SecondOpinion {
