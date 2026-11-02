@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   ];
   const ans = await answerMessage({ history, uid: mine });
   const at = new Date().toISOString();
-  thread.messages.push({ role: "user", text: clean, attachments: atts.length > 0 ? atts : undefined, at });
+  thread.messages.push({ role: "user", text: clean, ...(atts.length > 0 ? { attachments: atts } : {}), at });
   thread.messages.push({ role: "assistant", text: ans.text, model: ans.model, actions: ans.actions, at });
   thread.updatedAt = at;
   await store.saveThread(thread);
