@@ -1,6 +1,7 @@
 import { listDigests, listWorkOrders } from "@/lib/guardian";
 import { identity, scopeUid } from "@/lib/who";
 import { NightShiftButton } from "@/components/suite";
+import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,16 @@ export default async function NightPage() {
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/guardian/night", "Night shift"]]}
-        title="Night shift"
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="moon" size={19} /></span> Night shift</>}
         sub="Approved work orders execute overnight: autonomous re-verifications, security re-scans, evidence packs, and remediation notes. The morning digest lands here and pushes to your phone."
         actions={<NightShiftButton />}
       />
+      <div className="stats">
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="order" size={20} /></span><div><div className="stat-num">{eligible.length}</div><div className="stat-label">Orders eligible now</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div className="stat-num">{latest ? latest.orders.filter((o) => o.status === "done").length : 0}</div><div className="stat-label">Done last shift</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="shield" size={20} /></span><div><div className="stat-num">{latest?.pentest?.grade ?? "n/a"}</div><div className="stat-label">Last re-scan grade</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="layers" size={20} /></span><div><div className="stat-num">{digests.length}</div><div className="stat-label">Shifts completed</div></div></div></div>
+      </div>
       <div className="card">
         <div className="card-title">Shift control</div>
         <p className="small muted">

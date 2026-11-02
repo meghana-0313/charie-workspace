@@ -1,25 +1,28 @@
 import { listClusters } from "@/lib/guardian";
 import { identity, scopeUid } from "@/lib/who";
 import { ClusterTicketButton, ProposeWorkOrderButton, SeedSignalsButton, SignalsIngestForm } from "@/components/suite";
+import { Icon } from "@/components/icons";
 import { Badge, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function SignalsPage() {
   const { total, clusters } = await listClusters(scopeUid(await identity()));
+  const hottest = clusters.reduce((m, c) => Math.max(m, c.angryShare), 0);
   return (
     <>
       <PageHead
-        crumbs={[["/", "Home"], ["/guardian/signals", "Live signals"]]}
-        title={`Live signals (${total} messages)`}
+        crumbs={[["/", "Home"], ["/guardian/signals", "Live Signals"]]}
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="signal" size={19} /></span> Live Signals</>}
         sub="Support, chat, call transcripts, and reviews. Spark grades sentiment and theme per message; the engine clusters them into themes. Hot clusters become work orders."
       />
-      <div className="grid2">
-        <div className="card">
-          <div className="card-title">Ingest</div>
-          <SignalsIngestForm />
-          <div style={{ marginTop: 10 }}><SeedSignalsButton /></div>
-        </div>
+      <div className="stats">
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="chat" size={20} /></span><div><div className="stat-num">{total}</div><div className="stat-label">Messages ingested</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="layers" size={20} /></span><div><div className="stat-num">{clusters.length}</div><div className="stat-label">Theme clusters</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb red"><Icon name="alert" size={20} /></span><div><div className="stat-num">{Math.round(hottest * 100)}%</div><div className="stat-label">Hottest cluster heat</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="ticket" size={20} /></span><div><div className="stat-num">{clusters.filter((c) => c.angryShare >= 0.5).length}</div><div className="stat-label">Hot clusters</div></div></div></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "var(--space-4)", alignItems: "start" }} className="home-grid">
         <div className="card">
           <div className="card-title">Theme clusters ({clusters.length})</div>
           {clusters.length === 0 ? (
@@ -31,6 +34,7 @@ export default async function SignalsPage() {
                   <strong>{c.theme}</strong> <Badge>{c.size} msgs</Badge>{" "}
                   <Badge tone={c.angryShare >= 0.5 ? "major" : "minor"}>{Math.round(c.angryShare * 100)}% hot</Badge>
                 </p>
+                <div className="progress" style={{ maxWidth: 320, marginBottom: 8 }}><i style={{ width: `${Math.round(c.angryShare * 100)}%` }} /></div>
                 <ul className="small muted">
                   {c.samples.map((s, i) => <li key={i}>“{s}”</li>)}
                 </ul>
@@ -48,6 +52,11 @@ export default async function SignalsPage() {
               </div>
             ))
           )}
+        </div>
+        <div className="card">
+          <div className="card-title"><span className="icon-orb violet"><Icon name="send" /></span> Ingest</div>
+          <SignalsIngestForm />
+          <div style={{ marginTop: 10 }}><SeedSignalsButton /></div>
         </div>
       </div>
     </>

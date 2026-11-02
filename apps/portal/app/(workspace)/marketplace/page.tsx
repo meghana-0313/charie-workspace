@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
-import { ConnectorActions, ContextForm, ContextRow, JiraConnectForm, McpConfigCard, RuleForm, RuleRow } from "@/components/marketplace";
+import { AppTiles, ConnectorActions, ContextForm, ContextRow, JiraConnectForm, McpConfigCard, RuleForm, RuleRow } from "@/components/marketplace";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,7 @@ export default async function MarketplacePage() {
         title="Integrations"
         sub="Connect the systems Charie works with. Jira issues flow in as investigated tickets; verified fixes flow back as comments and transitions."
       />
+      <AppTiles githubConnected={!!gh} jiraConnected={jiraConns.length > 0} />
       <div className="grid2">
         <div className="card">
           <div className="card-title">GitHub</div>

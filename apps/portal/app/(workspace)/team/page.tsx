@@ -1,6 +1,7 @@
 import { store } from "@/lib/store";
 import { identity, isAdmin, scopeUid } from "@/lib/who";
 import { ApiKeyForm, ApiKeyRow, SeatForm, SeatRow } from "@/components/team";
+import { Icon } from "@/components/icons";
 import { EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +15,17 @@ export default async function TeamPage() {
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/team", "Team"]]}
-        title="Team"
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="users" size={19} /></span> Team</>}
         sub="Seats for teammates. Invite by email; invited people create an account with that email and land in their own data."
       />
+      {admin && (
+        <div className="stats">
+          <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="users" size={20} /></span><div><div className="stat-num">{seats.length}</div><div className="stat-label">Seats</div></div></div></div>
+          <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div className="stat-num">{seats.filter((s) => s.uid).length}</div><div className="stat-label">Linked accounts</div></div></div></div>
+          <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="key" size={20} /></span><div><div className="stat-num">{keys.filter((k) => !k.revoked).length}</div><div className="stat-label">Active app keys</div></div></div></div>
+          <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="shield" size={20} /></span><div><div className="stat-num">{seats.filter((s) => s.owner).length}</div><div className="stat-label">Owners and admins</div></div></div></div>
+        </div>
+      )}
       {!admin ? (
         <div className="card">
           <EmptyState title="Admins only" body="Ask a workspace admin to manage seats." />

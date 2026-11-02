@@ -4,6 +4,7 @@ import { identity, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
 import { InviteButton, MeetCreateForm } from "@/components/meet";
 import { ZoomJoinForm } from "@/components/suite";
+import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +16,15 @@ export default async function MeetPage() {
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/guardian/zoom", "Meet"]]}
-        title="Meet"
-        sub="Built in video calls for standups and incident war rooms. No third party needed; Zoom fallback stays for external meetings."
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="video" size={19} /></span> Meet</>}
+        sub="Built in video calls for standups and incident war rooms. Charie can join, take live notes, and propose investigations with your consent. No third party needed; Zoom fallback stays for external meetings."
       />
+      <div className="stats">
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="video" size={20} /></span><div><div className="stat-num">{rooms.length}</div><div className="stat-label">Open rooms</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="brain" size={20} /></span><div><div className="stat-num">Charie</div><div className="stat-label">AI agent in every room</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="lock" size={20} /></span><div><div className="stat-num">Private</div><div className="stat-label">Peer to peer, no recording</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="phone" size={20} /></span><div><div className="stat-num">{status?.configured ? "Ready" : "Off"}</div><div className="stat-label">Zoom fallback</div></div></div></div>
+      </div>
       <div className="card">
         <div className="card-title">Charie rooms</div>
         <MeetCreateForm />

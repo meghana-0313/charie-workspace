@@ -2,25 +2,41 @@ import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
 import { RespondForm, VerifyButton } from "@/components/guardian-forms";
 import { IncidentVoiceForm, ProposeWorkOrderButton, RollbackButton } from "@/components/suite";
+import { Icon } from "@/components/icons";
 import { Badge, PageHead, Timeline } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+const STEPS = ["Detected", "Investigating", "Contained", "Verified"];
 
 export default async function IncidentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const inc = await store.getIncident(id);
   if (!inc) notFound();
   const defaultTarget = inc.signals[0]?.ips[0] ?? inc.signals[0]?.actors[0] ?? "";
+  const stepIdx = inc.status === "resolved" ? 3 : inc.status === "contained" ? 2 : inc.investigation ? 1 : 0;
 
   return (
     <>
       <PageHead
         crumbs={[["/", "Home"], ["/guardian", "Threats"], [`/guardian/${inc.id}`, inc.id]]}
-        title={<>{inc.title} <Badge tone={inc.severity}>{inc.severity}</Badge> <Badge tone={inc.status}>{inc.status}</Badge></>}
-        sub={<>Opened {inc.createdAt.slice(0, 16).replace("T", " ")} · mode: {inc.mode} · baseline suspicious events: {inc.baselineSuspicious}</>}
+        title={<><span className="icon-orb red" style={{ width: 38, height: 38 }}><Icon name="alert" size={19} /></span> {inc.title}</>}
+        sub={<>Opened {inc.createdAt.slice(0, 16).replace("T", " ")} · mode: {inc.mode} · baseline suspicious events: {inc.baselineSuspicious} <Badge tone={inc.severity}>{inc.severity}</Badge> <Badge tone={inc.status}>{inc.status}</Badge></>}
       />
 
-      <div className="grid2">
+      <div className="card" aria-label="Incident progress">
+        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+          {STEPS.map((s, i) => (
+            <span key={s} className="row" style={{ flexWrap: "nowrap", flex: 1, minWidth: 140 }}>
+              <span className={`icon-orb ${i <= stepIdx ? "violet" : ""}`}><Icon name={i < stepIdx || inc.status === "resolved" ? "check" : "clock"} /></span>
+              <span className="small"><strong>{s}</strong><br /><span className="muted">{i <= stepIdx ? "Done" : "Pending"}</span></span>
+              {i < STEPS.length - 1 && <span className="progress" style={{ flex: 1 }}><i style={{ width: i < stepIdx ? "100%" : "0%" }} /></span>}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "var(--space-4)", alignItems: "start" }} className="home-grid">
         <div>
           <div className="card">
             <div className="card-title">AI investigation <Badge>simulated</Badge></div>
@@ -41,13 +57,13 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
               </>
             ) : (
               <p className="muted">
-                Signals only - no AI investigation{inc.mode === "signals-only" ? " (engine unreachable or no API keys; detectors still work)" : ""}.
+                Signals only, no AI investigation{inc.mode === "signals-only" ? " (engine unreachable or no API keys; detectors still work)" : ""}.
               </p>
             )}
           </div>
 
           <div className="card">
-            <div className="card-title">Signals ({inc.signals.length})</div>
+            <div className="card-title">Evidence: signals ({inc.signals.length})</div>
             {inc.signals.map((s, i) => (
               <div key={i} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
                 <p><strong>{s.title}</strong> <Badge>{s.type}</Badge> <Badge tone={s.severity}>{s.severity}</Badge></p>
