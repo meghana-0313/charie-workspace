@@ -18,9 +18,18 @@ function firestore() {
 
 const now = () => new Date().toISOString();
 
-/** Firestore rejects `undefined` values - drop them (keeps optional fields safe). */
-function clean<T extends Record<string, unknown>>(obj: T): T {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+/** Firestore rejects undefined anywhere in a document, including nested in
+ *  arrays (a chat message without attachments). Strip it recursively. */
+export function clean<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => clean(v)) as T;
+  if (value !== null && typeof value === "object" && (value as object).constructor === Object) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, clean(v)]),
+    ) as T;
+  }
+  return value;
 }
 
 /** Push endpoints are URLs - hash them into safe doc ids. */
