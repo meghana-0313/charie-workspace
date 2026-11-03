@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
 import { Icon } from "./icons";
-import { charieAskLine, speakableText, splitSpeakChunks } from "@/lib/room-status";
+import { charieAskLine, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -419,17 +419,19 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     const send = async (video: HTMLVideoElement) => {
       inFlight = true;
       lastPost = Date.now();
+      const capturedAt = new Date().toISOString();
       try {
         const canvas = document.createElement("canvas");
-        const w = Math.min(video.videoWidth, 960);
+        const w = Math.min(video.videoWidth, 720);
         canvas.width = w;
         canvas.height = Math.round(w * (video.videoHeight / video.videoWidth));
         canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
         await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
           method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.72), question: "What changed on this screen? Flag any error.", mode: "watch" }),
+          body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.68), question: "In one short sentence: what is on this screen now, and any error?", mode: "watch", fast: true, capturedAt }),
+          signal: AbortSignal.timeout(20000),
         });
-      } catch { /* next tick retries */ }
+      } catch { /* next tick retries with a fresher frame */ }
       inFlight = false;
     };
     const tick = () => {
@@ -661,6 +663,16 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           onAgentChange={setAgentOn}
           onAgentSpeak={setAgentSpeaking}
           onRequestShare={() => { void shareScreen().catch(() => {}); }}
+          getScreenFrame={() => {
+            const video = localVideo.current;
+            if (!sharing || !video || !video.videoWidth) return null;
+            const canvas = document.createElement("canvas");
+            const w = Math.min(video.videoWidth, 512);
+            canvas.width = w;
+            canvas.height = Math.round(w * (video.videoHeight / video.videoWidth));
+            canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL("image/jpeg", 0.62);
+          }}
         />
       </aside>
     </div>
@@ -708,7 +720,7 @@ export function LookButton({ roomId, qp, getVideo, label = "Charie, look", disab
       const image = canvas.toDataURL("image/jpeg", 0.72);
       const res = await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image, question: "What do you see on this screen, and where should we click next?" }),
+        body: JSON.stringify({ image, question: "What do you see on this screen, and where should we click next?", capturedAt: new Date().toISOString() }),
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) setErr(j.error ?? "Charie could not look right now.");
@@ -926,7 +938,7 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
 }
 
 /** Type to Charie in a call, exactly like sending her a chat message. */
-export function AskCharie({ roomId, qp, name }: { roomId: string; qp: string; name: string }) {
+export function AskCharie({ roomId, qp, name, onBeforePost }: { roomId: string; qp: string; name: string; onBeforePost?: (text: string) => Promise<boolean> }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -935,6 +947,7 @@ export function AskCharie({ roomId, qp, name }: { roomId: string; qp: string; na
     const line = charieAskLine(text);
     if (!line || busy) return;
     setBusy(true); setErr("");
+    if (onBeforePost) await onBeforePost(text);
     const res = await fetch(`/api/meet/rooms/${roomId}/live${qp}`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ text: line, name }),
@@ -956,9 +969,10 @@ export function AskCharie({ roomId, qp, name }: { roomId: string; qp: string; na
 
 /** War-room side panel: Transcript | Charie (thinking + consent cards) |
  *  Notes & Actions. Charie only acts after a human approves a card. */
-export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange }: {
+export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange, getScreenFrame }: {
   roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string;
   onAgentChange?: (on: boolean) => void; onAgentSpeak?: (speaking: boolean) => void; onRequestShare?: () => void;
+  getScreenFrame?: () => string | null;
   visionOn?: boolean; onVisionChange?: (v: boolean) => void;
 }) {
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
@@ -986,10 +1000,53 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   const onAgentSpeakRef = useRef(onAgentSpeak);
   onAgentSpeakRef.current = onAgentSpeak;
 
+  // Fresh-frame-first for "what are you seeing right now?" questions:
+  // bridge with an instant cached "Looking." while the FAST vision lane
+  // captures this exact moment, then the normal line posts and her answer
+  // comes from the fresh frame, not stale memory.
+  const captureFirstRef = useRef<(text: string) => Promise<boolean>>(async () => false);
+  captureFirstRef.current = async (text: string) => {
+    if (!isScreenSeeQuestion(text) || isScreenHistoryQuestion(text)) return false;
+    const frame = getScreenFrame?.();
+    if (!frame) return false;
+    if (voiceRef.current) {
+      void (async () => {
+        try {
+          const blob = await fetchTts(roomId, qp, "Looking.");
+          const a = new Audio(URL.createObjectURL(blob));
+          await a.play().catch(() => {});
+        } catch { /* bridge is best-effort */ }
+      })();
+    }
+    try {
+      await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ image: frame, question: text, mode: "watch", fast: true, capturedAt: new Date().toISOString() }),
+        signal: AbortSignal.timeout(20000),
+      });
+      return true;
+    } catch { return false; }
+  };
+
   // Warm Charie's voice on panel load, long before anyone tests it.
   useEffect(() => {
     void fetchTts(roomId, qp, "Hi, this is Charie.").catch(() => {});
   }, [roomId, qp]);
+
+  // Leaving the call - End, Leave, or navigating away - must silence her
+  // immediately. An <audio> element keeps playing after unmount unless it
+  // is explicitly paused, which is why she used to talk over the homepage.
+  useEffect(() => {
+    return () => {
+      speakGenRef.current += 1;
+      try { audioRef.current?.pause(); } catch { /* noop */ }
+      audioRef.current = null;
+      try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+      speakingRef.current = false;
+      onAgentSpeakRef.current?.(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let stop = false;
@@ -1162,11 +1219,16 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           const mine = (currentSpokenRef.current || "").toLowerCase().replace(/[^a-z0-9 ]/g, "");
           const echo = mine.length > 8 && (mine.includes(heard.slice(0, 24)) || heard.includes(mine.slice(0, 24)));
           if (!echo) interruptRef.current();
-          fetch(`/api/meet/rooms/${roomId}/live${qp}`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ text, name: nameRef.current }),
-          }).catch(() => {});
+          // Screen question? Capture this exact moment first (fast lane),
+          // then post - her answer describes now, not a stale memory.
+          void (async () => {
+            await captureFirstRef.current(text);
+            await fetch(`/api/meet/rooms/${roomId}/live${qp}`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ text, name: nameRef.current }),
+            }).catch(() => {});
+          })();
         }
       }
     };
@@ -1322,7 +1384,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           <TestVoice roomId={roomId} qp={qp} onNote={setVoiceNote} />
           <MeetSwitch checked={visionOn} onChange={(v) => onVisionChange?.(v)} label="Charie can look at screens" />
           <p className="small muted" style={{ margin: "2px 0 0" }}>{visionOn ? "Vision on: Charie watches a shared screen continuously (she checks locally every few seconds and only sends frames that changed), remembers what she saw with timestamps, and speaks up when she spots a problem. Ask her what happened earlier and she answers from that memory. Charie, look on any tile makes her describe a frame out loud right away." : "Vision off: Charie cannot see any screen until you switch this on and bring her in."}</p>
-          <AskCharie roomId={roomId} qp={qp} name={localName} />
+          <AskCharie roomId={roomId} qp={qp} name={localName} onBeforePost={(t) => captureFirstRef.current(t)} />
           {pending.map((a) => (
             <div key={a.id} className="consent-card">
               <strong className="small">{a.title}</strong>

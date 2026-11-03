@@ -64,9 +64,15 @@ function get(roomId: string): RoomLive {
 /** Record a frame Charie really captured, so screen questions get a grounded answer. */
 export interface VisionEntry { at: string; text: string; model?: string }
 
-export function recordVision(roomId: string, text: string, model?: string): void {
+export function recordVision(roomId: string, text: string, model?: string, capturedAt?: string): void {
   const r = get(roomId);
-  const entry: VisionEntry = { at: new Date().toISOString(), text: text.slice(0, 600), model };
+  const entry: VisionEntry = { at: capturedAt && !Number.isNaN(Date.parse(capturedAt)) ? capturedAt : new Date().toISOString(), text: text.slice(0, 600), model };
+  // Drop out-of-order frames: a slow vision call for an old screen must
+  // never overwrite what she saw more recently (the stale-narration bug).
+  const log0 = r.visionLog ?? [];
+  const lastEntry = log0[log0.length - 1];
+  if (lastEntry && entry.at < lastEntry.at) return;
+  if (r.vision && entry.at < r.vision.at) return;
   r.vision = entry;
   // Append-only screen memory: Charie can answer what she saw earlier,
   // not just the last frame. Near-duplicate consecutive frames are skipped.

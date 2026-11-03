@@ -10,6 +10,7 @@ export type FetchImpl = typeof fetch;
 
 async function visionCall(
   base: string, key: string, model: string, image: string, question: string, fetchImpl: FetchImpl,
+  fast = false,
 ): Promise<string> {
   const res = await fetchImpl(`${base.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
@@ -19,14 +20,16 @@ async function visionCall(
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: `You are Charie watching a shared screen in a support call. In 2-3 short spoken sentences: say what you see, name any error or blocker, and tell the user exactly where to click or what to do next. Plain words, no markdown. Question: ${question || "What do you see?"}` },
+          { type: "text", text: fast
+            ? `You are Charie watching a shared screen live. Answer in ONE short sentence (max 25 words): what is on screen right now and any error. No preamble, plain words. Question: ${question || "What do you see?"}`
+            : `You are Charie watching a shared screen in a support call. In 2-3 short spoken sentences: say what you see, name any error or blocker, and tell the user exactly where to click or what to do next. Plain words, no markdown. Question: ${question || "What do you see?"}` },
           { type: "image_url", image_url: { url: image } },
         ],
       }],
       // Reasoning models spend tokens thinking before any visible answer;
       // 400 starved them into empty replies (the "answered empty" bug that
       // chat-agent.ts already fixed for text). Give vision real headroom.
-      max_tokens: 1600,
+      max_tokens: fast ? 400 : 900,
       temperature: 0.3,
     }),
     signal: AbortSignal.timeout(30000),
@@ -68,13 +71,14 @@ export async function describeScreen(
 /** Same call, but every provider failure is named so the UI can say why. */
 export async function describeScreenDetailed(
   image: string, question: string, fetchImpl: FetchImpl = fetch,
+  fast = false,
 ): Promise<{ ok: true; text: string; model: string } | { ok: false; reason: string }> {
   if (!image.startsWith("data:image/")) return { ok: false, reason: "no image frame was captured" };
   const failures: string[] = [];
   const meta = secret("META_API_KEY");
   if (meta) {
     try {
-      const text = await visionCall(secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1", meta, secret("META_SPARK_MODEL") ?? "muse-spark-1.3", image, question, fetchImpl);
+      const text = await visionCall(secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1", meta, secret("META_SPARK_MODEL") ?? "muse-spark-1.3", image, question, fetchImpl, fast);
       if (text) return { ok: true, text: text.slice(0, 600), model: "muse-spark-1.3 (meta vision)" };
       failures.push("Meta Muse Spark answered empty");
     } catch (e) { failures.push(`Meta Muse Spark: ${(e as Error).message}`); }
@@ -84,7 +88,7 @@ export async function describeScreenDetailed(
   const baseten = secret("BASETEN_API_KEY");
   if (baseten && hasBasetenKey()) {
     try {
-      const text = await visionCall(secret("SPARK_OPEN_ENDPOINT") ?? "https://inference.baseten.co/v1", baseten, sparkOpenModelId(), image, question, fetchImpl);
+      const text = await visionCall(secret("SPARK_OPEN_ENDPOINT") ?? "https://inference.baseten.co/v1", baseten, sparkOpenModelId(), image, question, fetchImpl, fast);
       if (text) return { ok: true, text: text.slice(0, 600), model: `${sparkOpenModelId()} (baseten vision)` };
       failures.push("Baseten Muse Spark Open answered empty");
     } catch (e) { failures.push(`Baseten Muse Spark Open: ${(e as Error).message}`); }

@@ -87,7 +87,7 @@ export async function onLiveLine(roomId: string, line: LiveLine) {
   if (isScreenSeeQuestion(line.text)) {
     const vision = getVision(roomId);
     addThought(roomId, vision ? `Screen question from ${line.speaker}: answering from the last captured frame (${vision.at}).` : `Screen question from ${line.speaker}: no frame captured yet, saying so honestly.`);
-    speak(roomId, screenVisionReply(vision?.text ?? null));
+    speak(roomId, screenVisionReply(vision?.text ?? null, vision?.at ?? null, new Date().toISOString()));
     return;
   }
   if (charieShouldReply(line.text)) {

@@ -260,7 +260,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "POST" && url.pathname === "/vision/describe") {
-          let body: { image?: string; question?: string };
+          let body: { image?: string; question?: string; fast?: boolean };
           try {
             body = JSON.parse(await readBody(req)) as typeof body;
           } catch {
@@ -272,12 +272,13 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 400, { error: "image data URI (max 2MB) required" });
             return;
           }
-          const out = await describeScreenDetailed(image, String(body.question ?? "").slice(0, 300));
+          const started = Date.now();
+          const out = await describeScreenDetailed(image, String(body.question ?? "").slice(0, 300), fetch, body.fast === true);
           if (!out.ok) {
             send(res, 503, { error: `vision unavailable: ${out.reason}` });
             return;
           }
-          send(res, 200, { text: out.text, model: out.model });
+          send(res, 200, { text: out.text, model: out.model, ms: Date.now() - started });
           return;
         }
 
