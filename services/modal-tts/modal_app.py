@@ -29,17 +29,31 @@ image = (
 VOICE = "am_michael"  # warm conversational American male
 
 
-@app.function(image=image, scaledown_window=300, timeout=120)
+_pipeline = None
+
+
+def get_pipeline():
+    # Load Kokoro once per container and reuse it. Building KPipeline per
+    # request reloaded the model every call and cost most of the 20-30s
+    # users heard before Charie answered.
+    global _pipeline
+    if _pipeline is None:
+        from kokoro import KPipeline
+
+        _pipeline = KPipeline(lang_code="a")
+    return _pipeline
+
+
+@app.function(image=image, scaledown_window=1200, timeout=120)
 @modal.fastapi_endpoint(method="POST")
 def speak(item: dict):
     from fastapi import Response
-    from kokoro import KPipeline
     import soundfile as sf
 
     text = str(item.get("text") or "").strip()[:300]
     if not text:
         return Response(content=b"", status_code=400)
-    pipeline = KPipeline(lang_code="a")
+    pipeline = get_pipeline()
     chunks = [audio for _g, _p, audio in pipeline(text, voice=VOICE, speed=1.0)]
     if not chunks:
         return Response(content=b"", status_code=502)

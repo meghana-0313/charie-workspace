@@ -13,6 +13,25 @@ export const maxDuration = 60;
 // Cache them in memory so repeats skip the TTS cold start entirely.
 const cache = new Map<string, { audio: ArrayBuffer; type: string; at: number }>();
 const CACHE_MS = 10 * 60 * 1000;
+// Identical lines requested at the same moment (warmup + test click, or
+// several portal replicas of one room) share one upstream synthesis.
+const inflight = new Map<string, Promise<{ audio: ArrayBuffer; type: string }>>();
+
+async function synthesize(url: string, clean: string): Promise<{ audio: ArrayBuffer; type: string }> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (process.env.CHARIE_TTS_MODAL_KEY && process.env.CHARIE_TTS_MODAL_SECRET) {
+    headers["Modal-Key"] = process.env.CHARIE_TTS_MODAL_KEY;
+    headers["Modal-Secret"] = process.env.CHARIE_TTS_MODAL_SECRET;
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ text: clean }),
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!res.ok) throw new Error(`voice upstream ${res.status}`);
+  return { audio: await res.arrayBuffer(), type: res.headers.get("content-type") ?? "audio/wav" };
+}
 
 async function allowed(req: Request, roomId: string): Promise<boolean> {
   if (await identity(req)) return true;
@@ -34,27 +53,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (hit && Date.now() - hit.at < CACHE_MS) {
     return new NextResponse(hit.audio, { headers: { "content-type": hit.type, "cache-control": "no-store", "x-charie-tts": "cache" } });
   }
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (process.env.CHARIE_TTS_MODAL_KEY && process.env.CHARIE_TTS_MODAL_SECRET) {
-    headers["Modal-Key"] = process.env.CHARIE_TTS_MODAL_KEY;
-    headers["Modal-Secret"] = process.env.CHARIE_TTS_MODAL_SECRET;
-  }
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ text: clean }),
-      signal: AbortSignal.timeout(45000),
-    });
-    if (!res.ok) return NextResponse.json({ error: `voice upstream ${res.status}` }, { status: 503 });
-    const audio = await res.arrayBuffer();
-    const type = res.headers.get("content-type") ?? "audio/wav";
+    let pending = inflight.get(clean);
+    if (!pending) {
+      pending = synthesize(url, clean);
+      inflight.set(clean, pending);
+      pending.catch(() => {}).finally(() => inflight.delete(clean));
+    }
+    const { audio, type } = await pending;
     if (clean.length <= 160) {
       cache.set(clean, { audio, type, at: Date.now() });
       if (cache.size > 40) cache.delete(cache.keys().next().value as string);
     }
     return new NextResponse(audio, { headers: { "content-type": type, "cache-control": "no-store", "x-charie-tts": "live" } });
-  } catch {
-    return NextResponse.json({ error: "voice unreachable" }, { status: 503 });
+  } catch (e) {
+    const msg = (e as Error).message;
+    return NextResponse.json({ error: msg.startsWith("voice upstream") ? msg : "voice unreachable" }, { status: 503 });
   }
 }
