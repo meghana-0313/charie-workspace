@@ -30,8 +30,8 @@ export async function POST(req: Request) {
   const id = await identity(req);
   if (!id) return NextResponse.json({ error: "login required" }, { status: 401 });
   const mine = scopeUid(id);
-  const { threadId, text, attachments } = (await req.json().catch(() => ({}))) as {
-    threadId?: string; text?: string; attachments?: unknown;
+  const { threadId, text, attachments, model, effort } = (await req.json().catch(() => ({}))) as {
+    threadId?: string; text?: string; attachments?: unknown; model?: string; effort?: string;
   };
   const clean = String(text ?? "").trim().slice(0, 2000);
   const atts = cleanAttachments(attachments);
@@ -66,7 +66,11 @@ export async function POST(req: Request) {
     ...thread.messages.slice(-10).map((m) => ({ role: m.role === "assistant" ? "assistant" as const : "user" as const, content: m.text })),
     { role: "user" as const, content: forModel },
   ];
-  const ans = await answerMessage({ history, uid: mine });
+  const ans = await answerMessage({
+    history, uid: mine,
+    model: ["auto", "baseten", "meta", "heuristic"].includes(model ?? "") ? model : "auto",
+    effort: ["low", "medium", "high"].includes(effort ?? "") ? effort : "medium",
+  });
   const at = new Date().toISOString();
   thread.messages.push({ role: "user", text: clean, ...(atts.length > 0 ? { attachments: atts } : {}), at });
   thread.messages.push({

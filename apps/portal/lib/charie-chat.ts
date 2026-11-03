@@ -33,12 +33,12 @@ interface EngineTurn {
   model?: string;
 }
 
-async function engineTurn(history: LoopTurn[], snapshot: unknown, contextNotes: string[]): Promise<EngineTurn | null> {
+async function engineTurn(history: LoopTurn[], snapshot: unknown, contextNotes: string[], choice?: { model?: string; effort?: string }): Promise<EngineTurn | null> {
   try {
     const res = await fetch(`${engineBase()}/chat/turn`, {
       method: "POST",
       headers: engineHeaders(),
-      body: JSON.stringify({ history, snapshot, contextNotes }),
+      body: JSON.stringify({ history, snapshot, contextNotes, model: choice?.model, effort: choice?.effort }),
       signal: AbortSignal.timeout(ENGINE_TIMEOUT),
     });
     if (!res.ok) return null;
@@ -170,6 +170,8 @@ export async function answerMessage(opts: {
   uid: string | undefined;
   extraNotes?: string[];
   surface?: string;
+  model?: string;
+  effort?: string;
 }): Promise<ChatAnswer> {
   const actions: string[] = [];
   let model = "heuristic";
@@ -189,7 +191,7 @@ export async function answerMessage(opts: {
     const contextNotes = [...docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`), ...(opts.extraNotes ?? [])];
     const convo: LoopTurn[] = [...opts.history];
     for (let i = 0; i < 5; i++) {
-      const turn = await engineTurn(convo, snapshot, contextNotes);
+      const turn = await engineTurn(convo, snapshot, contextNotes, { model: opts.model, effort: opts.effort });
       if (!turn) return { text: "The engine is unreachable right now. Try again in a bit.", model, actions };
       model = turn.model ?? model;
       if (turn.kind === "text") return { text: turn.text ?? "Done.", model, actions };
@@ -213,7 +215,7 @@ export async function answerMessage(opts: {
         convo.push({ role: "tool", content: `error: ${(e as Error).message.slice(0, 200)}` });
       }
     }
-    const last = await engineTurn(convo, snapshot, contextNotes);
+    const last = await engineTurn(convo, snapshot, contextNotes, { model: opts.model, effort: opts.effort });
     return { text: last?.kind === "text" ? (last.text ?? "Done.") : "I ran out of steps. Ask me to continue.", model, actions };
   } catch (e) {
     return { text: `Chat failed: ${(e as Error).message.slice(0, 200)}`, model, actions };

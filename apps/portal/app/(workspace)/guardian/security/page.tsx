@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listPentestReports } from "@/lib/guardian";
 import { identity, scopeUid } from "@/lib/who";
 import { PentestButton, ProposeWorkOrderButton } from "@/components/suite";
@@ -30,7 +31,7 @@ export default async function SecurityPage() {
         crumbs={[["/", "Home"], ["/guardian/security", "Security Tests"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="shield" size={19} /></span> Security Tests</>}
         sub="Automated security scanning to detect, prioritize, and fix vulnerabilities."
-        actions={<PentestButton />}
+        actions={<><Link className="btn secondary" href="/reports">All reports</Link><PentestButton /></>}
       />
       {!latest ? (
         <div className="card"><EmptyState title="No scans yet" body="Run the suite to grade the deployment." /></div>

@@ -186,14 +186,26 @@ export function heuristicTurn(history: ChatTurn[]): ChatTurnResult {
   return { kind: "tool", tool: "help", args: {}, model: "heuristic" };
 }
 
+export type ChatModelChoice = "auto" | "baseten" | "meta" | "heuristic";
+export type ChatEffort = "low" | "medium" | "high";
+
 export interface ChatTurnInput {
   history: ChatTurn[];
   snapshot?: unknown;
   contextNotes?: string[];
   fetchImpl?: FetchImpl;
+  model?: ChatModelChoice;
+  effort?: ChatEffort;
+}
+
+/** Thinking-token budget by provider and effort (Baseten reasoning eats budget first). */
+export function effortBudget(provider: "baseten" | "meta", effort: ChatEffort = "medium"): number {
+  if (provider === "baseten") return effort === "low" ? 1200 : effort === "high" ? 5000 : 2500;
+  return effort === "low" ? 400 : effort === "high" ? 2000 : 800;
 }
 
 export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
+  if (input.model === "heuristic") return heuristicTurn(input.history);
   if (!hasBasetenKey() && !hasMetaKey()) return heuristicTurn(input.history);
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: `${SYSTEM}\n\n${snapshotBlock(input.snapshot)}${contextBlock(input.contextNotes)}` },
@@ -203,11 +215,11 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     else if (t.role === "tool") messages.push({ role: "user", content: `TOOL RESULT: ${t.content}` });
     else messages.push({ role: "user", content: t.content });
   }
-  // Baseten first: Muse Spark Open on the user's Baseten credits.
-  if (hasBasetenKey()) {
+  // Baseten first unless the user picked Meta: Muse Spark Open on Baseten credits.
+  if (hasBasetenKey() && input.model !== "meta") {
     try {
       const meetCall = typeof input.snapshot === "object" && input.snapshot !== null && (input.snapshot as { surface?: string }).surface === "meet-call";
-      const out = await sparkOpenChat(messages, { maxTokens: meetCall ? 1200 : 2500, temperature: 0.4, fetchImpl: input.fetchImpl });
+      const out = await sparkOpenChat(messages, { maxTokens: meetCall ? 1200 : effortBudget("baseten", input.effort), temperature: 0.4, fetchImpl: input.fetchImpl });
       const parsed = parseTurnReply(out);
       const label = `${sparkOpenModelId()} (baseten)`;
       return { ...parsed, model: parsed.model === "spark" ? label : parsed.model };
@@ -217,7 +229,7 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   }
   if (!hasMetaKey()) return heuristicTurn(input.history);
   try {
-    const out = await chat(messages, { model: modelId("spark"), maxTokens: 800, fetchImpl: input.fetchImpl });
+    const out = await chat(messages, { model: modelId("spark"), maxTokens: effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
     return { ...parsed, model: parsed.model === "spark" ? modelId("spark") : parsed.model };
   } catch (e) {

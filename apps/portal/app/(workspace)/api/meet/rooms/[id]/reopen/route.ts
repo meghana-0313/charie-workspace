@@ -19,7 +19,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "only the host can reopen this meeting" }, { status: 403 });
   }
   if (room.endedAt) {
-    await store.updateMeetRoom(roomId, { endedAt: undefined });
+    try {
+      await store.updateMeetRoom(roomId, { endedAt: undefined });
+    } catch {
+      return NextResponse.json({ error: "Could not reopen this room. Try again." }, { status: 500 });
+    }
+    const after = await store.getMeetRoom(roomId).catch(() => null);
+    if (after?.endedAt) {
+      return NextResponse.json({ error: "This room is still marked ended. Try again." }, { status: 500 });
+    }
     hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary });
   }
   return NextResponse.json({ ok: true, status: "Open", contextLines: room.transcript?.length ?? 0 });

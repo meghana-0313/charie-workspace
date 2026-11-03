@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChatAttachment } from "@/lib/types";
+import { CHAT_EFFORTS, CHAT_MODELS, COMING_SOON_MODELS, type ChatEffort, type ChatModelChoice } from "@/lib/chat-models";
 
 export interface ChatConsent {
   id: string;
@@ -48,7 +49,8 @@ function modelLabel(model?: string): string {
   if (!model) return "";
   if (model === "heuristic") return "heuristic";
   const m = model.match(/muse-[a-z]+-[0-9.]+/);
-  return m ? m[0] : model.slice(0, 24);
+  if (model.includes("baseten")) return "Muse Spark Open (Baseten)";
+  return m ? m[0] : model.slice(0, 32);
 }
 
 function clock(iso: string): string {
@@ -86,13 +88,21 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [modelChoice, setModelChoice] = useState<ChatModelChoice>(() => (typeof localStorage !== "undefined" && localStorage.getItem("charie-chat-model") as ChatModelChoice) || "auto");
+  const [effort, setEffort] = useState<ChatEffort>(() => (typeof localStorage !== "undefined" && localStorage.getItem("charie-chat-effort") as ChatEffort) || "medium");
+  const servedModel = [...msgs].reverse().find((m) => m.role === "assistant" && m.model)?.model;
   const abort = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const recStream = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    // Scroll only the message pane, and only when already near the bottom.
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [msgs.length, busy]);
 
   async function upload(file: File) {
@@ -152,7 +162,7 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
       const res = await fetch("/api/chat/turn", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ threadId: tid, text: clean, attachments: atts }),
+        body: JSON.stringify({ threadId: tid, text: clean, attachments: atts, model: modelChoice, effort }),
         signal: ctl.signal,
       });
       const j = (await res.json()) as { threadId?: string; text?: string; model?: string; actions?: string[]; consent?: ChatConsent; error?: string };
@@ -202,7 +212,7 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
 
   return (
     <div className="chat-shell">
-      <div className="chat-scroll">
+      <div className="chat-scroll" ref={scrollRef}>
         {msgs.length === 0 && (
           <div className="chat-empty">
             <div className="big">Talk to Charie</div>
@@ -266,6 +276,24 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
         <div ref={bottom} />
       </div>
 
+      <div className="chat-modelbar">
+        <label className="small" style={{ margin: 0 }}>Model
+          <select value={modelChoice} onChange={(e) => { const v = e.target.value as ChatModelChoice; setModelChoice(v); try { localStorage.setItem("charie-chat-model", v); } catch { /* private mode */ } }} aria-label="Chat model">
+            {CHAT_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label} - {m.provider}</option>)}
+            {COMING_SOON_MODELS.map((m) => <option key={m.label} disabled>{m.label} - Coming Soon</option>)}
+          </select>
+        </label>
+        <label className="small" style={{ margin: 0 }}>Effort
+          <select value={effort} onChange={(e) => { const v = e.target.value as ChatEffort; setEffort(v); try { localStorage.setItem("charie-chat-effort", v); } catch { /* private mode */ } }} aria-label="Reasoning effort">
+            {CHAT_EFFORTS.map((e2) => <option key={e2.id} value={e2.id}>{e2.label}</option>)}
+          </select>
+        </label>
+        <span className="small muted">{servedModel ? `Served by: ${modelLabel(servedModel)}` : "Served by: not answered yet"}</span>
+        <details className="small muted">
+          <summary style={{ cursor: "pointer" }}>Coming soon</summary>
+          {COMING_SOON_MODELS.map((m) => <div key={m.label}>{m.label} ({m.provider}) - {m.why}</div>)}
+        </details>
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
