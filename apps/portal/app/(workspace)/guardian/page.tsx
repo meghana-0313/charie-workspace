@@ -36,7 +36,7 @@ export default async function GuardianPage() {
         crumbs={[["/", "Home"], ["/guardian", "Incidents"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="shield" size={19} /></span> Incidents <Badge>simulated environment</Badge></>}
         sub="Charie Guard watches production after every deploy. Detectors flag attack patterns, Meta models investigate, and approved responses execute against a simulation, never real prod."
-        actions={<><SeedButton /><AnalyzeButton /><SweepButton /><PushButton /></>}
+        actions={<><Link className="btn secondary" href="/reports">All reports</Link><SeedButton /><AnalyzeButton /><SweepButton /><PushButton /></>}
       />
 
       <div className="stats">
@@ -63,7 +63,7 @@ export default async function GuardianPage() {
                       <td><Badge tone={i.status}>{i.status}</Badge></td>
                       <td className="small muted">{i.mode}</td>
                       <td className="small muted">{i.createdAt.slice(0, 16).replace("T", " ")}</td>
-                      <td><Link href={`/guardian/${i.id}`} aria-label={`Open ${i.title}`}><Icon name="arrow" /></Link></td>
+                      <td><span className="row" style={{ flexWrap: "nowrap" }}><Link className="small" href={`/reports/incident/${i.id}`}>Report</Link><Link href={`/guardian/${i.id}`} aria-label={`Open ${i.title}`}><Icon name="arrow" /></Link></span></td>
                     </tr>
                   ))}
                 </tbody>

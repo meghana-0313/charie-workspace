@@ -17,6 +17,7 @@ export default async function A11yPage() {
         crumbs={[["/", "Home"], ["/a11y", "Accessibility"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="access" size={19} /></span> Accessibility</>}
         sub="Eight checks against your live page in a real browser: alt text, form labels, button names, headings, language, keyboard reach, text contrast."
+        actions={<Link className="btn secondary" href="/reports">All reports</Link>}
       />
       {latest && (
         <div className="stats">

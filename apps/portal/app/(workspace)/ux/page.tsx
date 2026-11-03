@@ -32,6 +32,7 @@ export default async function UxPage() {
         crumbs={[["/", "Home"], ["/ux", "UX Review"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="eye" size={19} /></span> UX Review</>}
         sub="Every usability finding from your investigations, paired with written improvement directions and generated screen alternatives."
+        actions={<Link className="btn secondary" href="/reports">All reports</Link>}
       />
       <div className="stats">
         <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="eye" size={20} /></span><div><div className="stat-num">{total}</div><div className="stat-label">Redesign briefs</div></div></div></div>
@@ -49,7 +50,7 @@ export default async function UxPage() {
             withBriefs.map(({ run, briefs, titles }) => (
               <div key={run.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
                 <p className="small muted">
-                  <Link href={`/tickets/${run.ticketId}`}><code>{run.id.slice(0, 19)}</code></Link> · {briefs.length} brief(s)
+                  <Link href={`/tickets/${run.ticketId}`}><code>{run.id.slice(0, 19)}</code></Link> · {briefs.length} brief(s) · <Link href={`/reports/agent-run/${run.id}`}>Report</Link>
                 </p>
                 {briefs.map((b) => (
                   <p key={b.findingId} className="small">
