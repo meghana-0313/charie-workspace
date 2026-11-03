@@ -2,6 +2,7 @@ import { store } from "@/lib/store";
 import { identity, isAdmin, scopeUid } from "@/lib/who";
 import { zoomStatus } from "@/lib/guardian";
 import { SettingsForm } from "@/components/settings-form";
+import { SettingsTabs } from "@/components/settings-tabs";
 import { AccountForm } from "@/components/account-form";
 import { LogoutButton, ThemeToggle } from "@/components/theme";
 import { Icon } from "@/components/icons";
@@ -50,16 +51,7 @@ export default async function SettingsPage() {
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="gear" size={19} /></span> Settings</>}
         sub="Make the workspace yours, then check that everything underneath is healthy. Secrets stay in Secret Manager; this page never sees them."
       />
-      <div className="settings-layout">
-        <nav className="setnav" aria-label="Settings sections">
-          <a href="#general"><Icon name="gear" /> General</a>
-          <a href="#appearance"><Icon name="eye" /> Appearance</a>
-          <a href="#connections"><Icon name="plug" /> Connections</a>
-          <a href="#autopilot"><Icon name="bolt" /> Autopilot</a>
-          <a href="#system"><Icon name="signal" /> System status</a>
-          <a href="#account"><Icon name="users" /> Account</a>
-        </nav>
-        <div>
+      <SettingsTabs>
           <div className="card" id="general">
             <div className="card-title">General</div>
             <p className="small muted" style={{ marginTop: 0 }}>Workspace identity and the defaults new work starts from. Saved values apply to your whole account.</p>
@@ -133,8 +125,7 @@ export default async function SettingsPage() {
             <hr className="divider" />
             <AccountForm initialName={me?.name ?? ""} email={me?.email ?? ""} />
           </div>
-        </div>
-      </div>
+      </SettingsTabs>
     </>
   );
 }

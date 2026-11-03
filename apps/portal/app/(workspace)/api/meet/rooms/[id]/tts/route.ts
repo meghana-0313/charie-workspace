@@ -9,6 +9,11 @@ import { speakableText } from "@/lib/room-status";
 // client falls back to the browser voice - she is never silent.
 export const maxDuration = 60;
 
+// Short phrases repeat constantly in a call (greetings, the voice test).
+// Cache them in memory so repeats skip the TTS cold start entirely.
+const cache = new Map<string, { audio: ArrayBuffer; type: string; at: number }>();
+const CACHE_MS = 10 * 60 * 1000;
+
 async function allowed(req: Request, roomId: string): Promise<boolean> {
   if (await identity(req)) return true;
   const token = new URL(req.url).searchParams.get("token") ?? "";
@@ -25,6 +30,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { text } = (await req.json().catch(() => ({}))) as { text?: string };
   const clean = speakableText(String(text ?? ""));
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });
+  const hit = cache.get(clean);
+  if (hit && Date.now() - hit.at < CACHE_MS) {
+    return new NextResponse(hit.audio, { headers: { "content-type": hit.type, "cache-control": "no-store", "x-charie-tts": "cache" } });
+  }
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (process.env.CHARIE_TTS_MODAL_KEY && process.env.CHARIE_TTS_MODAL_SECRET) {
     headers["Modal-Key"] = process.env.CHARIE_TTS_MODAL_KEY;
@@ -39,7 +48,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     if (!res.ok) return NextResponse.json({ error: `voice upstream ${res.status}` }, { status: 503 });
     const audio = await res.arrayBuffer();
-    return new NextResponse(audio, { headers: { "content-type": res.headers.get("content-type") ?? "audio/wav", "cache-control": "no-store" } });
+    const type = res.headers.get("content-type") ?? "audio/wav";
+    if (clean.length <= 160) {
+      cache.set(clean, { audio, type, at: Date.now() });
+      if (cache.size > 40) cache.delete(cache.keys().next().value as string);
+    }
+    return new NextResponse(audio, { headers: { "content-type": type, "cache-control": "no-store", "x-charie-tts": "live" } });
   } catch {
     return NextResponse.json({ error: "voice unreachable" }, { status: 503 });
   }

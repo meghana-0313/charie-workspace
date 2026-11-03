@@ -28,7 +28,10 @@ async function visionCall(
     }),
     signal: AbortSignal.timeout(30000),
   });
-  if (!res.ok) throw new Error(`vision upstream ${res.status}`);
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
+    throw new Error(`vision upstream ${res.status}${detail ? `: ${detail}` : ""}`);
+  }
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string | null } }> };
   return data.choices?.[0]?.message?.content?.trim() ?? "";
 }
@@ -37,20 +40,35 @@ async function visionCall(
 export async function describeScreen(
   image: string, question: string, fetchImpl: FetchImpl = fetch,
 ): Promise<{ text: string; model: string } | null> {
-  if (!image.startsWith("data:image/")) return null;
+  const out = await describeScreenDetailed(image, question, fetchImpl);
+  return out.ok ? { text: out.text, model: out.model } : null;
+}
+
+/** Same call, but every provider failure is named so the UI can say why. */
+export async function describeScreenDetailed(
+  image: string, question: string, fetchImpl: FetchImpl = fetch,
+): Promise<{ ok: true; text: string; model: string } | { ok: false; reason: string }> {
+  if (!image.startsWith("data:image/")) return { ok: false, reason: "no image frame was captured" };
+  const failures: string[] = [];
   const meta = secret("META_API_KEY");
   if (meta) {
     try {
       const text = await visionCall(secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1", meta, secret("META_SPARK_MODEL") ?? "muse-spark-1.3", image, question, fetchImpl);
-      if (text) return { text: text.slice(0, 600), model: "muse-spark-1.3 (meta vision)" };
-    } catch { /* try Baseten */ }
+      if (text) return { ok: true, text: text.slice(0, 600), model: "muse-spark-1.3 (meta vision)" };
+      failures.push("Meta Muse Spark answered empty");
+    } catch (e) { failures.push(`Meta Muse Spark: ${(e as Error).message}`); }
+  } else {
+    failures.push("Meta: META_API_KEY not set on the engine");
   }
   const baseten = secret("BASETEN_API_KEY");
   if (baseten && hasBasetenKey()) {
     try {
       const text = await visionCall(secret("SPARK_OPEN_ENDPOINT") ?? "https://inference.baseten.co/v1", baseten, sparkOpenModelId(), image, question, fetchImpl);
-      if (text) return { text: text.slice(0, 600), model: `${sparkOpenModelId()} (baseten vision)` };
-    } catch { /* fall through */ }
+      if (text) return { ok: true, text: text.slice(0, 600), model: `${sparkOpenModelId()} (baseten vision)` };
+      failures.push("Baseten Muse Spark Open answered empty");
+    } catch (e) { failures.push(`Baseten Muse Spark Open: ${(e as Error).message}`); }
+  } else {
+    failures.push("Baseten: BASETEN_API_KEY not set on the engine");
   }
-  return null;
+  return { ok: false, reason: failures.join("; ") };
 }

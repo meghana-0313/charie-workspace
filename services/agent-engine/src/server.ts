@@ -39,7 +39,7 @@ import { ensureRunLocal, fetchVoiceNote } from "./storage.js";
 import { loadSweeps, runSweep } from "./sweep.js";
 import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
 import { chatTurn } from "./chat-agent.js";
-import { describeScreen } from "./vision.js";
+import { describeScreenDetailed } from "./vision.js";
 import { transcribe } from "./voice.js";
 import {
   approveWorkOrder, createWorkOrder, getWorkOrder, loadWorkOrders, updateWorkOrder,
@@ -272,12 +272,12 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 400, { error: "image data URI (max 2MB) required" });
             return;
           }
-          const out = await describeScreen(image, String(body.question ?? "").slice(0, 300));
-          if (!out) {
-            send(res, 503, { error: "vision unavailable (no multimodal key answered)" });
+          const out = await describeScreenDetailed(image, String(body.question ?? "").slice(0, 300));
+          if (!out.ok) {
+            send(res, 503, { error: `vision unavailable: ${out.reason}` });
             return;
           }
-          send(res, 200, out);
+          send(res, 200, { text: out.text, model: out.model });
           return;
         }
 
