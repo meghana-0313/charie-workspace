@@ -1050,6 +1050,13 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     if (!next) return;
     const text = speakableText(next.text);
     spokenRef.current += 1;
+    // Prefetch the next reply while this one plays, so lines follow each
+    // other with no synthesis gap between them.
+    const upcoming = agentLines[spokenRef.current];
+    if (upcoming) {
+      const upcomingText = speakableText(upcoming.text);
+      if (upcomingText) void fetchTts(roomId, qp, upcomingText).catch(() => {});
+    }
     if (!text) { setSpeakTick((n) => n + 1); return; }
     speakingRef.current = true;
     onAgentSpeakRef.current?.(true);

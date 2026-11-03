@@ -23,7 +23,10 @@ async function visionCall(
           { type: "image_url", image_url: { url: image } },
         ],
       }],
-      max_tokens: 400,
+      // Reasoning models spend tokens thinking before any visible answer;
+      // 400 starved them into empty replies (the "answered empty" bug that
+      // chat-agent.ts already fixed for text). Give vision real headroom.
+      max_tokens: 1600,
       temperature: 0.3,
     }),
     signal: AbortSignal.timeout(30000),
@@ -32,8 +35,26 @@ async function visionCall(
     const detail = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
     throw new Error(`vision upstream ${res.status}${detail ? `: ${detail}` : ""}`);
   }
-  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string | null } }> };
-  return data.choices?.[0]?.message?.content?.trim() ?? "";
+  const data = (await res.json()) as {
+    choices?: Array<{
+      finish_reason?: string;
+      message?: {
+        content?: string | Array<{ type?: string; text?: string }> | null;
+        reasoning_content?: string | null;
+      };
+    }>;
+  };
+  const choice = data.choices?.[0];
+  const msg = choice?.message;
+  // Content can be a plain string, an array of text parts, or - when the
+  // reasoning budget ran out - only reasoning_content. Accept all three,
+  // exactly like baseten.ts does for text calls.
+  let text = "";
+  if (typeof msg?.content === "string") text = msg.content;
+  else if (Array.isArray(msg?.content)) text = msg.content.map((p) => p.text ?? "").join(" ");
+  text = (text || msg?.reasoning_content || "").trim();
+  if (!text) throw new Error(`answered empty (finish_reason=${choice?.finish_reason ?? "unknown"})`);
+  return text;
 }
 
 /** Describe a data-URI frame. Model label names the provider that answered. */

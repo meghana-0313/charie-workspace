@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/serve.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx test/regression.test.mts && tsx test/server.test.mts && tsx test/guardian-plus.test.mts && tsx test/access.test.mts && tsx test/chat-agent.test.mts"
+    "test": "tsx test/regression.test.mts && tsx test/server.test.mts && tsx test/guardian-plus.test.mts && tsx test/access.test.mts && tsx test/chat-agent.test.mts && tsx test/vision.test.mts"
   },
   "dependencies": {
     "@google-cloud/secret-manager": "^7.2.0",
