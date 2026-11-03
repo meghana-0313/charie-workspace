@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
 import { Icon } from "./icons";
-import { charieAskLine, speakableText } from "@/lib/room-status";
+import { charieAskLine, speakableText, splitSpeakChunks } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -71,6 +71,12 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const [visionOn, setVisionOn] = useState(false);
   const [name, setName] = useState(initialName);
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
+  // Warm Charie's voice from the moment the room page opens - before the
+  // lobby, before joining - so the first test or reply never cold-starts.
+  useEffect(() => {
+    void fetchTts(roomId, qp, "Hi, this is Charie.").catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
   const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
   const [joined, setJoined] = useState(false);
   const [ended, setEnded] = useState(initialEnded);
@@ -1034,7 +1040,26 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
 
   const speakingRef = useRef(false);
   const [speakTick, setSpeakTick] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const lastFailedRef = useRef("");
+  // Barge-in: a generation counter kills current playback instantly. Any
+  // chunk still queued for an older generation is dropped, never resumed.
+  const speakGenRef = useRef(0);
+  const linesRef = useRef<LiveLineView[]>([]);
+  linesRef.current = lines;
+  const interruptRef = useRef<() => void>(() => {});
+  interruptRef.current = () => {
+    speakGenRef.current += 1;
+    try { audioRef.current?.pause(); } catch { /* noop */ }
+    audioRef.current = null;
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+    speakingRef.current = false;
+    setIsSpeaking(false);
+    onAgentSpeakRef.current?.(false);
+    // Drop everything queued: she stops, she does not resume the backlog.
+    spokenRef.current = linesRef.current.filter((l) => l.role === "agent").length;
+    setSpeakTick((n) => n + 1);
+  };
 
   // Charie speaks her transcript lines aloud when voice is on. One line at
   // a time, in order. Poll re-renders never cancel playback: a line is only
@@ -1054,14 +1079,17 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     // other with no synthesis gap between them.
     const upcoming = agentLines[spokenRef.current];
     if (upcoming) {
-      const upcomingText = speakableText(upcoming.text);
-      if (upcomingText) void fetchTts(roomId, qp, upcomingText).catch(() => {});
+      for (const c of splitSpeakChunks(speakableText(upcoming.text))) void fetchTts(roomId, qp, c).catch(() => {});
     }
     if (!text) { setSpeakTick((n) => n + 1); return; }
     speakingRef.current = true;
+    setIsSpeaking(true);
     onAgentSpeakRef.current?.(true);
+    const gen = speakGenRef.current;
     const done = () => {
+      if (gen !== speakGenRef.current) return;
       speakingRef.current = false;
+      setIsSpeaking(false);
       onAgentSpeakRef.current?.(false);
       setSpeakTick((n) => n + 1);
     };
@@ -1083,29 +1111,31 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       }
     };
     (async () => {
-      try {
-        let blob: Blob;
-        try {
-          blob = await fetchTts(roomId, qp, text);
-        } catch (e) {
-          setVoiceNote(`Human voice service answered ${(e as Error).message.replace("voice ", "")}, using the browser voice for this line.`);
-          browserFallback();
+      // Sentence-by-sentence: the first chunk starts playing as soon as it
+      // is synthesized instead of waiting for the whole reply's audio.
+      const chunks = splitSpeakChunks(text);
+      const pending = chunks.map((c) => fetchTts(roomId, qp, c).catch(() => null));
+      for (let i = 0; i < chunks.length; i++) {
+        if (gen !== speakGenRef.current) return;
+        const blob = await pending[i];
+        if (gen !== speakGenRef.current) return;
+        if (!blob) {
+          if (i === 0) { setVoiceNote("Human voice service unavailable, using the browser voice for this line."); browserFallback(); }
           return;
         }
+        setVoiceNote("");
         const audio = new Audio(URL.createObjectURL(blob));
         audioRef.current = audio;
-        audio.onended = done;
-        audio.onerror = () => { setVoiceNote("Audio file could not play, using the browser voice."); browserFallback(); };
-        setVoiceNote("");
-        await audio.play().catch(() => {
-          lastFailedRef.current = text;
-          setVoiceNote("Audio was blocked. Click anywhere in the room once, then press Test voice.");
-          browserFallback();
+        await new Promise<void>((resolve) => {
+          audio.onended = () => resolve();
+          audio.onerror = () => resolve();
+          audio.onpause = () => resolve();
+          audio.play().catch(() => resolve());
         });
-      } catch {
-        setVoiceNote("Human voice service unreachable, using the browser voice.");
-        browserFallback();
+        URL.revokeObjectURL(audio.src);
+        if (gen !== speakGenRef.current) return;
       }
+      done();
     })();
   }, [lines, speakTick, voice, roomId, qp]);
 
@@ -1119,6 +1149,8 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     rec.lang = navigator.language || "en-US";
     let stopped = false;
     rec.onresult = (e) => {
+      // Barge-in: the moment a human speaks, Charie stops mid-sentence.
+      interruptRef.current();
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
         const text = r.isFinal ? r[0]?.transcript?.trim() : "";
@@ -1277,7 +1309,8 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           </div>
           <p className="small muted">Charie listens, thinks out loud below, and proposes actions. Nothing runs until a human approves a card.</p>
           <p className="small muted">She can watch a shared screen (use Charie, look on a tile) and tell you where to click. Browsers cannot give any web app control of your mouse or keyboard, so she guides you instead - and when the product itself needs driving, Investigate lets her drive it in her own browser.</p>
-          <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } audioRef.current?.pause(); onAgentSpeakRef.current?.(false); } }} label="Charie speaks aloud" />
+          <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) interruptRef.current(); }} label="Charie speaks aloud" />
+          {isSpeaking && <p style={{ margin: "6px 0 0" }}><button type="button" className="danger-ghost sm" onClick={() => interruptRef.current()}>Stop Charie talking</button> <span className="small muted">or just start talking - she stops mid-sentence.</span></p>}
           {voiceNote && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }} role="status">{voiceNote}</p>}
           <TestVoice roomId={roomId} qp={qp} onNote={setVoiceNote} />
           <MeetSwitch checked={visionOn} onChange={(v) => onVisionChange?.(v)} label="Charie can look at screens" />

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply } from "../lib/room-status";
+import { isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, splitSpeakChunks } from "../lib/room-status";
 
 // Screen questions are detected so they never reach a free-form model guess.
 assert.equal(isScreenSeeQuestion("Sorry, can you see my screen?"), true);
@@ -32,5 +32,13 @@ assert.match(screenHistoryReply(log, "10:32", "2026-11-03T11:00:00.000Z"), /card
 assert.match(screenHistoryReply(log, "08:00", "2026-11-03T11:00:00.000Z"), /no frame from 08:00/i);
 assert.match(screenHistoryReply([], null, "2026-11-03T11:00:00.000Z"), /no screen memory/i);
 assert.match(screenHistoryReply(log, null, "2026-11-03T11:00:00.000Z"), /10:32/);
+
+// Spoken replies split into sentence chunks so playback starts early.
+assert.deepEqual(splitSpeakChunks("One. Two! Three? Four"), ["One. Two! Three? Four"]);
+const long = splitSpeakChunks(`${"A very long sentence about the checkout failure and what caused it. ".repeat(3)}Short tail.`);
+assert.ok(long.length >= 2 && long[0].length <= 170, "long replies split into early-playable chunks");
+assert.deepEqual(splitSpeakChunks("Just one sentence"), ["Just one sentence"]);
+assert.deepEqual(splitSpeakChunks("  "), []);
+assert.ok(splitSpeakChunks("A. B. C. D. E. F. G. H.").length <= 4);
 
 console.log("room-status tests passed");
