@@ -44,9 +44,14 @@ export function isScreenSeeQuestion(text: string): boolean {
  * actually captured (Charie, look / vision re-check); null means she has
  * never seen a frame in this room and must say so.
  */
-export function screenVisionReply(visionText: string | null): string {
+export function screenVisionReply(visionText: string | null, capturedAt?: string | null, nowISO?: string): string {
   if (visionText) {
-    return `I can see the last frame shared with me: ${visionText.slice(0, 220)} If it changed, share again and press Charie, look and I will check the new frame.`;
+    const ageSec = capturedAt && nowISO ? Math.max(0, Math.round((Date.parse(nowISO) - Date.parse(capturedAt)) / 1000)) : 0;
+    const when = capturedAt ? capturedAt.slice(11, 19) : "";
+    if (ageSec > 25) {
+      return `My last captured frame is from ${when}, about ${ageSec} seconds ago, so it may be behind what you are doing now: ${visionText.slice(0, 200)} Give me a few seconds on the new screen and I will catch up.`;
+    }
+    return `As of ${when || "just now"} I can see: ${visionText.slice(0, 220)}`;
   }
   return "I can't see your screen live yet. I only see a frame when you share your screen, turn on Charie can look at screens in the Charie tab, and press Charie, look. Share now and I will take a look.";
 }
@@ -109,7 +114,8 @@ export function splitSpeakChunks(text: string): string[] {
   for (const p of parts) {
     const s = p.trim();
     if (!s) continue;
-    if (cur && (cur + " " + s).length > 150) { chunks.push(cur); cur = s; }
+    // Small chunks: first audio after ~one short sentence, not a paragraph.
+    if (cur && (cur + " " + s).length > 110) { chunks.push(cur); cur = s; }
     else cur = cur ? `${cur} ${s}` : s;
   }
   if (cur) chunks.push(cur);

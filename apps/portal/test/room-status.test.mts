@@ -14,9 +14,12 @@ assert.match(blind, /can't see your screen/i);
 assert.doesNotMatch(blind, /I can see it now/i);
 
 // With a real captured frame, she may describe exactly that frame.
-const seen = screenVisionReply("A checkout page with a red payment error banner.");
-assert.match(seen, /last frame shared with me/i);
+const seen = screenVisionReply("A checkout page with a red payment error banner.", "2026-11-03T10:32:00.000Z", "2026-11-03T10:32:05.000Z");
+assert.match(seen, /I can see/i);
 assert.match(seen, /payment error/);
+const stale = screenVisionReply("An old settings page.", "2026-11-03T10:30:00.000Z", "2026-11-03T10:32:05.000Z");
+assert.match(stale, /may be behind/i);
+assert.match(stale, /seconds ago/i);
 
 // Screen-history questions answer from the recorded log, never invented.
 assert.equal(isScreenHistoryQuestion("What happened at 10:32?"), true);

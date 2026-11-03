@@ -26,7 +26,7 @@ async function visionCall(
       // Reasoning models spend tokens thinking before any visible answer;
       // 400 starved them into empty replies (the "answered empty" bug that
       // chat-agent.ts already fixed for text). Give vision real headroom.
-      max_tokens: 1600,
+      max_tokens: 900,
       temperature: 0.3,
     }),
     signal: AbortSignal.timeout(30000),

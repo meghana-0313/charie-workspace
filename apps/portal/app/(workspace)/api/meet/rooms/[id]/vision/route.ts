@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
   if (!(await allowed(req, roomId))) return NextResponse.json({ error: "login or invite required" }, { status: 401 });
   if (!getAgent(roomId).enabled) return NextResponse.json({ error: "Bring Charie in first" }, { status: 400 });
-  const { image, question, mode } = (await req.json().catch(() => ({}))) as { image?: string; question?: string; mode?: string };
+  const { image, question, mode, capturedAt } = (await req.json().catch(() => ({}))) as { image?: string; question?: string; mode?: string; capturedAt?: string };
   const img = String(image ?? "");
   if (!img.startsWith("data:image/") || img.length > 2_000_000) {
     return NextResponse.json({ error: "image frame required (max 2MB)" }, { status: 400 });
@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     const j = (await res.json().catch(() => ({}))) as { text?: string; model?: string; error?: string };
     if (!res.ok || !j.text) return NextResponse.json({ error: j.error ?? "vision unavailable" }, { status: 503 });
-    recordVision(roomId, j.text, j.model);
+    recordVision(roomId, j.text, j.model, typeof capturedAt === "string" ? capturedAt : undefined);
     // Watch mode: remember silently; only speak up when the frame shows a
     // problem, so near-continuous watching never floods the transcript.
     const isProblem = /(error|fail|blocked|broken|crash|denied|invalid|warning|exception)/i.test(j.text);

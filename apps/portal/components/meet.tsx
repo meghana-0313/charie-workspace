@@ -419,17 +419,19 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     const send = async (video: HTMLVideoElement) => {
       inFlight = true;
       lastPost = Date.now();
+      const capturedAt = new Date().toISOString();
       try {
         const canvas = document.createElement("canvas");
-        const w = Math.min(video.videoWidth, 960);
+        const w = Math.min(video.videoWidth, 720);
         canvas.width = w;
         canvas.height = Math.round(w * (video.videoHeight / video.videoWidth));
         canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
         await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
           method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.72), question: "What changed on this screen? Flag any error.", mode: "watch" }),
+          body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.68), question: "In one short sentence: what is on this screen now, and any error?", mode: "watch", capturedAt }),
+          signal: AbortSignal.timeout(20000),
         });
-      } catch { /* next tick retries */ }
+      } catch { /* next tick retries with a fresher frame */ }
       inFlight = false;
     };
     const tick = () => {
@@ -708,7 +710,7 @@ export function LookButton({ roomId, qp, getVideo, label = "Charie, look", disab
       const image = canvas.toDataURL("image/jpeg", 0.72);
       const res = await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image, question: "What do you see on this screen, and where should we click next?" }),
+        body: JSON.stringify({ image, question: "What do you see on this screen, and where should we click next?", capturedAt: new Date().toISOString() }),
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) setErr(j.error ?? "Charie could not look right now.");
@@ -990,6 +992,21 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   useEffect(() => {
     void fetchTts(roomId, qp, "Hi, this is Charie.").catch(() => {});
   }, [roomId, qp]);
+
+  // Leaving the call - End, Leave, or navigating away - must silence her
+  // immediately. An <audio> element keeps playing after unmount unless it
+  // is explicitly paused, which is why she used to talk over the homepage.
+  useEffect(() => {
+    return () => {
+      speakGenRef.current += 1;
+      try { audioRef.current?.pause(); } catch { /* noop */ }
+      audioRef.current = null;
+      try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+      speakingRef.current = false;
+      onAgentSpeakRef.current?.(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let stop = false;
