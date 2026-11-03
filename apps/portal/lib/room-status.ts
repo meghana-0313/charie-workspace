@@ -51,6 +51,50 @@ export function screenVisionReply(visionText: string | null): string {
   return "I can't see your screen live yet. I only see a frame when you share your screen, turn on Charie can look at screens in the Charie tab, and press Charie, look. Share now and I will take a look.";
 }
 
+/** Asking about the past ("what happened at 10:32?", "what was on screen earlier?"). */
+export function isScreenHistoryQuestion(text: string): boolean {
+  const t = text.toLowerCase();
+  return /what happened|what was on|what did (you|it) (see|show)|earlier|before that|at \d{1,2}:\d{2}|screen (history|earlier|before)/.test(t);
+}
+
+/** Extract an HH:MM time from a question, if one is mentioned. */
+export function screenQuestionTime(text: string): string | null {
+  const m = text.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (hh > 23 || mm > 59) return null;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+export interface ScreenLogEntry { at: string; text: string }
+
+/**
+ * Deterministic answer from the recorded screen memory. Never invents:
+ * no entry near the asked time means saying exactly that.
+ */
+export function screenHistoryReply(log: ScreenLogEntry[], askedTime: string | null, nowISO: string): string {
+  if (log.length === 0) {
+    return "I have no screen memory for this call yet. I only remember frames after you share your screen with vision on, so share and I will start remembering from there.";
+  }
+  const fmt = (iso: string) => iso.slice(11, 16);
+  if (!askedTime) {
+    const recent = log.slice(-3).map((e) => `${fmt(e.at)}: ${e.text.slice(0, 140)}`).join(" ");
+    return `Here is what I remember seeing, latest last. ${recent}`;
+  }
+  const today = nowISO.slice(0, 10);
+  const target = `${today}T${askedTime}:00`;
+  const atOrBefore = [...log].reverse().find((e) => e.at.slice(0, 16) <= target.slice(0, 16));
+  if (!atOrBefore) {
+    return `I have no frame from ${askedTime} or earlier in this call. My earliest memory is ${fmt(log[0].at)}: ${log[0].text.slice(0, 180)}`;
+  }
+  const gapSecs = Math.round((new Date(`${atOrBefore.at.slice(0, 19)}`).getTime() - new Date(`${today}T${askedTime}:00`).getTime()) / 1000);
+  if (Math.abs(gapSecs) > 180) {
+    return `I have nothing captured right at ${askedTime}; the closest I have is ${fmt(atOrBefore.at)}: ${atOrBefore.text.slice(0, 200)}`;
+  }
+  return `At ${askedTime} I saw: ${atOrBefore.text.slice(0, 260)} (captured ${fmt(atOrBefore.at)}).`;
+}
+
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

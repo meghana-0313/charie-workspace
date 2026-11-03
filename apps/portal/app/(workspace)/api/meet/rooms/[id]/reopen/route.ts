@@ -28,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (after?.endedAt) {
       return NextResponse.json({ error: "This room is still marked ended. Try again." }, { status: 500 });
     }
-    hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary });
+    hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary, screenLog: room.screenLog });
   }
   return NextResponse.json({ ok: true, status: "Open", contextLines: room.transcript?.length ?? 0 });
 }

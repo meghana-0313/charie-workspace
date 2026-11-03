@@ -27,7 +27,7 @@ export default async function MeetRoomPage({ params }: { params: Promise<{ id: s
         initialEnded={Boolean(room.endedAt)}
         savedTranscript={room.transcript ?? []}
         savedNotes={room.notes ?? []}
-        savedSummary={room.summary ?? ""}
+        savedSummary={room.summary ?? ""} savedScreenLog={room.screenLog ?? []}
       />
     </>
   );

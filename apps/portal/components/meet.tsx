@@ -66,7 +66,7 @@ interface Peer {
   stream: MediaStream | null;
 }
 
-export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true, initialEnded = false, savedTranscript = [], savedNotes = [], savedSummary = "" }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean; initialEnded?: boolean; savedTranscript?: Array<{ speaker: string; role: string; text: string; at: string }>; savedNotes?: string[]; savedSummary?: string }) {
+export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true, initialEnded = false, savedTranscript = [], savedNotes = [], savedSummary = "", savedScreenLog = [] }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean; initialEnded?: boolean; savedTranscript?: Array<{ speaker: string; role: string; text: string; at: string }>; savedNotes?: string[]; savedSummary?: string; savedScreenLog?: Array<{ at: string; text: string }> }) {
   const [spotlight, setSpotlight] = useState<string | null>(null);
   const [visionOn, setVisionOn] = useState(false);
   const [name, setName] = useState(initialName);
@@ -394,25 +394,58 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     }
   };
 
-  // While vision is on and you share, Charie re-looks every 20 seconds.
+  // Watch mode: sample the shared screen locally every 3 seconds (tiny
+  // offscreen canvas, no network). A full frame goes to Charie only when
+  // the pixels actually changed, at most every 4s, plus a 30s heartbeat -
+  // so she follows the screen near-continuously without paying a model
+  // call for a static screen, and every sent frame lands in her screen
+  // memory for "what happened earlier?" questions.
   useEffect(() => {
     if (!visionOn || !sharing || !agentOn) return;
-    const look = async () => {
-      const video = localVideo.current;
-      if (!video || !video.videoWidth) return;
-      const canvas = document.createElement("canvas");
-      const w = Math.min(video.videoWidth, 960);
-      canvas.width = w;
-      canvas.height = Math.round(w * (video.videoHeight / video.videoWidth));
-      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.72), question: "What changed on this screen? Flag any error." }),
-      }).catch(() => {});
+    let stop = false;
+    let inFlight = false;
+    let lastPost = 0;
+    let prev: Uint8ClampedArray | null = null;
+    const sample = document.createElement("canvas");
+    sample.width = 32;
+    sample.height = 18;
+    const sctx = sample.getContext("2d", { willReadFrequently: true });
+    const send = async (video: HTMLVideoElement) => {
+      inFlight = true;
+      lastPost = Date.now();
+      try {
+        const canvas = document.createElement("canvas");
+        const w = Math.min(video.videoWidth, 960);
+        canvas.width = w;
+        canvas.height = Math.round(w * (video.videoHeight / video.videoWidth));
+        canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.72), question: "What changed on this screen? Flag any error.", mode: "watch" }),
+        });
+      } catch { /* next tick retries */ }
+      inFlight = false;
     };
-    const t = setInterval(look, 20000);
-    void look();
-    return () => clearInterval(t);
+    const tick = () => {
+      if (stop || inFlight) return;
+      const video = localVideo.current;
+      if (!video || !video.videoWidth || !sctx) return;
+      sctx.drawImage(video, 0, 0, 32, 18);
+      let cur: Uint8ClampedArray;
+      try { cur = sctx.getImageData(0, 0, 32, 18).data; } catch { return; }
+      let changed = prev === null;
+      if (prev) {
+        let diff = 0;
+        for (let i = 0; i < cur.length; i += 16) diff += Math.abs(cur[i] - prev[i]);
+        changed = diff / (cur.length / 16) > 7;
+      }
+      prev = cur;
+      const sincePost = Date.now() - lastPost;
+      if ((changed && sincePost >= 4000) || sincePost >= 30000) void send(video);
+    };
+    const t = setInterval(tick, 3000);
+    tick();
+    return () => { stop = true; clearInterval(t); };
   }, [visionOn, sharing, agentOn, roomId, qp]);
 
   const stopSharing = () => {
@@ -494,6 +527,16 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
             </div>
           </div>
         )}
+        {!token && savedScreenLog.length > 0 && (
+          <div className="card">
+            <div className="card-title">Screen memory ({savedScreenLog.length})</div>
+            <div className="live-lines" style={{ maxHeight: 300 }}>
+              {savedScreenLog.map((e, i) => (
+                <p key={i} className="small"><strong>{e.at.slice(11, 16)}</strong> <span className="muted">Charie saw:</span> {e.text}</p>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -522,6 +565,16 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
               ))}
             </div>
           </div>
+          {savedScreenLog.length > 0 && (
+            <div className="card">
+              <div className="card-title">Screen memory ({savedScreenLog.length})</div>
+              <div className="live-lines" style={{ maxHeight: 300 }}>
+                {savedScreenLog.map((e, i) => (
+                  <p key={i} className="small"><strong>{e.at.slice(11, 16)}</strong> <span className="muted">Charie saw:</span> {e.text}</p>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
       <div className="card">
@@ -1221,7 +1274,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           {voiceNote && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }} role="status">{voiceNote}</p>}
           <TestVoice roomId={roomId} qp={qp} onNote={setVoiceNote} />
           <MeetSwitch checked={visionOn} onChange={(v) => onVisionChange?.(v)} label="Charie can look at screens" />
-          <p className="small muted" style={{ margin: "2px 0 0" }}>{visionOn ? "Vision on: use Charie, look on any tile, and she re-checks a shared screen every 20 seconds." : "Vision off: Charie cannot see any screen until you switch this on and bring her in."}</p>
+          <p className="small muted" style={{ margin: "2px 0 0" }}>{visionOn ? "Vision on: Charie watches a shared screen continuously (she checks locally every few seconds and only sends frames that changed), remembers what she saw with timestamps, and speaks up when she spots a problem. Ask her what happened earlier and she answers from that memory. Charie, look on any tile makes her describe a frame out loud right away." : "Vision off: Charie cannot see any screen until you switch this on and bring her in."}</p>
           <AskCharie roomId={roomId} qp={qp} name={localName} />
           {pending.map((a) => (
             <div key={a.id} className="consent-card">
