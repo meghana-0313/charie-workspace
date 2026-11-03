@@ -4,7 +4,7 @@
 // data source. Absent fields stay absent here and render as Not Recorded.
 
 import { listA11yReports, listFirstRunReports, listPentestReports } from "./guardian";
-import { readFindings, readReportMd } from "./engine";
+import { readFindings, readReportMd, readRunError } from "./engine";
 import { store } from "./store";
 import type { A11yView, FirstRunView, Incident, PentestView, PortalRun } from "./types";
 
@@ -24,6 +24,7 @@ export interface ReportSummary {
 }
 
 export interface ReportDetail extends ReportSummary {
+  error?: string;
   payload: unknown;
   findings?: Array<{ id: string; title: string; severity: string; suspectedCause?: string; suggestedFix?: string; confidence?: string; reproSteps?: string[]; analysisSource?: string }>;
   reportMd?: string | null;
@@ -122,14 +123,16 @@ export async function getReportDetail(kind: string, id: string, uid?: string): P
   if (kind === "agent-run") {
     const run = await store.getRun(id).catch(() => null);
     if (!run || (uid && run.uid && run.uid !== uid)) return null;
-    const [findings, reportMd] = await Promise.all([
+    const [findings, reportMd, runError] = await Promise.all([
       readFindings(id).catch(() => null),
       readReportMd(id).catch(() => null),
+      readRunError(id).catch(() => null),
     ]);
     return {
       ...runSummary(run), payload: run,
       findings: (findings ?? []).map((f) => ({ id: f.id, title: f.title, severity: f.severity, suspectedCause: f.suspectedCause, suggestedFix: f.suggestedFix, confidence: f.confidence, reproSteps: f.reproSteps, analysisSource: f.analysisSource })),
       reportMd,
+      error: runError ?? undefined,
     };
   }
   if (kind === "incident") {

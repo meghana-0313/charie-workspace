@@ -115,6 +115,20 @@ export function parseTurnReply(raw: string): ChatTurnResult {
   }
   const readable = raw.slice(start, end + 1).match(/"text"\s*:\s*"([^"]+)"/)?.[1]?.trim();
   if (readable) return { kind: "text", text: readable.slice(0, 2000), model: "spark" };
+  // Salvage, never dead-end: a model reply with imperfect JSON still
+  // contains its answer as prose. Clean the scaffolding and return it -
+  // "I could not parse that" for a readable answer is always wrong.
+  const salvage = raw
+    .replace(/```(?:json)?/g, "")
+    .replace(/^\s*\{\s*"(?:tool|text)"\s*:\s*/i, "")
+    .replace(/"\s*,\s*"args"\s*:\s*\{[^}]*\}\s*\}?\s*$/s, "")
+    .replace(/^\s*\{\s*|\s*\}\s*$/g, "")
+    .replace(/^"|"$/g, "")
+    .trim()
+    .slice(0, 2000);
+  if (salvage.length > 2 && !/^(tool|args|text)$/i.test(salvage)) {
+    return { kind: "text", text: salvage, model: "spark" };
+  }
   return { kind: "text", text: "I could not parse that. Try asking for ticket status, filing a ticket, or starting a scan.", model: "heuristic" };
 }
 

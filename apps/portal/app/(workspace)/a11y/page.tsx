@@ -32,6 +32,7 @@ export default async function A11yPage() {
           {latest && (
             <div className="card">
               <div className="card-title">Latest scan checks</div>
+            <p className="small" style={{ margin: "0 0 8px" }}>{latest.failed === 0 ? `Good news: everything passed (${latest.passed}/${latest.checks.length}, grade ${latest.grade}).` : `${latest.failed} thing(s) to fix below - each check names what is wrong and what to change. Grade ${latest.grade}.`}</p>
               <p className="small muted"><code>{latest.targetUrl}</code> · {latest.at.slice(0, 16).replace("T", " ")}</p>
               <table>
                 <thead><tr><th>Check</th><th>Result</th><th>Evidence</th></tr></thead>

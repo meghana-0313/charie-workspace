@@ -67,7 +67,11 @@ export default async function Dashboard() {
         const maxDay = Math.max(1, ...days.map((d) => d.count));
         const sweepPts = sweeps.slice(-10).map((s, i) => `${i * 28},${64 - (s.pass ? 52 : 10)}`).join(" ");
         const doneRuns = runs.filter((r) => r.status === "done").length;
+        const failedRuns = runs.filter((r) => r.status === "failed").length;
+        const activeRuns = Math.max(0, runs.length - doneRuns - failedRuns);
         const runPct = runs.length ? Math.round((doneRuns / runs.length) * 100) : 0;
+        const failPct = runs.length ? Math.round((failedRuns / runs.length) * 100) : 0;
+        const activePct = Math.max(0, 100 - runPct - failPct);
         return (
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="row" style={{ justifyContent: "space-between" }}>
@@ -90,8 +94,8 @@ export default async function Dashboard() {
               <div>
                 <div className="section-label">Run completion</div>
                 <div className="row" style={{ flexWrap: "nowrap" }}>
-                  <span className="donut" style={{ background: `conic-gradient(#22c55e ${runPct}%, #f59e0b ${runPct}%, #f59e0b ${Math.min(100, runPct + 18)}%, var(--surface-overlay) ${Math.min(100, runPct + 18)}%)` }}><span style={{ background: "var(--surface)", borderRadius: "50%", width: 56, height: 56, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><strong>{runPct}%</strong></span></span>
-                  <span className="small muted">of runs finished.<br />{openTickets.length} ticket(s) still open.</span>
+                  <span className="donut" style={{ background: runs.length === 0 ? "var(--surface-overlay)" : `conic-gradient(#22c55e 0% ${runPct}%, #ef4444 ${runPct}% ${runPct + failPct}%, #f59e0b ${runPct + failPct}% ${runPct + failPct + activePct}%, var(--surface-overlay) ${runPct + failPct + activePct}%)` }}><span style={{ background: "var(--surface)", borderRadius: "50%", width: 56, height: 56, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><strong>{runs.length ? `${runPct}%` : "-"}</strong></span></span>
+                  <span className="small muted">{runs.length === 0 ? "No runs yet - the chart fills in as Charie works." : <><span style={{ color: "#22c55e" }}>●</span> {doneRuns} finished · <span style={{ color: "#ef4444" }}>●</span> {failedRuns} failed · <span style={{ color: "#f59e0b" }}>●</span> {activeRuns} in progress<br />{openTickets.length} ticket(s) still open.</>}</span>
                 </div>
               </div>
               <div>

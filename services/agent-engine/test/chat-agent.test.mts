@@ -26,6 +26,8 @@ const t7 = parseTurnReply('{"tool": "help"}');
 ok(t7.kind === "tool" && t7.tool === "help", "missing args default to {}");
 const t8 = parseTurnReply('{"text": "   "}');
 ok(t8.kind === "text" && (t8.text ?? "").includes("could not parse"), "blank text rejected");
+const tSalvage = parseTurnReply('The run failed because the target timed out {see logs} and nothing was filed.');
+ok(tSalvage.kind === "text" && (tSalvage.text ?? "").includes("target timed out") && !(tSalvage.text ?? "").includes("could not parse"), "prose with braces is salvaged, never a parse dead-end");
 
 // --- heuristicTurn: keyword router with the same contract ---
 ok(heuristicTurn([u("help")]).tool === "help", "help routes");

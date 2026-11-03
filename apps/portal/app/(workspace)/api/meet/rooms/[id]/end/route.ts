@@ -25,10 +25,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const live = getLive(roomId);
     await store.updateMeetRoom(roomId, {
       endedAt: new Date().toISOString(),
-      transcript: live.lines.slice(-120),
-      notes: live.notes,
-      summary: live.summary || undefined,
-      screenLog: live.visionLog.slice(-180),
+      transcript: live.lines.length > 0 ? live.lines.slice(-120) : room.transcript,
+      notes: live.notes.length > 0 ? live.notes : room.notes,
+      summary: live.summary || room.summary || undefined,
+      screenLog: live.visionLog.length > 0 ? live.visionLog.slice(-180) : room.screenLog,
     });
     await store.postMeetSignal(roomId, { from: "host", to: "*", kind: "end", payload: "" }).catch(() => null);
   }

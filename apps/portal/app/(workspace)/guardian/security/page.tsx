@@ -37,6 +37,13 @@ export default async function SecurityPage() {
         <div className="card"><EmptyState title="No scans yet" body="Run the suite to grade the deployment." /></div>
       ) : (
         <>
+          <div className="card" style={{ borderLeft: "4px solid var(--accent)" }}>
+            <p style={{ margin: 0 }}>
+              {failed.length === 0
+                ? <>Good news: the latest scan passed all {latest.checks.length} checks (grade {latest.grade}). Nothing to fix - the detail below is evidence.</>
+                : <><strong>{failed.length} of {latest.checks.length} checks are failing</strong> (grade {latest.grade}){failed.some((c) => c.severity === "critical") ? <>, including {failed.filter((c) => c.severity === "critical").length} critical</> : ""}. Start with the critical rows in Security Findings - each one names the fix.</>}
+            </p>
+          </div>
           <div className="stats" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
             <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div style={{ color: "var(--ok)", fontWeight: 800, fontSize: "var(--text-lg)" }}>{failed.length === 0 ? "Secure" : `${failed.length} failing`}</div><div className="stat-label">No critical issues</div></div></div></div>
             <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="bug" size={20} /></span><div><div className="stat-num">{latest.checks.length}</div><div className="stat-label">Total checks</div></div></div></div>
