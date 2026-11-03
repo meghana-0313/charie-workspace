@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/store";
 import { RespondForm, VerifyButton } from "@/components/guardian-forms";
@@ -21,7 +22,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
       <PageHead
         crumbs={[["/", "Home"], ["/guardian", "Incidents"], [`/guardian/${inc.id}`, inc.id]]}
         title={<><span className="icon-orb red" style={{ width: 38, height: 38 }}><Icon name="alert" size={19} /></span> {inc.title}</>}
-        sub={<>Opened {inc.createdAt.slice(0, 16).replace("T", " ")} · mode: {inc.mode} · baseline suspicious events: {inc.baselineSuspicious} <Badge tone={inc.severity}>{inc.severity}</Badge> <Badge tone={inc.status}>{inc.status}</Badge></>}
+        sub={<>Opened {inc.createdAt.slice(0, 16).replace("T", " ")} · mode: {inc.mode} · baseline suspicious events: {inc.baselineSuspicious} <Badge tone={inc.severity}>{inc.severity}</Badge> <Badge tone={inc.status}>{inc.status}</Badge></>} actions={<><Link className="btn secondary" href="/reports">All reports</Link><Link className="btn" href={`/reports/incident/${inc.id}`}>Report</Link></>}
       />
 
       <div className="card" aria-label="Incident progress">

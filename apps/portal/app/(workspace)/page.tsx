@@ -118,14 +118,14 @@ export default async function Dashboard() {
       </div>
 
       <div className="card">
-        <div className="row" style={{ justifyContent: "space-between" }}><div className="card-title" style={{ margin: 0 }}>Recent agent activity</div><Link href="/tickets" className="small">View all runs →</Link></div>
+        <div className="row" style={{ justifyContent: "space-between" }}><div className="card-title" style={{ margin: 0 }}>Recent agent activity</div><span className="row"><Link href="/reports" className="small">All reports</Link><Link href="/tickets" className="small">View all runs →</Link></span></div>
         <p className="muted small">Latest actions taken by Charie and your agents.</p>
         {runs.length === 0 ? <p className="muted small">No runs yet.</p> : (
           <div className="activity-rail">
             {runs.slice(0, 5).map((r) => (
               <div key={r.id} className="activity-node">
                 <span className={`icon-orb ${r.status === "done" ? "green" : r.status === "failed" ? "red" : "violet"}`}><Icon name={r.kind === "verify" ? "flask" : "code"} size={20} /></span>
-                <div><strong className="small">{r.kind === "verify" ? "Verification run" : "Investigation"} {r.status}</strong><br /><span className="small muted">{r.id.slice(0, 18)} · {r.targetUrl.replace(/^https?:\/\//, "").slice(0, 22)}</span><br /><span className="small muted">{when(r.createdAt)}</span></div>
+                <div><strong className="small">{r.kind === "verify" ? "Verification run" : "Investigation"} {r.status}</strong><br /><span className="small muted">{r.id.slice(0, 18)} · {r.targetUrl.replace(/^https?:\/\//, "").slice(0, 22)}</span><br /><span className="small muted">{when(r.createdAt)}</span> · <Link className="small" href={`/reports/agent-run/${r.id}`}>Report</Link></div>
               </div>
             ))}
           </div>

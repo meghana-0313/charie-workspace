@@ -103,6 +103,24 @@ export default async function SecurityPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="card">
+            <div className="card-title">Scan history ({reports.length})</div>
+            <table>
+              <thead><tr><th>Grade</th><th>Target</th><th>Passed</th><th>When</th><th></th></tr></thead>
+              <tbody>
+                {[...reports].reverse().map((r) => (
+                  <tr key={r.id}>
+                    <td><Badge>{r.grade}</Badge></td>
+                    <td className="small">{r.targets.join(", ")}</td>
+                    <td className="small">{r.passed}/{r.checks.length}</td>
+                    <td className="small muted">{r.at.slice(0, 16).replace("T", " ")}</td>
+                    <td className="small"><Link href={`/reports/pentest/${r.id}`}>Report</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </>

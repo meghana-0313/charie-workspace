@@ -16,6 +16,7 @@ export default async function FirstRunPage() {
         crumbs={[["/", "Home"], ["/firstrun", "First run"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="play" size={19} /></span> First run</>}
         sub="See your product the way a new user does: load speed, headline clarity, one clear next step, console health, mobile layout, sign in reach."
+        actions={<Link className="btn secondary" href="/reports">All reports</Link>}
       />
       {latest && (
         <div className="stats">

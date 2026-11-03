@@ -66,7 +66,7 @@ async function RoomView({ ticketId }: { ticketId: string }) {
       {runViews.map(({ runId, rec, status, findings, verification, report, briefs }) => (
         <div className="card" key={runId}>
           <div className="card-title">{rec?.kind === "verify" ? "Verification" : "Investigation"} <Badge tone={status}>{status}</Badge></div>
-          <p className="small muted"><code>{runId}</code>{rec?.baselineRunId && <> · baseline <code>{rec.baselineRunId}</code></>}</p>
+          <p className="small muted"><code>{runId}</code>{rec?.baselineRunId && <> · baseline <code>{rec.baselineRunId}</code></>} · <Link href={`/reports/agent-run/${runId}`}>Report</Link></p>
           {status === "running" && <p className="muted">Engine is driving the app… <a href="">refresh</a></p>}
           {verification != null && (
             <>

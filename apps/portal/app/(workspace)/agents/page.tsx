@@ -63,7 +63,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
         crumbs={[["/", "Home"], ["/agents", "Coding Agents"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="code" size={19} /></span> Coding Agents</>}
         sub="Run autonomous coding agents to investigate, fix, test, and ship changes."
-        actions={<Link href="/tickets?new=1" className="btn">+ New Run</Link>}
+        actions={<><Link className="btn secondary" href="/reports">All reports</Link><Link href="/tickets?new=1" className="btn">+ New Run</Link></>}
       />
       <div className="tabs">
         <span className="tab on" style={{ padding: "7px 16px" }}>Runs</span>
@@ -92,7 +92,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                     <td><span className="row" style={{ flexWrap: "nowrap" }}><span className="progress"><i style={{ width: c.run.status === "done" ? "100%" : c.run.status === "failed" ? "38%" : "64%" }} /></span><span className="small">{c.run.status === "done" ? "100%" : c.run.status === "failed" ? "38%" : "64%"}</span></span></td>
                     <td><Badge tone={c.run.status}>{c.run.status}</Badge></td>
                     <td className="small muted">{when(c.run.createdAt)}</td>
-                    <td>{c.prompt ? <CopyButton text={c.prompt} label="Copy prompt" /> : <span className="small muted">—</span>}</td>
+                    <td><span className="row" style={{ flexWrap: "nowrap" }}><Link className="small" href={`/reports/agent-run/${c.run.id}`}>Report</Link>{c.prompt ? <CopyButton text={c.prompt} label="Copy prompt" /> : null}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -129,6 +129,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
               <p className="small">{selected.run.status === "done" ? "Findings ready for your coding agent." : "Running investigation…"}</p>
               <div className="progress" style={{ marginBottom: 12 }}><i style={{ width: selected.run.status === "done" ? "100%" : "64%" }} /></div>
               <div className="row">
+                <Link href={`/reports/agent-run/${selected.run.id}`} className="btn secondary sm">Report</Link>
                 <Link href={`/tickets/${selected.run.ticketId}`} className="btn sm">Live Logs</Link>
                 {selected.prompt && <CopyButton text={selected.prompt} label="View Changes" />}
               </div>
