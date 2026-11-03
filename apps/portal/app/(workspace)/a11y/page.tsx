@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listA11yReports } from "@/lib/guardian";
 import { identity, scopeUid } from "@/lib/who";
 import { A11yRunForm } from "@/components/scans";
@@ -51,7 +52,7 @@ export default async function A11yPage() {
               <EmptyState title="No scans yet" body="Run one on the right against any public URL." />
             ) : (
               <table>
-                <thead><tr><th>Grade</th><th>Target</th><th>Passed</th><th>When</th></tr></thead>
+                <thead><tr><th>Grade</th><th>Target</th><th>Passed</th><th>When</th><th></th></tr></thead>
                 <tbody>
                   {[...reports].reverse().map((r) => (
                     <tr key={r.id}>
@@ -59,6 +60,7 @@ export default async function A11yPage() {
                       <td className="small"><code>{r.targetUrl}</code></td>
                       <td className="small">{r.passed}/{r.checks.length}</td>
                       <td className="small muted">{r.at.slice(0, 16).replace("T", " ")}</td>
+                      <td className="small"><Link href={`/reports/a11y/${r.id}`}>Report</Link></td>
                     </tr>
                   ))}
                 </tbody>

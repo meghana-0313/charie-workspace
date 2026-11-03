@@ -4,7 +4,7 @@
 // Timestamps stay ISO strings so domain types are identical across adapters.
 
 import { createHash } from "node:crypto";
-import { getFirestore } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import type { ApiKey, Approval, ChatThread, Connector, ContextDoc, GithubToken, GuardEventView, Incident, MeetCheckin, MeetRoom, MeetSignal, PortalRun, PushSubscription, RepoBuild, RepoConnection, Room, RoomMessage, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
 import { adminApp } from "./firebase";
 import { uid } from "./uid";
@@ -30,6 +30,15 @@ export function clean<T>(value: T): T {
     ) as T;
   }
   return value;
+}
+
+/** Build a Firestore update: undefined patch values become field deletes. */
+export function firestorePatch(patch: Record<string, unknown>, updatedAt: string): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...(clean({ ...patch }) as Record<string, unknown>), updatedAt };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) out[k] = FieldValue.delete();
+  }
+  return out;
 }
 
 /** Push endpoints are URLs - hash them into safe doc ids. */
@@ -212,7 +221,11 @@ export const firestoreStore = {
     return d.exists ? (d.data() as MeetRoom) : null;
   },
   async updateMeetRoom(id: string, patch: Partial<MeetRoom>): Promise<void> {
-    await firestore().collection("meet_rooms").doc(id).update(clean({ ...patch, updatedAt: now() })).catch(() => {});
+    // A patch key set to undefined means "delete this field" (e.g. clearing
+    // endedAt on reopen). clean() would strip it and silently keep the old
+    // value, so translate it to FieldValue.delete() first. Errors propagate:
+    // a failed update must never look like success.
+    await firestore().collection("meet_rooms").doc(id).update(firestorePatch(patch, now()));
   },
   async createMeetRoom(input: { title: string; createdBy: string; uid?: string }): Promise<MeetRoom> {
     const room: MeetRoom = { ...input, id: uid("meet"), seq: 0, createdAt: now(), updatedAt: now() };

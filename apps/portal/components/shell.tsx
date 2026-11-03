@@ -16,6 +16,7 @@ const SECTIONS: Array<[string, NavLink[]]> = [
   ["START HERE", [
     ["/", "Overview", "home"],
     ["/tickets", "Tickets & Fixes", "ticket"],
+    ["/reports", "Reports", "order"],
     ["/chat", "Chat with Charie", "chat"],
     ["/guardian/zoom", "Meet", "video"],
   ]],

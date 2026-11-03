@@ -68,6 +68,7 @@ interface Peer {
 
 export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", transcribeOk = true, initialEnded = false, savedTranscript = [], savedNotes = [], savedSummary = "" }: { roomId: string; roomTitle: string; token?: string; initialName?: string; transcribeOk?: boolean; initialEnded?: boolean; savedTranscript?: Array<{ speaker: string; role: string; text: string; at: string }>; savedNotes?: string[]; savedSummary?: string }) {
   const [spotlight, setSpotlight] = useState<string | null>(null);
+  const [visionOn, setVisionOn] = useState(false);
   const [name, setName] = useState(initialName);
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
   const sq = (since: number) => (token ? `?token=${encodeURIComponent(token)}&since=${since}` : `?since=${since}`);
@@ -388,6 +389,35 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     }
   };
 
+  // While vision is on and you share, Charie re-looks every 20 seconds.
+  useEffect(() => {
+    if (!visionOn || !sharing || !agentOn) return;
+    const look = async () => {
+      const video = localVideo.current;
+      if (!video || !video.videoWidth) return;
+      const canvas = document.createElement("canvas");
+      const w = Math.min(video.videoWidth, 960);
+      canvas.width = w;
+      canvas.height = Math.round(w * (video.videoHeight / video.videoWidth));
+      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      await fetch(`/api/meet/rooms/${roomId}/vision${qp}`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ image: canvas.toDataURL("image/jpeg", 0.72), question: "What changed on this screen? Flag any error." }),
+      }).catch(() => {});
+    };
+    const t = setInterval(look, 20000);
+    void look();
+    return () => clearInterval(t);
+  }, [visionOn, sharing, agentOn, roomId, qp]);
+
+  const stopSharing = () => {
+    screenRef.current?.getTracks().forEach((t) => t.stop());
+    screenRef.current = null;
+    if (localVideo.current && streamRef.current) localVideo.current.srcObject = streamRef.current;
+    setSharing(false);
+    if (spotlight === "local") setSpotlight(null);
+  };
+
   const shareScreen = async () => {
     if (sharing) return;
     try {
@@ -413,8 +443,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         if (localVideo.current && streamRef.current) localVideo.current.srcObject = streamRef.current;
         setSharing(false);
       };
-    } catch {
-      /* user cancelled */
+    } catch (e) {
+      setError(`Screen share failed: ${(e as Error).name === "NotAllowedError" ? "permission denied. Allow screen sharing and try again." : "could not start. Try again."}`);
     }
   };
 
@@ -503,10 +533,10 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
               </div>
             ) : <video ref={localVideo} autoPlay playsInline muted />}
             <span className="meet-name">{nameRef.current} (you, {token ? "customer" : "teammate"}){muted ? " · muted" : ""}{sharing ? " · sharing screen" : ""}</span>
-            <span style={{ position: "absolute", right: 8, bottom: 8 }}><button type="button" className="secondary sm" onClick={() => setSpotlight((cur) => (cur === "local" ? null : "local"))} aria-pressed={spotlight === "local"}>{spotlight === "local" ? "Exit stage" : "Stage"}</button></span>
+            <span className="row" style={{ position: "absolute", right: 8, bottom: 8, gap: 6 }}><LookButton roomId={roomId} qp={qp} getVideo={() => localVideo.current} disabledReason={!visionOn ? "Vision off (Charie tab)" : !agentOn ? "Bring Charie in first" : undefined} /><button type="button" className="secondary sm" onClick={() => setSpotlight((cur) => (cur === "local" ? null : "local"))} aria-pressed={spotlight === "local"}>{spotlight === "local" ? "Exit stage" : "Stage"}</button></span>
           </div>
           {tiles.map((p) => (
-            <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} roomId={roomId} qp={qp} spot={spotlight === p.id} onSpot={() => setSpotlight((cur) => (cur === p.id ? null : p.id))} />
+            <PeerTile key={p.id} peer={p} onRemove={() => closePeer(p.id)} roomId={roomId} qp={qp} spot={spotlight === p.id} onSpot={() => setSpotlight((cur) => (cur === p.id ? null : p.id))} visionOn={visionOn} agentOn={agentOn} />
           ))}
           {agentOn && (
             <div className="meet-tile" style={{ background: "radial-gradient(120% 120% at 50% 0%, #0b2e2a 0%, #071417 70%)", borderColor: "rgba(110,231,216,.45)" }}>
@@ -522,7 +552,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         <div className="meet-controls">
           <button type="button" className={`meet-ctrl${muted ? " off" : ""}`} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={toggleMute}><span className="meet-ctrl-dot"><Icon name={muted ? "mic-off" : "mic"} size={20} /></span>{muted ? "Unmute" : "Mute"}</button>
           <button type="button" className={`meet-ctrl${camOff ? " off" : ""}`} aria-pressed={camOff} aria-label={camOff ? "Turn camera on" : "Turn camera off"} title={camOff ? "Camera on" : "Camera off"} onClick={toggleCam}><span className="meet-ctrl-dot"><Icon name={camOff ? "video-off" : "video"} size={20} /></span>{camOff ? "Camera on" : "Camera off"}</button>
-          <button type="button" className="meet-ctrl" aria-label="Share screen" title="Share screen" onClick={shareScreen} disabled={sharing}><span className="meet-ctrl-dot"><Icon name="screen" size={20} /></span>{sharing ? "Sharing" : "Share"}</button>
+          <button type="button" className="meet-ctrl" aria-label={sharing ? "Stop sharing" : "Share screen"} title={sharing ? "Stop sharing" : "Share screen"} onClick={sharing ? stopSharing : shareScreen}><span className="meet-ctrl-dot"><Icon name="screen" size={20} /></span>{sharing ? "Stop" : "Share"}</button>
           {!token && <InviteButton roomId={roomId} />}
           <button type="button" className="meet-ctrl leave" aria-label="Leave call" title="Leave call" onClick={leave}><span className="meet-ctrl-dot"><Icon name="phone" size={20} /></span>Leave</button>
           {!token && <button type="button" className="danger" onClick={endForEveryone} disabled={ending}>{ending ? "Ending…" : "End for everyone"}</button>}
@@ -537,6 +567,8 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           canManage={!token}
           transcribe={transcribeOk}
           localName={nameRef.current || name}
+          visionOn={visionOn}
+          onVisionChange={setVisionOn}
           onAgentChange={setAgentOn}
           onAgentSpeak={setAgentSpeaking}
           onRequestShare={() => { void shareScreen().catch(() => {}); }}
@@ -558,8 +590,9 @@ export function ReopenButton({ roomId }: { roomId: string }) {
           setError("");
           const res = await fetch(`/api/meet/rooms/${roomId}/reopen`, { method: "POST" }).catch(() => null);
           if (res?.ok) { location.reload(); return; }
+          const j = (await res?.json().catch(() => ({}))) as { error?: string };
           setBusy(false);
-          setError("Only the host can re-open this room.");
+          setError(j.error ?? "Could not re-open this room. Try again.");
         }}
       >
         {busy ? "Re-opening…" : "Re-open room"}
@@ -570,7 +603,7 @@ export function ReopenButton({ roomId }: { roomId: string }) {
 }
 
 /** Capture one frame of a tile and ask Charie to describe it aloud. */
-export function LookButton({ roomId, qp, getVideo, label = "Charie, look" }: { roomId: string; qp: string; getVideo: () => HTMLVideoElement | null; label?: string }) {
+export function LookButton({ roomId, qp, getVideo, label = "Charie, look", disabledReason }: { roomId: string; qp: string; getVideo: () => HTMLVideoElement | null; label?: string; disabledReason?: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   async function look() {
@@ -595,13 +628,14 @@ export function LookButton({ roomId, qp, getVideo, label = "Charie, look" }: { r
   }
   return (
     <span className="row" style={{ gap: 6 }}>
-      <button type="button" className="secondary sm" onClick={look} disabled={busy}>{busy ? "Looking…" : label}</button>
+      <button type="button" className="secondary sm" onClick={look} disabled={busy || Boolean(disabledReason)} title={disabledReason ?? label}>{busy ? "Looking…" : label}</button>
+      {disabledReason && <span className="small muted">{disabledReason}</span>}
       {err && <span className="small" style={{ color: "var(--danger)" }}>{err}</span>}
     </span>
   );
 }
 
-function PeerTile({ peer, onRemove, roomId, qp, spot, onSpot }: { peer: Peer; onRemove: () => void; roomId: string; qp: string; spot?: boolean; onSpot?: () => void }) {
+function PeerTile({ peer, onRemove, roomId, qp, spot, onSpot, visionOn, agentOn }: { peer: Peer; onRemove: () => void; roomId: string; qp: string; spot?: boolean; onSpot?: () => void; visionOn?: boolean; agentOn?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
@@ -628,7 +662,7 @@ function PeerTile({ peer, onRemove, roomId, qp, spot, onSpot }: { peer: Peer; on
         <div className="meet-wait">Connecting…</div>
       )}
       <span className="meet-name">{peer.name} {peer.role === "guest" ? "(customer)" : "(teammate)"}</span>
-      {peer.stream && <span className="row" style={{ position: "absolute", right: 8, bottom: 8, gap: 6 }}><LookButton roomId={roomId} qp={qp} getVideo={() => ref.current} /><button type="button" className="secondary sm" onClick={onSpot} aria-pressed={spot}>{spot ? "Exit stage" : "Stage"}</button></span>}
+      {peer.stream && <span className="row" style={{ position: "absolute", right: 8, bottom: 8, gap: 6 }}><LookButton roomId={roomId} qp={qp} getVideo={() => ref.current} disabledReason={!visionOn ? "Vision off (Charie tab)" : !agentOn ? "Bring Charie in first" : undefined} /><button type="button" className="secondary sm" onClick={onSpot} aria-pressed={spot}>{spot ? "Exit stage" : "Stage"}</button></span>}
     </div>
   );
 }
@@ -728,6 +762,36 @@ export function MeetSwitch({ checked, onChange, label, disabled }: { checked: bo
   );
 }
 
+/** One-click voice check, run inside the click gesture so audio can play. */
+export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; onNote: (m: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function test() {
+    if (busy) return;
+    setBusy(true);
+    const started = Date.now();
+    try {
+      const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: "Hi, this is Charie. If you can hear me, my voice is working." }),
+      });
+      if (!res.ok) { onNote(`Voice test failed: the voice service answered ${res.status}. Check CHARIE_TTS_URL and the Modal deployment, then retry.`); setBusy(false); return; }
+      const blob = await res.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      await audio.play();
+      onNote(`Voice test played in ${Math.round(Date.now() - started)}ms. If you heard nothing, check your output device and volume.`);
+    } catch {
+      onNote("Voice test failed: the voice service is unreachable. Check CHARIE_TTS_URL, then retry.");
+    }
+    setBusy(false);
+  }
+  return (
+    <div className="row" style={{ marginTop: 6 }}>
+      <button type="button" className="secondary sm" onClick={test} disabled={busy}>{busy ? "Testing…" : "Test voice"}</button>
+      <span className="small muted">Hearing this means playback works.</span>
+    </div>
+  );
+}
+
 /** Type to Charie in a call, exactly like sending her a chat message. */
 export function AskCharie({ roomId, qp, name }: { roomId: string; qp: string; name: string }) {
   const [text, setText] = useState("");
@@ -759,9 +823,10 @@ export function AskCharie({ roomId, qp, name }: { roomId: string; qp: string; na
 
 /** War-room side panel: Transcript | Charie (thinking + consent cards) |
  *  Notes & Actions. Charie only acts after a human approves a card. */
-export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare }: {
+export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange }: {
   roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string;
   onAgentChange?: (on: boolean) => void; onAgentSpeak?: (speaking: boolean) => void; onRequestShare?: () => void;
+  visionOn?: boolean; onVisionChange?: (v: boolean) => void;
 }) {
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
   const [tab, setTab] = useState<"transcript" | "charie" | "notes">("transcript");
@@ -800,7 +865,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         if (liveRes.ok) {
           const j = (await liveRes.json()) as { enabled?: boolean; lines?: LiveLineView[]; notes?: string[]; summary?: string };
           setEnabled(j.enabled === true);
-          setLines(j.lines ?? []);
+          setLines((prev) => (JSON.stringify(prev) === JSON.stringify(j.lines ?? []) ? prev : (j.lines ?? [])));
           setNotes(j.notes ?? []);
           setSummary(j.summary ?? "");
         }
@@ -835,21 +900,30 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     return () => window.removeEventListener("pointerdown", unlock);
   }, []);
 
-  // Charie speaks her transcript lines aloud when voice is on.
+  const speakingRef = useRef(false);
+  const [speakTick, setSpeakTick] = useState(0);
+  const lastFailedRef = useRef("");
+
+  // Charie speaks her transcript lines aloud when voice is on. One line at
+  // a time, in order. Poll re-renders never cancel playback: a line is only
+  // marked spoken once, when its playback actually starts.
   useEffect(() => {
+    if (!voiceRef.current || speakingRef.current) return;
     const agentLines = lines.filter((l) => l.role === "agent");
     if (agentLines.length < spokenRef.current) spokenRef.current = agentLines.length;
-    if (!voiceRef.current || agentLines.length <= spokenRef.current) return;
-    const fresh = agentLines.slice(spokenRef.current);
-    spokenRef.current = agentLines.length;
-    const latest = fresh[fresh.length - 1];
-    if (!latest) return;
-    const text = speakableText(latest.text);
-    if (!text) return;
-    let cancelled = false;
-    const stopSpeaking = () => onAgentSpeakRef.current?.(false);
+    const next = agentLines[spokenRef.current];
+    if (!next) return;
+    const text = speakableText(next.text);
+    spokenRef.current += 1;
+    if (!text) { setSpeakTick((n) => n + 1); return; }
+    speakingRef.current = true;
+    onAgentSpeakRef.current?.(true);
+    const done = () => {
+      speakingRef.current = false;
+      onAgentSpeakRef.current?.(false);
+      setSpeakTick((n) => n + 1);
+    };
     const browserFallback = () => {
-      if (cancelled) return;
       try {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
@@ -857,36 +931,43 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         u.voice = voices.find((v) => /male|david|daniel|george|michael/i.test(v.name) && v.lang.startsWith("en")) ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
         u.pitch = 0.92;
         u.rate = 1.02;
-        u.onstart = () => onAgentSpeakRef.current?.(true);
-        u.onend = stopSpeaking;
-        u.onerror = stopSpeaking;
+        u.onend = done;
+        u.onerror = () => { lastFailedRef.current = text; setVoiceNote("Browser voice failed too. Use Test voice below to see the exact error."); done(); };
         window.speechSynthesis.speak(u);
-      } catch { /* speech unavailable */ }
+      } catch {
+        lastFailedRef.current = text;
+        setVoiceNote("No voice could play. Use Test voice below to see the exact error.");
+        done();
+      }
     };
     (async () => {
       try {
-        audioRef.current?.pause();
-        try { window.speechSynthesis.cancel(); } catch { /* noop */ }
         const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ text }),
         });
-        if (!res.ok) { setVoiceNote("Human voice service is not answering, using the browser voice. Check CHARIE_TTS_URL and the Modal deployment."); return browserFallback(); }
+        if (!res.ok) {
+          setVoiceNote(`Human voice service answered ${res.status}, using the browser voice. Check CHARIE_TTS_URL and the Modal deployment, or press Test voice.`);
+          browserFallback();
+          return;
+        }
         const blob = await res.blob();
-        if (cancelled) return;
         const audio = new Audio(URL.createObjectURL(blob));
         audioRef.current = audio;
-        audio.onplay = () => onAgentSpeakRef.current?.(true);
-        audio.onended = stopSpeaking;
-        audio.onerror = browserFallback;
+        audio.onended = done;
+        audio.onerror = () => { setVoiceNote("Audio file could not play, using the browser voice."); browserFallback(); };
         setVoiceNote("");
-        await audio.play().catch(() => { setVoiceNote("Audio was blocked until you click once in the room. Click anywhere, then ask Charie again."); browserFallback(); });
+        await audio.play().catch(() => {
+          lastFailedRef.current = text;
+          setVoiceNote("Audio was blocked. Click anywhere in the room once, then press Test voice.");
+          browserFallback();
+        });
       } catch {
+        setVoiceNote("Human voice service unreachable, using the browser voice.");
         browserFallback();
       }
     })();
-    return () => { cancelled = true; };
-  }, [lines]);
+  }, [lines, speakTick, voice, roomId, qp]);
 
   useEffect(() => {
     if (!transcribe || !enabled || !supported) return;
@@ -1058,6 +1139,9 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           <p className="small muted">She can watch a shared screen (use Charie, look on a tile) and tell you where to click. Browsers cannot give any web app control of your mouse or keyboard, so she guides you instead - and when the product itself needs driving, Investigate lets her drive it in her own browser.</p>
           <MeetSwitch checked={voice} onChange={(v) => { setVoice(v); if (!v) { try { window.speechSynthesis.cancel(); } catch { /* noop */ } audioRef.current?.pause(); onAgentSpeakRef.current?.(false); } }} label="Charie speaks aloud" />
           {voiceNote && <p className="small" style={{ color: "var(--warn)", margin: "4px 0 0" }} role="status">{voiceNote}</p>}
+          <TestVoice roomId={roomId} qp={qp} onNote={setVoiceNote} />
+          <MeetSwitch checked={visionOn} onChange={(v) => onVisionChange?.(v)} label="Charie can look at screens" />
+          <p className="small muted" style={{ margin: "2px 0 0" }}>{visionOn ? "Vision on: use Charie, look on any tile, and she re-checks a shared screen every 20 seconds." : "Vision off: Charie cannot see any screen until you switch this on and bring her in."}</p>
           <AskCharie roomId={roomId} qp={qp} name={localName} />
           {pending.map((a) => (
             <div key={a.id} className="consent-card">

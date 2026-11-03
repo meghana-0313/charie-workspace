@@ -234,7 +234,7 @@ export function createApp(opts: ServerOpts): RequestListener {
         }
 
         if (req.method === "POST" && url.pathname === "/chat/turn") {
-          let body: { history?: Array<{ role?: string; content?: string }>; snapshot?: unknown; contextNotes?: string[] };
+          let body: { history?: Array<{ role?: string; content?: string }>; snapshot?: unknown; contextNotes?: string[]; model?: string; effort?: string };
           try {
             body = JSON.parse(await readBody(req)) as typeof body;
           } catch {
@@ -250,7 +250,11 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 400, { error: "history with at least one turn required" });
             return;
           }
-          const out = await chatTurn({ history: clean, snapshot: body.snapshot, contextNotes: body.contextNotes });
+          const out = await chatTurn({
+            history: clean, snapshot: body.snapshot, contextNotes: body.contextNotes,
+            model: (["auto", "baseten", "meta", "heuristic"].includes(body.model ?? "") ? body.model : "auto") as never,
+            effort: (["low", "medium", "high"].includes(body.effort ?? "") ? body.effort : "medium") as never,
+          });
           send(res, 200, out);
           return;
         }
