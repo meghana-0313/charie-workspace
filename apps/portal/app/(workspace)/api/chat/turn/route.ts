@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
 import { answerMessage, type LoopTurn } from "@/lib/charie-chat";
 import { transcribeNote } from "@/lib/engine";
+import { getReportDetail } from "@/lib/reports";
 import { identity, scopeUid } from "@/lib/who";
 import type { ChatAttachment } from "@/lib/types";
 
@@ -59,6 +60,19 @@ export async function POST(req: Request) {
       notes.push(`[video attached: ${a.name} at ${a.url}]`);
     } else {
       notes.push(`[file attached: ${a.name} at ${a.url}]`);
+    }
+  }
+  // A pasted report link carries the report itself: resolve it server-side
+  // so Charie answers from the real record, not from a guessed URL.
+  const reportRef = clean.match(/\/reports\/(pentest|a11y|firstrun|agent-run|incident)\/([A-Za-z0-9_-]+)/);
+  if (reportRef) {
+    const detail = await getReportDetail(reportRef[1], reportRef[2], mine).catch(() => null);
+    if (detail) {
+      const payloadChecks = ((detail.payload as { checks?: Array<{ name: string; pass: boolean; evidence: string; severity?: string }> } | null)?.checks ?? []).filter((c) => !c.pass).slice(0, 8).map((c) => `${c.name} [${c.severity ?? "info"}]: ${c.evidence}`).join("\n");
+      const findings = [...(detail.findings ?? []).slice(0, 8).map((f) => `${f.title} [${f.severity}]: ${f.suspectedCause ?? ""} Fix: ${f.suggestedFix ?? ""}`), ...(payloadChecks ? [`Failed checks:\n${payloadChecks}`] : [])].join("\n");
+      notes.push(`[report context: ${detail.kindLabel} "${detail.title}" at ${detail.at}, target ${detail.target}, status ${detail.status}, result ${detail.result}${findings ? `\nFindings:\n${findings}` : ""}${detail.reportMd ? `\nReport excerpt:\n${detail.reportMd.slice(0, 1500)}` : ""}]`);
+    } else {
+      notes.push("[report context: that report link did not resolve for this account; say so honestly instead of guessing its contents]");
     }
   }
   const forModel = [clean, ...notes].filter(Boolean).join("\n");

@@ -78,9 +78,9 @@ function Attachments({ items }: { items: ChatAttachment[] }) {
   );
 }
 
-export function ChatPanel({ threadId, initial }: { threadId: string | null; initial: ChatMsg[] }) {
+export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: string | null; initial: ChatMsg[]; initialInput?: string }) {
   const [msgs, setMsgs] = useState<ChatMsg[]>(initial);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput);
   const [busy, setBusy] = useState(false);
   const [tid, setTid] = useState<string | null>(threadId);
   const [pending, setPending] = useState<ChatAttachment[]>([]);
@@ -323,6 +323,7 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
             }}
             placeholder="Message Charie… (Enter to send, Shift+Enter for a new line)"
             aria-label="Chat message"
+            autoFocus={Boolean(initialInput)}
             disabled={busy}
             rows={2}
           />

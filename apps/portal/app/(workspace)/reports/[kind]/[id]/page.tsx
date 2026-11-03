@@ -7,9 +7,9 @@ const NR = "Not Recorded";
 
 function Row({ k, v }: { k: string; v?: string | number | null }) {
   return (
-    <p className="small row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+    <p className="small" style={{ display: "grid", gridTemplateColumns: "170px 1fr", gap: "var(--space-3)", margin: "6px 0", alignItems: "baseline" }}>
       <span className="muted">{k}</span>
-      <strong style={{ textAlign: "right" }}>{v === undefined || v === null || v === "" ? NR : v}</strong>
+      <strong>{v === undefined || v === null || v === "" ? NR : v}</strong>
     </p>
   );
 }
@@ -32,7 +32,10 @@ export default async function ReportPage({ params }: { params: Promise<{ kind: s
 
   return (
     <div>
-      <p className="small"><Link href="/reports">← All reports</Link></p>
+      <p className="small row" style={{ justifyContent: "space-between" }}>
+        <Link href="/reports">← All reports</Link>
+        <Link className="btn sm" href={`/chat?ask=${encodeURIComponent(`I have a question about this report: /reports/${report.kind}/${report.id} (${report.title}). `)}`}>Ask Charie about this report</Link>
+      </p>
       <div className="page-head">
         <h1>{report.title}</h1>
         <p className="page-sub">{report.kindLabel} · {report.at.slice(0, 16).replace("T", " ")} · <span className="mono">{report.id}</span></p>
