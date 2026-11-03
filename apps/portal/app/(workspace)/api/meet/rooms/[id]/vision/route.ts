@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
   if (!(await allowed(req, roomId))) return NextResponse.json({ error: "login or invite required" }, { status: 401 });
   if (!getAgent(roomId).enabled) return NextResponse.json({ error: "Bring Charie in first" }, { status: 400 });
-  const { image, question, mode, capturedAt } = (await req.json().catch(() => ({}))) as { image?: string; question?: string; mode?: string; capturedAt?: string };
+  const { image, question, mode, capturedAt, fast } = (await req.json().catch(() => ({}))) as { image?: string; question?: string; mode?: string; capturedAt?: string; fast?: boolean };
   const img = String(image ?? "");
   if (!img.startsWith("data:image/") || img.length > 2_000_000) {
     return NextResponse.json({ error: "image frame required (max 2MB)" }, { status: 400 });
@@ -35,10 +35,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const res = await fetch(`${base}/vision/describe`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ image: img, question: String(question ?? "What do you see on this screen?").slice(0, 300) }),
+      body: JSON.stringify({ image: img, question: String(question ?? "What do you see on this screen?").slice(0, 300), fast: fast === true }),
       signal: AbortSignal.timeout(45000),
     });
-    const j = (await res.json().catch(() => ({}))) as { text?: string; model?: string; error?: string };
+    const j = (await res.json().catch(() => ({}))) as { text?: string; model?: string; error?: string; ms?: number };
     if (!res.ok || !j.text) return NextResponse.json({ error: j.error ?? "vision unavailable" }, { status: 503 });
     recordVision(roomId, j.text, j.model, typeof capturedAt === "string" ? capturedAt : undefined);
     // Watch mode: remember silently; only speak up when the frame shows a
@@ -46,7 +46,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const isProblem = /(error|fail|blocked|broken|crash|denied|invalid|warning|exception)/i.test(j.text);
     const shouldSpeak = mode !== "watch" || (isProblem && claimVisionSpeech(roomId, j.text));
     if (shouldSpeak) speak(roomId, j.text);
-    return NextResponse.json({ text: j.text, model: j.model ?? "vision", spoke: shouldSpeak });
+    return NextResponse.json({ text: j.text, model: j.model ?? "vision", spoke: shouldSpeak, ms: j.ms });
   } catch {
     return NextResponse.json({ error: "vision unreachable" }, { status: 503 });
   }
