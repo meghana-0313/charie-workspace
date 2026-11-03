@@ -792,6 +792,27 @@ export function MeetSwitch({ checked, onChange, label, disabled }: { checked: bo
   );
 }
 
+// One shared request per (room, line): the warmup, the voice test, and the
+// in-call speaker all await the SAME promise, so a cold voice service is
+// only ever paid once and never raced by duplicate requests.
+const ttsInflight = new Map<string, Promise<Blob>>();
+function fetchTts(roomId: string, qp: string, text: string): Promise<Blob> {
+  const key = `${roomId}|${text}`;
+  const existing = ttsInflight.get(key);
+  if (existing) return existing;
+  const p = (async () => {
+    const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error(`voice ${res.status}`);
+    return res.blob();
+  })();
+  ttsInflight.set(key, p);
+  p.catch(() => ttsInflight.delete(key));
+  return p;
+}
+
 /** One-click voice check, run inside the click gesture so audio can play. */
 export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; onNote: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
@@ -801,22 +822,22 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
   useEffect(() => {
     if (warmed.current) return;
     warmed.current = true;
-    fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: "Hi, this is Charie." }),
-    }).catch(() => {});
+    void fetchTts(roomId, qp, "Hi, this is Charie.").catch(() => {});
   }, [roomId, qp]);
   async function test() {
     if (busy) return;
     setBusy(true);
     const started = Date.now();
     try {
-      const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: "Hi, this is Charie." }),
-      });
-      if (!res.ok) { onNote(`Voice test failed: the voice service answered ${res.status}. Check CHARIE_TTS_URL and the Modal deployment, then retry.`); setBusy(false); return; }
-      const blob = await res.blob();
+      let blob: Blob;
+      try {
+        blob = await fetchTts(roomId, qp, "Hi, this is Charie.");
+      } catch (e) {
+        onNote(`Voice test failed: the voice service answered ${(e as Error).message.replace("voice ", "")}. Check CHARIE_TTS_URL and the Modal deployment, then retry.`);
+        setBusy(false);
+        return;
+      }
+      const readyMs = Date.now() - started;
       if (blob.size < 100) { onNote("Voice test failed: the voice service returned an empty audio file."); setBusy(false); return; }
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -828,7 +849,9 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
         audio.play().catch(() => { clearTimeout(timer); resolve(false); });
       });
       URL.revokeObjectURL(url);
-      if (played) onNote(`Voice test OK: Charie's voice played end to end in ${Math.round(Date.now() - started)}ms. She will sound like this in the call.`);
+      if (played) onNote(readyMs > 4000
+        ? `Voice test OK, but the voice service took ${Math.round(readyMs / 1000)}s to answer - that is a cold start on the Modal TTS side, not your browser. It stays warm while the call is open; if every first line is this slow, keep one container warm in Modal.`
+        : `Voice test OK: voice ready in ${readyMs}ms and played end to end. She will sound like this in the call.`);
       else onNote("Voice test failed: audio could not play in this browser. Click once anywhere, check your output device and volume, then retry.");
     } catch {
       onNote("Voice test failed: the voice service is unreachable. Check CHARIE_TTS_URL, then retry.");
@@ -903,6 +926,11 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   onAgentChangeRef.current = onAgentChange;
   const onAgentSpeakRef = useRef(onAgentSpeak);
   onAgentSpeakRef.current = onAgentSpeak;
+
+  // Warm Charie's voice on panel load, long before anyone tests it.
+  useEffect(() => {
+    void fetchTts(roomId, qp, "Hi, this is Charie.").catch(() => {});
+  }, [roomId, qp]);
 
   useEffect(() => {
     let stop = false;
@@ -996,16 +1024,14 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     };
     (async () => {
       try {
-        const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
-          method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        if (!res.ok) {
-          setVoiceNote(`Human voice service answered ${res.status}, using the browser voice. Check CHARIE_TTS_URL and the Modal deployment, or press Test voice.`);
+        let blob: Blob;
+        try {
+          blob = await fetchTts(roomId, qp, text);
+        } catch (e) {
+          setVoiceNote(`Human voice service answered ${(e as Error).message.replace("voice ", "")}, using the browser voice for this line.`);
           browserFallback();
           return;
         }
-        const blob = await res.blob();
         const audio = new Audio(URL.createObjectURL(blob));
         audioRef.current = audio;
         audio.onended = done;
