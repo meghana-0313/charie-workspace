@@ -15,7 +15,7 @@ import {
   addAction, addThought, getAgent, getLive, setAgentEnabled, speak, updateAction,
   type AgentAction, type LiveLine,
 } from "./livecall";
-import { charieShouldReply, isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply } from "./room-status";
+import { charieShouldReply, isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, shortVisionConfirm } from "./room-status";
 import { getVision, getVisionLog } from "./livecall";
 import { answerMessage } from "./charie-chat";
 
@@ -87,7 +87,13 @@ export async function onLiveLine(roomId: string, line: LiveLine) {
   if (isScreenSeeQuestion(line.text)) {
     const vision = getVision(roomId);
     addThought(roomId, vision ? `Screen question from ${line.speaker}: answering from the last captured frame (${vision.at}).` : `Screen question from ${line.speaker}: no frame captured yet, saying so honestly.`);
-    speak(roomId, screenVisionReply(vision?.text ?? null, vision?.at ?? null, new Date().toISOString()));
+    // If she JUST described this frame aloud (Look/watch), do not re-read
+    // it verbatim - a short confirmation is what a human would say.
+    const lastAgent = [...getLive(roomId).lines].reverse().find((l) => l.role === "agent");
+    const justDescribed = Boolean(vision && lastAgent && (
+      lastAgent.text.includes(vision.text.slice(0, 50)) || vision.text.includes(lastAgent.text.slice(0, 50))
+    ) && Date.now() - new Date(lastAgent!.at).getTime() < 180000);
+    speak(roomId, justDescribed && vision ? shortVisionConfirm(vision.text) : screenVisionReply(vision?.text ?? null, vision?.at ?? null, new Date().toISOString()));
     return;
   }
   if (charieShouldReply(line.text)) {
