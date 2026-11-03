@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { checkInvite } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { identity } from "@/lib/who";
-import { getAgent, speak } from "@/lib/livecall";
+import { getAgent, recordVision, speak } from "@/lib/livecall";
 
 // Charie watches a shared screen: one captured frame goes to the engine
 // vision endpoint, the spoken description lands in the transcript as a
@@ -40,6 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     const j = (await res.json().catch(() => ({}))) as { text?: string; model?: string; error?: string };
     if (!res.ok || !j.text) return NextResponse.json({ error: j.error ?? "vision unavailable" }, { status: 503 });
+    recordVision(roomId, j.text);
     speak(roomId, j.text);
     return NextResponse.json({ text: j.text, model: j.model ?? "vision" });
   } catch {

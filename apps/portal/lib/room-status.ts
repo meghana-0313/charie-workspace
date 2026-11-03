@@ -32,6 +32,25 @@ export function speakableText(text: string): string {
     .slice(0, 300);
 }
 
+/** A participant is asking whether Charie can see their screen. These get a
+ *  deterministic answer from real vision state, never a model guess. */
+export function isScreenSeeQuestion(text: string): boolean {
+  const t = text.toLowerCase();
+  return /(can|could|do|did) you (not )?(see|watch|look)|see (my|the|this) screen|see it now|what (are|do) you (see|looking)|looking at/.test(t);
+}
+
+/**
+ * The only honest screen answers. `visionText` is the last frame Charie
+ * actually captured (Charie, look / vision re-check); null means she has
+ * never seen a frame in this room and must say so.
+ */
+export function screenVisionReply(visionText: string | null): string {
+  if (visionText) {
+    return `I can see the last frame shared with me: ${visionText.slice(0, 220)} If it changed, share again and press Charie, look and I will check the new frame.`;
+  }
+  return "I can't see your screen live yet. I only see a frame when you share your screen, turn on Charie can look at screens in the Charie tab, and press Charie, look. Share now and I will take a look.";
+}
+
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

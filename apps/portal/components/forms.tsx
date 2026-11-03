@@ -94,25 +94,35 @@ export function NewTicketForm({ defaultTarget = "", onSuccess }: { defaultTarget
 
 export function RunButtons({ ticketId, roomId, targetUrl, goal, baselineRunId }: { ticketId: string; roomId: string; targetUrl: string; goal: string; baselineRunId?: string }) {
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const ready = Boolean(targetUrl?.trim() && goal?.trim());
   async function start(kind: "investigate" | "verify") {
+    if (!ready) { setMsg("Not started: this ticket still needs a target URL and a goal. Add both above, then run."); return; }
     setBusy(true);
+    setMsg(kind === "verify" ? "Starting verification against the baseline run. Charie re-drives the app and compares evidence here." : "Starting: Charie drives the target app in a real browser, collects screenshots and repro steps, and reports findings in this room. One run at a time.");
     const r = await post("/api/runs", { ticketId, roomId, kind, targetUrl, goal, baselineRunId });
     setBusy(false);
     if (!r.ok) {
-      alert(`Run failed: ${String(r.error ?? "unknown")}`);
+      const err = String(r.error ?? "unknown");
+      if (err.includes("429") || err.includes("busy")) setMsg("Not started: the engine is busy with another run (it does one at a time). Wait for that run to finish, then retry - nothing ran just now.");
+      else setMsg("Not started: " + err);
       return;
     }
     location.reload();
   }
   return (
+    <div>
     <div className="row">
-      <button disabled={busy} onClick={() => start("investigate")}>{busy ? "Starting…" : "Run investigation"}</button>
+      <button disabled={busy || !ready} onClick={() => start("investigate")}>{busy ? "Starting…" : "Run investigation"}</button>
       {baselineRunId && (
         <button disabled={busy} className="secondary" onClick={() => start("verify")}>
           Verify fix against {baselineRunId.slice(0, 19)}
         </button>
       )}
       {!baselineRunId && <span className="muted small">Verify unlocks after the first investigation finishes.</span>}
+    </div>
+    <p className="small muted" style={{ margin: "6px 0 0" }}>{ready ? `Ready: target ${targetUrl} - Charie will drive it, collect evidence, and report in this room.` : "Needs: a target URL and a goal on this ticket before anything can run."}</p>
+    {msg && <p className="small" role="status" style={{ margin: "4px 0 0" }}>{msg}</p>}
     </div>
   );
 }

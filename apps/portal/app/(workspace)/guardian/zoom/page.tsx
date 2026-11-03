@@ -19,7 +19,7 @@ export default async function MeetPage() {
       <PageHead
         crumbs={[["/", "Home"], ["/guardian/zoom", "Meet"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="video" size={19} /></span> Meet</>}
-        sub="Built in video calls for standups and incident war rooms. Charie can join, take live notes, and propose investigations with your consent. No third party needed; Zoom fallback stays for external meetings."
+        sub="Built in video calls for your team AND the people outside it: send one guest link and a customer joins this same room, no account needed. Charie joins the call itself - she listens, answers out loud, looks at a shared screen when you let her, takes notes, and proposes investigations with your consent."
       />
       <div className="stats">
         <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="video" size={20} /></span><div><div className="stat-num">{openRooms.length}</div><div className="stat-label">Open rooms</div></div></div></div>
@@ -55,7 +55,7 @@ export default async function MeetPage() {
       </div>
       <div className="card">
         <div className="card-title">Privacy</div>
-        <p className="muted small">Calls are private by default: media flows peer to peer, and the portal only relays connection setup. Nothing is recorded. Live notes and transcription are optional, stay off unless someone in the call turns them on, and guests are told before they join. Guest links expire after 24 hours and open just one room.</p>
+        <p className="muted small">Calls are private by default: media flows peer to peer, and the portal only relays connection setup. Nothing is recorded. External guests join from one invite link with just a name and their issue - no Charie account. Live notes and transcription are optional, stay off unless someone in the call turns them on, and guests are told before they join. Guest links expire after 24 hours and open just one room.</p>
       </div>
       <div className="card">
         <div className="card-title">
@@ -67,7 +67,7 @@ export default async function MeetPage() {
           </ol>
         ) : (
           <>
-            <p className="muted small">For meetings outside Charie, dispatch a recorder bot. Transcripts flow back as signals.</p>
+            <p className="muted small">Guests can join Charie rooms directly from an invite link - use this only if a meeting already lives in Zoom. Dispatch a recorder bot and transcripts flow back as signals.</p>
             <ZoomJoinForm />
           </>
         )}

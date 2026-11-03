@@ -29,6 +29,7 @@ export interface AgentAction {
 
 interface RoomLive {
   lines: LiveLine[];
+  vision?: { at: string; text: string };
   summary: string;
   updatedAt: number;
   agent: {
@@ -55,6 +56,17 @@ function get(roomId: string): RoomLive {
     rooms.set(roomId, r);
   }
   return r;
+}
+
+/** Record a frame Charie really captured, so screen questions get a grounded answer. */
+export function recordVision(roomId: string, text: string): void {
+  const r = get(roomId);
+  r.vision = { at: new Date().toISOString(), text: text.slice(0, 600) };
+  r.updatedAt = Date.now();
+}
+
+export function getVision(roomId: string): { at: string; text: string } | null {
+  return get(roomId).vision ?? null;
 }
 
 export function getAgent(roomId: string) {

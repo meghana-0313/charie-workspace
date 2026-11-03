@@ -58,7 +58,58 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      <GetStarted hasRepo={repos.length > 0} hasTicket={tickets.length > 0} hasRun={runs.length > 0} />
+      {(() => {
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(Date.now() - (6 - i) * 864e5);
+          const key = d.toISOString().slice(0, 10);
+          return { label: d.toLocaleDateString("en-US", { weekday: "narrow" }), count: runs.filter((r) => r.createdAt.slice(0, 10) === key).length };
+        });
+        const maxDay = Math.max(1, ...days.map((d) => d.count));
+        const sweepPts = sweeps.slice(-10).map((s, i) => `${i * 28},${64 - (s.pass ? 52 : 10)}`).join(" ");
+        const doneRuns = runs.filter((r) => r.status === "done").length;
+        const runPct = runs.length ? Math.round((doneRuns / runs.length) * 100) : 0;
+        return (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <div className="card-title" style={{ margin: 0 }}>Analytics overview</div>
+              <Link href="/reports" className="small">All reports</Link>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: "var(--space-4)" }} className="home-grid">
+              <div>
+                <div className="section-label">Agent runs, last 7 days</div>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 84 }} role="img" aria-label={`Runs per day: ${days.map((d) => d.count).join(", ")}`}>
+                  {days.map((d, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{ height: 62, display: "flex", alignItems: "flex-end" }}><div style={{ width: "100%", height: `${Math.max(6, (d.count / maxDay) * 100)}%`, background: i === 6 ? "var(--accent)" : "#f59e0b", borderRadius: 4 }} /></div>
+                      <div className="small muted">{d.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="small muted" style={{ margin: "4px 0 0" }}>{runs.length} run(s) on record, {doneRuns} finished.</p>
+              </div>
+              <div>
+                <div className="section-label">Run completion</div>
+                <div className="row" style={{ flexWrap: "nowrap" }}>
+                  <span className="donut" style={{ background: `conic-gradient(#22c55e ${runPct}%, #f59e0b ${runPct}%, #f59e0b ${Math.min(100, runPct + 18)}%, var(--surface-overlay) ${Math.min(100, runPct + 18)}%)` }}><span style={{ background: "var(--surface)", borderRadius: "50%", width: 56, height: 56, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><strong>{runPct}%</strong></span></span>
+                  <span className="small muted">of runs finished.<br />{openTickets.length} ticket(s) still open.</span>
+                </div>
+              </div>
+              <div>
+                <div className="section-label">Sweep health</div>
+                {sweeps.length === 0 ? <p className="small muted">No sweeps yet. Guardian sweeps draw their trend here.</p> : (
+                  <>
+                    <svg viewBox="0 0 260 76" style={{ width: "100%", height: 76 }} role="img" aria-label="Sweep pass trend">
+                      <polyline points={sweepPts || "0,64 252,12"} fill="none" stroke="#22c55e" strokeWidth="2.5" />
+                      {sweeps.slice(-10).map((s, i) => <circle key={i} cx={i * 28} cy={64 - (s.pass ? 52 : 10)} r="3.5" fill={s.pass ? "#22c55e" : "#ef4444"} />)}
+                    </svg>
+                    <p className="small muted" style={{ margin: "4px 0 0" }}>{sweeps.filter((s) => s.pass).length}/{sweeps.length} sweeps passed.</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="status-banner">
         <span className="icon-orb green"><Icon name="check" size={22} /></span>
@@ -100,6 +151,8 @@ export default async function Dashboard() {
           )}
         </div>
 
+        <div>
+          <GetStarted hasRepo={repos.length > 0} hasTicket={tickets.length > 0} hasRun={runs.length > 0} />
         <div className="card">
           <div className="card-title"><Icon name="spark" /> CHARIE insights <Badge tone="accent">Live</Badge></div>
           <p className="muted small">Analysis based on recent activity, errors, and logs.</p>
@@ -114,6 +167,7 @@ export default async function Dashboard() {
           <p><strong>{lastDigest ? "Overnight digest is ready" : "Put Charie on night shift"}</strong></p>
           <p className="small muted">{lastDigest ? "The night shift summarized what changed while you slept." : `${schedules.filter((s) => s.enabled).length} schedule(s) active. Sweeps and re-scans run on their own.`}</p>
           <div className="row"><Link className="btn sm" href="/guardian/night">Open night shift</Link><Link className="btn secondary sm" href="/autopilot">Autopilot</Link></div>
+        </div>
         </div>
       </div>
 

@@ -25,7 +25,7 @@ export interface ReportSummary {
 
 export interface ReportDetail extends ReportSummary {
   payload: unknown;
-  findings?: Array<{ id: string; title: string; severity: string; suspectedCause?: string; analysisSource?: string }>;
+  findings?: Array<{ id: string; title: string; severity: string; suspectedCause?: string; suggestedFix?: string; confidence?: string; reproSteps?: string[]; analysisSource?: string }>;
   reportMd?: string | null;
   incident?: Incident;
 }
@@ -128,7 +128,7 @@ export async function getReportDetail(kind: string, id: string, uid?: string): P
     ]);
     return {
       ...runSummary(run), payload: run,
-      findings: (findings ?? []).map((f) => ({ id: f.id, title: f.title, severity: f.severity, suspectedCause: f.suspectedCause, analysisSource: f.analysisSource })),
+      findings: (findings ?? []).map((f) => ({ id: f.id, title: f.title, severity: f.severity, suspectedCause: f.suspectedCause, suggestedFix: f.suggestedFix, confidence: f.confidence, reproSteps: f.reproSteps, analysisSource: f.analysisSource })),
       reportMd,
     };
   }

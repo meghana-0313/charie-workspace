@@ -328,6 +328,11 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   };
 
   const leave = () => {
+    // Members: save transcript/notes/summary on the room first, so coming
+    // back to this room shows the previous session, not a blank room.
+    if (!token) {
+      fetch(`/api/meet/rooms/${roomId}/snapshot`, { method: "POST", keepalive: true }).catch(() => {});
+    }
     sendLeave();
     teardown();
     setStartCamOff(true);
@@ -495,6 +500,30 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
 
   if (!joined) {
     return (
+      <div className="stack">
+      {!token && savedTranscript.length > 0 && (
+        <>
+          <div className="card">
+            <div className="card-title">Previous session in this room</div>
+            <p className="small muted">This room already has a call history. Rejoin below to continue it - Charie keeps the context.</p>
+            {savedSummary && <p className="small" style={{ whiteSpace: "pre-wrap" }}>{savedSummary}</p>}
+          </div>
+          {savedNotes.length > 0 && (
+            <div className="card">
+              <div className="card-title">Notes and actions</div>
+              <ul className="small">{savedNotes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+            </div>
+          )}
+          <div className="card">
+            <div className="card-title">Transcript ({savedTranscript.length})</div>
+            <div className="live-lines" style={{ maxHeight: 380 }}>
+              {savedTranscript.map((l, i) => (
+                <p key={i} className="small"><strong>{l.speaker}</strong> <span className="muted">({l.role})</span>: {l.text}</p>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
       <div className="card">
         <div className="card-title">Join “{roomTitle}”</div>
         <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Camera starts off. Turn it on only if you want to be seen.</p>
@@ -516,6 +545,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         </div>
         {previewErr && <p className="small" style={{ color: "var(--danger)" }}>{previewErr}</p>}
         {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
+      </div>
       </div>
     );
   }
@@ -776,9 +806,19 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
       });
       if (!res.ok) { onNote(`Voice test failed: the voice service answered ${res.status}. Check CHARIE_TTS_URL and the Modal deployment, then retry.`); setBusy(false); return; }
       const blob = await res.blob();
-      const audio = new Audio(URL.createObjectURL(blob));
-      await audio.play();
-      onNote(`Voice test played in ${Math.round(Date.now() - started)}ms. If you heard nothing, check your output device and volume.`);
+      if (blob.size < 100) { onNote("Voice test failed: the voice service returned an empty audio file."); setBusy(false); return; }
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      // Wait until playback actually finishes: "played" must mean heard.
+      const played = await new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => resolve(false), 15000);
+        audio.onended = () => { clearTimeout(timer); resolve(true); };
+        audio.onerror = () => { clearTimeout(timer); resolve(false); };
+        audio.play().catch(() => { clearTimeout(timer); resolve(false); });
+      });
+      URL.revokeObjectURL(url);
+      if (played) onNote(`Voice test OK: Charie's voice played end to end in ${Math.round(Date.now() - started)}ms. She will sound like this in the call.`);
+      else onNote("Voice test failed: audio could not play in this browser. Click once anywhere, check your output device and volume, then retry.");
     } catch {
       onNote("Voice test failed: the voice service is unreachable. Check CHARIE_TTS_URL, then retry.");
     }
@@ -829,7 +869,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   visionOn?: boolean; onVisionChange?: (v: boolean) => void;
 }) {
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
-  const [tab, setTab] = useState<"transcript" | "charie" | "notes">("transcript");
+  const [tab, setTab] = useState<"transcript" | "charie" | "notes">("charie");
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [lines, setLines] = useState<LiveLineView[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
@@ -911,6 +951,9 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     if (!voiceRef.current || speakingRef.current) return;
     const agentLines = lines.filter((l) => l.role === "agent");
     if (agentLines.length < spokenRef.current) spokenRef.current = agentLines.length;
+    // Never read out a backlog: if replies piled up while the voice service
+    // was slow, skip straight to the newest one instead of reciting them all.
+    if (agentLines.length - spokenRef.current > 1) spokenRef.current = agentLines.length - 1;
     const next = agentLines[spokenRef.current];
     if (!next) return;
     const text = speakableText(next.text);
@@ -1109,8 +1152,8 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   return (
     <div className="card" style={{ margin: 0 }}>
       <div className="tabs" role="tablist" aria-label="War room panel" style={{ marginBottom: 10 }}>
-        <button type="button" className={`tab${tab === "transcript" ? " on" : ""}`} onClick={() => setTab("transcript")}>Transcript</button>
         <button type="button" className={`tab${tab === "charie" ? " on" : ""}`} onClick={() => setTab("charie")}>Charie{pending.length > 0 ? ` (${pending.length})` : ""}</button>
+        <button type="button" className={`tab${tab === "transcript" ? " on" : ""}`} onClick={() => setTab("transcript")}>Transcript</button>
         <button type="button" className={`tab${tab === "notes" ? " on" : ""}`} onClick={() => setTab("notes")}>Notes & Actions</button>
       </div>
 
