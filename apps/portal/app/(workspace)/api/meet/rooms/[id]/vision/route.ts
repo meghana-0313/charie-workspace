@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { checkInvite } from "@/lib/auth";
 import { store } from "@/lib/store";
 import { identity } from "@/lib/who";
-import { getAgent, recordVision, speak } from "@/lib/livecall";
+import { claimVisionSpeech, getAgent, recordVision, speak } from "@/lib/livecall";
 
 // Charie watches a shared screen: one captured frame goes to the engine
 // vision endpoint, the spoken description lands in the transcript as a
@@ -44,8 +44,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Watch mode: remember silently; only speak up when the frame shows a
     // problem, so near-continuous watching never floods the transcript.
     const isProblem = /(error|fail|blocked|broken|crash|denied|invalid|warning|exception)/i.test(j.text);
-    if (mode !== "watch" || isProblem) speak(roomId, j.text);
-    return NextResponse.json({ text: j.text, model: j.model ?? "vision", spoke: mode !== "watch" || isProblem });
+    const shouldSpeak = mode !== "watch" || (isProblem && claimVisionSpeech(roomId, j.text));
+    if (shouldSpeak) speak(roomId, j.text);
+    return NextResponse.json({ text: j.text, model: j.model ?? "vision", spoke: shouldSpeak });
   } catch {
     return NextResponse.json({ error: "vision unreachable" }, { status: 503 });
   }

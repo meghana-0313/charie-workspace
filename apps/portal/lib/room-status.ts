@@ -95,6 +95,27 @@ export function screenHistoryReply(log: ScreenLogEntry[], askedTime: string | nu
   return `At ${askedTime} I saw: ${atOrBefore.text.slice(0, 260)} (captured ${fmt(atOrBefore.at)}).`;
 }
 
+/**
+ * Split a spoken reply into sentence chunks so playback can start on the
+ * first sentence while the rest is still synthesizing - no 10s silence
+ * before Charie says anything.
+ */
+export function splitSpeakChunks(text: string): string[] {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  const parts = clean.match(/[^.!?]+[.!?]+|\S[^.!?]*$/g) ?? [clean];
+  const chunks: string[] = [];
+  let cur = "";
+  for (const p of parts) {
+    const s = p.trim();
+    if (!s) continue;
+    if (cur && (cur + " " + s).length > 150) { chunks.push(cur); cur = s; }
+    else cur = cur ? `${cur} ${s}` : s;
+  }
+  if (cur) chunks.push(cur);
+  return chunks.slice(0, 4);
+}
+
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

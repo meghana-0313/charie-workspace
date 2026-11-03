@@ -31,6 +31,8 @@ interface RoomLive {
   lines: LiveLine[];
   vision?: { at: string; text: string };
   visionLog?: VisionEntry[];
+  visionSpokeAt?: number;
+  visionSpokeKey?: string;
   summary: string;
   updatedAt: number;
   agent: {
@@ -75,6 +77,22 @@ export function recordVision(roomId: string, text: string, model?: string): void
     r.visionLog = log.slice(-180);
   }
   r.updatedAt = Date.now();
+}
+
+/**
+ * Watch mode speaks only problems, and even then at most once per 45s and
+ * never the same observation twice - otherwise a persistent error banner
+ * makes Charie narrate in a loop.
+ */
+export function claimVisionSpeech(roomId: string, text: string): boolean {
+  const r = get(roomId);
+  const now = Date.now();
+  const key = text.slice(0, 120);
+  if (r.visionSpokeKey === key) return false;
+  if (r.visionSpokeAt && now - r.visionSpokeAt < 45000) return false;
+  r.visionSpokeKey = key;
+  r.visionSpokeAt = now;
+  return true;
 }
 
 export function getVision(roomId: string): { at: string; text: string } | null {
