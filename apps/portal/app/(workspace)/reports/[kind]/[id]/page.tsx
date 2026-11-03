@@ -41,6 +41,17 @@ export default async function ReportPage({ params }: { params: Promise<{ kind: s
         <p className="page-sub">{report.kindLabel} · {report.at.slice(0, 16).replace("T", " ")} · <span className="mono">{report.id}</span></p>
       </div>
 
+      <div className="card" style={{ borderLeft: "4px solid var(--accent)" }}>
+        <div className="card-title" style={{ marginBottom: 4 }}>The short version</div>
+        <p style={{ margin: 0 }}>
+          {report.status === "failed"
+            ? <>This run <strong>failed</strong>{report.error ? <>: {report.error}</> : " before it could finish."} Nothing below is a finding - it is where the run stopped. Fix the cause, then re-run it.</>
+            : report.severity === "critical" || report.severity === "high"
+              ? <>This needs attention: <strong>{report.result}</strong>. Start with the highest-severity item in Execution Details, or ask Charie about this report.</>
+              : <>All clear at a glance: <strong>{report.result}</strong>. The details below are the evidence, read them only if you want proof.</>}
+        </p>
+      </div>
+
       <div className="card">
         <div className="card-title">Overview</div>
         <Row k="Report type" v={report.kindLabel} />

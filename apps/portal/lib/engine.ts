@@ -64,6 +64,12 @@ export async function readFindings(runId: string): Promise<FindingView[] | null>
   return s?.findings ?? null;
 }
 
+/** The engine's own failure reason for a run, when it recorded one. */
+export async function readRunError(runId: string): Promise<string | null> {
+  const s = await runState(runId).catch(() => null);
+  return s?.error ?? null;
+}
+
 export async function readReportMd(runId: string): Promise<string | null> {
   const s = await runState(runId).catch(() => null);
   return s?.report ?? null;

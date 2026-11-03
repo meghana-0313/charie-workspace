@@ -1045,6 +1045,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
   // Barge-in: a generation counter kills current playback instantly. Any
   // chunk still queued for an older generation is dropped, never resumed.
   const speakGenRef = useRef(0);
+  const currentSpokenRef = useRef("");
   const linesRef = useRef<LiveLineView[]>([]);
   linesRef.current = lines;
   const interruptRef = useRef<() => void>(() => {});
@@ -1074,6 +1075,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     const next = agentLines[spokenRef.current];
     if (!next) return;
     const text = speakableText(next.text);
+    currentSpokenRef.current = text;
     spokenRef.current += 1;
     // Prefetch the next reply while this one plays, so lines follow each
     // other with no synthesis gap between them.
@@ -1149,12 +1151,17 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     rec.lang = navigator.language || "en-US";
     let stopped = false;
     rec.onresult = (e) => {
-      // Barge-in: the moment a human speaks, Charie stops mid-sentence.
-      interruptRef.current();
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
         const text = r.isFinal ? r[0]?.transcript?.trim() : "";
         if (text) {
+          // Barge-in on FINAL human speech only - and never on Charie's own
+          // voice coming back through the speakers (echo would silence her
+          // before she ever speaks, the bug this guard fixes).
+          const heard = text.toLowerCase().replace(/[^a-z0-9 ]/g, "");
+          const mine = (currentSpokenRef.current || "").toLowerCase().replace(/[^a-z0-9 ]/g, "");
+          const echo = mine.length > 8 && (mine.includes(heard.slice(0, 24)) || heard.includes(mine.slice(0, 24)));
+          if (!echo) interruptRef.current();
           fetch(`/api/meet/rooms/${roomId}/live${qp}`, {
             method: "POST",
             headers: { "content-type": "application/json" },

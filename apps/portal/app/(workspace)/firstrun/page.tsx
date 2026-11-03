@@ -31,6 +31,7 @@ export default async function FirstRunPage() {
           {latest && (
             <div className="card">
               <div className="card-title">Latest test steps</div>
+            <p className="small" style={{ margin: "0 0 8px" }}>{latest.failed === 0 ? `A new user gets through cleanly (score ${latest.score}/100).` : `A new user hits ${latest.failed} snag(s) below - start with the first failed step. Score ${latest.score}/100.`}</p>
               <p className="small muted"><code>{latest.targetUrl}</code> · {latest.at.slice(0, 16).replace("T", " ")}</p>
               <div className="progress" style={{ marginBottom: 12 }}><i style={{ width: `${latest.score}%` }} /></div>
               <table>
