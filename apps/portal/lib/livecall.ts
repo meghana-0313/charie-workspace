@@ -30,6 +30,7 @@ export interface AgentAction {
 interface RoomLive {
   lines: LiveLine[];
   vision?: { at: string; text: string };
+  visionLog?: VisionEntry[];
   summary: string;
   updatedAt: number;
   agent: {
@@ -59,14 +60,40 @@ function get(roomId: string): RoomLive {
 }
 
 /** Record a frame Charie really captured, so screen questions get a grounded answer. */
-export function recordVision(roomId: string, text: string): void {
+export interface VisionEntry { at: string; text: string; model?: string }
+
+export function recordVision(roomId: string, text: string, model?: string): void {
   const r = get(roomId);
-  r.vision = { at: new Date().toISOString(), text: text.slice(0, 600) };
+  const entry: VisionEntry = { at: new Date().toISOString(), text: text.slice(0, 600), model };
+  r.vision = entry;
+  // Append-only screen memory: Charie can answer what she saw earlier,
+  // not just the last frame. Near-duplicate consecutive frames are skipped.
+  const log = (r.visionLog ??= []);
+  const last = log[log.length - 1];
+  if (!last || last.text.slice(0, 120) !== entry.text.slice(0, 120)) {
+    log.push(entry);
+    r.visionLog = log.slice(-180);
+  }
   r.updatedAt = Date.now();
 }
 
 export function getVision(roomId: string): { at: string; text: string } | null {
   return get(roomId).vision ?? null;
+}
+
+export function getVisionLog(roomId: string): VisionEntry[] {
+  return get(roomId).visionLog ?? [];
+}
+
+/** Last screen Charie saw at or before `whenISO` (for "what happened at 10:32?"). */
+export function visionAt(roomId: string, whenISO: string): VisionEntry | null {
+  const log = get(roomId).visionLog ?? [];
+  let best: VisionEntry | null = null;
+  for (const e of log) {
+    if (e.at <= whenISO) best = e;
+    else break;
+  }
+  return best;
 }
 
 export function getAgent(roomId: string) {
@@ -154,9 +181,9 @@ export function actionNotes(roomId: string): string[] {
   return notes;
 }
 
-export function getLive(roomId: string): { lines: LiveLine[]; notes: string[]; summary: string } {
+export function getLive(roomId: string): { lines: LiveLine[]; notes: string[]; summary: string; visionLog: VisionEntry[] } {
   const r = get(roomId);
-  return { lines: r.lines, notes: actionNotes(roomId), summary: r.summary };
+  return { lines: r.lines, notes: actionNotes(roomId), summary: r.summary, visionLog: r.visionLog ?? [] };
 }
 
 export function setSummary(roomId: string, summary: string): void {
@@ -176,12 +203,13 @@ export function clearRoom(roomId: string): void {
  */
 export function hydrateRoom(
   roomId: string,
-  saved?: { transcript?: LiveLine[]; summary?: string },
+  saved?: { transcript?: LiveLine[]; summary?: string; screenLog?: VisionEntry[] },
 ): void {
-  if (!saved?.transcript?.length && !saved?.summary) return;
+  if (!saved?.transcript?.length && !saved?.summary && !saved?.screenLog?.length) return;
   const r = get(roomId);
   if (r.lines.length > 0) return;
   r.lines = (saved.transcript ?? []).slice(-MAX_LINES);
   if (saved.summary) r.summary = saved.summary;
+  if (saved.screenLog?.length && !(r.visionLog?.length)) { r.visionLog = saved.screenLog.slice(-180); const last = r.visionLog[r.visionLog.length - 1]; if (last) r.vision = { at: last.at, text: last.text }; }
   r.updatedAt = Date.now();
 }

@@ -15,8 +15,8 @@ import {
   addAction, addThought, getAgent, getLive, setAgentEnabled, speak, updateAction,
   type AgentAction, type LiveLine,
 } from "./livecall";
-import { charieShouldReply, isScreenSeeQuestion, screenVisionReply } from "./room-status";
-import { getVision } from "./livecall";
+import { charieShouldReply, isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply } from "./room-status";
+import { getVision, getVisionLog } from "./livecall";
 import { answerMessage } from "./charie-chat";
 
 /**
@@ -78,6 +78,12 @@ export async function onLiveLine(roomId: string, line: LiveLine) {
   // Speak back: Charie answers any participant (teammate or customer) who
   // asks a question or addresses her by name. Engine text when reachable,
   // an honest heuristic acknowledgement otherwise - never silent.
+  if (isScreenHistoryQuestion(line.text)) {
+    const log = getVisionLog(roomId);
+    addThought(roomId, `Screen-history question from ${line.speaker}: answering from ${log.length} recorded frame(s), not a model guess.`);
+    speak(roomId, screenHistoryReply(log, screenQuestionTime(line.text), new Date().toISOString()));
+    return;
+  }
   if (isScreenSeeQuestion(line.text)) {
     const vision = getVision(roomId);
     addThought(roomId, vision ? `Screen question from ${line.speaker}: answering from the last captured frame (${vision.at}).` : `Screen question from ${line.speaker}: no frame captured yet, saying so honestly.`);

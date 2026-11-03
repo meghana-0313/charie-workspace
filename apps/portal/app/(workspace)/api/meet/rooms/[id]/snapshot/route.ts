@@ -19,6 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       transcript: live.lines.slice(-120),
       notes: live.notes,
       summary: live.summary || room.summary,
+      screenLog: live.visionLog.slice(-180),
     });
   }
   return NextResponse.json({ ok: true, lines: live.lines.length });

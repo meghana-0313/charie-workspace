@@ -253,6 +253,7 @@ export interface MeetRoom {
   // Persisted on End so the room can be re-opened later with full context:
   // Charie reads these back in when the room reopens on the same issue.
   transcript?: Array<{ speaker: string; role: string; text: string; at: string }>;
+  screenLog?: Array<{ at: string; text: string; model?: string }>;
   notes?: string[];
   summary?: string;
   seq: number; // last signal sequence number

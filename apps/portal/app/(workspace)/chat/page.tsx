@@ -6,8 +6,8 @@ import { Badge, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage({ searchParams }: { searchParams: Promise<{ thread?: string }> }) {
-  const { thread: activeId } = await searchParams;
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{ thread?: string; ask?: string }> }) {
+  const { thread: activeId, ask } = await searchParams;
   const myUid = scopeUid(await identity());
   const [threads, repos, tickets] = await Promise.all([
     store.listThreads(myUid),
@@ -47,7 +47,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
           )}
         </div>
         <div className="card chat-main">
-          <ChatPanel key={active?.id ?? "new"} threadId={active?.id ?? null} initial={initial} />
+          <ChatPanel key={ask ? "ask" : active?.id ?? "new"} threadId={ask ? null : active?.id ?? null} initial={ask ? [] : initial} initialInput={ask ?? ""} />
         </div>
         <div className="card chat-rail">
           <div className="tabs" style={{ marginBottom: 10 }}><span className="tab on" style={{ padding: "6px 12px" }}>Context</span><span className="small muted" style={{ alignSelf: "center" }}>Tools · Activity</span></div>

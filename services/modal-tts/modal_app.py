@@ -44,7 +44,10 @@ def get_pipeline():
     return _pipeline
 
 
-@app.function(image=image, scaledown_window=1200, timeout=120)
+# min_containers=1: one container is always warm, so Charie's first line
+# in a call never pays a cold start (20s+). It costs a small idle amount
+# on Modal credits; remove it if you would rather pay cold starts.
+@app.function(image=image, scaledown_window=1200, timeout=120, min_containers=1)
 @modal.fastapi_endpoint(method="POST")
 def speak(item: dict):
     from fastapi import Response

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { themeInitScript } from "@/components/theme";
 
@@ -26,9 +27,9 @@ export const metadata: Metadata = {
 
 export const viewport = { themeColor: [{ media: "(prefers-color-scheme: light)", color: "#eceff7" }, { media: "(prefers-color-scheme: dark)", color: "#0a0f14" }] };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme={((await cookies()).get("charie-theme")?.value === "light") ? "light" : undefined} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <link rel="preload" href="/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />

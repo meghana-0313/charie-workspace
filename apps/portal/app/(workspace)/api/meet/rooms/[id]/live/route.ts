@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!room) return NextResponse.json({ error: "no such room" }, { status: 404 });
   if ((await caller(req, roomId)) === null) return NextResponse.json({ error: "login or invite required" }, { status: 401 });
   if (room.liveNotes !== true) return NextResponse.json({ enabled: false, lines: [], notes: [], summary: "" });
-  hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary });
+  hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary, screenLog: room.screenLog });
   return NextResponse.json({ enabled: true, ...getLive(roomId) });
 }
 
@@ -44,7 +44,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const clean = String(text ?? "").trim().slice(0, 500);
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });
   const speaker = who.role === "teammate" ? who.name : String(name ?? "").trim().slice(0, 60) || "Guest";
-  hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary });
+  hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary, screenLog: room.screenLog });
   const line = postLine(roomId, { speaker, role: who.role, text: clean });
   // Charie listens along: may propose a consent card (never acts alone) and
   // now speaks a reply to questions. Awaited so the reply lands in the

@@ -73,7 +73,7 @@ Live prod: https://charie-portal-ehfuotlisq-uc.a.run.app (sign in with Google or
   consequential steps.
 - **New work:** everything in this repo was built during the hackathon for this
   submission. Nothing predates it.
-- **Every Meta requirement, live:** Muse Spark (investigation reasoning, chat
+- **Every Meta requirement, wired and live in prod when keys resolve** (heuristic, honestly labelled, without them): Muse Spark (investigation reasoning, chat
   agent, incident analysis), Muse Wonder (deep-dive escalation), Muse Image
   (UI redesigns), Muse Voice Transcribe (voice tickets), SAM 3.1 (screenshot
   grounding), Muse Glimmer (triage router), Muse Spark Open (second-opinion
@@ -108,7 +108,7 @@ night shift keeps the loop turning overnight with a morning digest.
 Live user complaints become tickets in one click. Connected GitHub repos
 build, deploy, and test themselves on Cloud Run and post results back to the
 commit. Meet rooms bring customers into support calls through consent first
-guest invites: no recording, no stored data, just the session.
+guest invites: audio and video are never recorded; opt-in live notes and the transcript are saved to the room and its ticket.
 
 Chat with Charie (Meta Muse Spark, tool-using, receipted) sits on top of all
 three loops, and the Marketplace connects Jira (auto-pull, proof sync-back),
@@ -137,7 +137,7 @@ the engine keeps each account's Guardian data in its own partition.
 | Demo target | `apps/demo-target/` | ShopFast: an intentionally buggy store (1 functional bug, confusing checkout journey, a11y gaps). The app Charie tests. Ships a fixed build for the verify step. |
 | MCP server | `services/mcp-server/` + portal `POST /api/mcp` | Lets any coding agent (Muse Code and others) pull findings with repro steps and fix packets and check verification proof. Local stdio from a checkout, or cloud over HTTP with an ingest key; the Integrations page generates both configs. |
 | Charie Guard | `apps/portal/app/guardian/` + engine `guardian.ts`, `workorders.ts`, `nightshift.ts`, `signals.ts`, `pentest.ts`, `sweep.ts` | Post-deploy suite: threats, fix tasks, night shift, live signals, security tests, continuous sweeps, push alerts. |
-| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Join with a live camera preview, start muted, camera off, or audio only; stuck peers time out with a remove option. Guest invite links with consent first support-ticket check-in, never recorded; rooms belong to the account that created them. Charie can join with opt-in live notes and speaker aware summaries. Zoom bot via Recall.ai stays as the external fallback. |
+| Charie Meet | `apps/portal/app/guardian/zoom/` + `components/meet.tsx` + `/api/meet/` | Native video rooms (mesh WebRTC, portal-hosted signaling). Join with a live camera preview, start muted, camera off, or audio only; stuck peers time out with a remove option. Guest invite links with consent first support-ticket check-in; calls are never recorded, and opt-in live notes plus the transcript save to the room and its ticket; rooms belong to the account that created them. Charie joins the call itself: she listens, speaks, watches a shared screen in watch mode (change-triggered frames with a timestamped screen memory she can answer questions from), takes live notes, and proposes investigations that only run after a human approves. Zoom bot via Recall.ai stays as the external fallback. |
 | Production monitoring | Threats page + engine `logwatch.ts` + `/api/guardian/events` + `public/charie.js` | Log watch reads your GCP project's errors itself; prod web apps report via the drop-in SDK; mobile apps follow `docs/MOBILE_SDK.md`. App keys on the Team page. |
 | UX, accessibility, first run | `apps/portal/app/ux|a11y|firstrun/` + engine `redesign.ts`, `a11y.ts`, `firstrun.ts` | UI analysis with generated screen redesigns, 8 accessibility checks with grades, 6 first-time-user checks with scores. |
 | Connected repos | `apps/portal/app/repos/` + `lib/repos.ts`, `lib/github.ts`, `lib/gcp.ts` | GitHub native integration: connect a repo, Cloud Build compiles it, Cloud Run hosts it, a ticket files itself, investigation runs, commit status posts back. |
@@ -164,7 +164,7 @@ it is the data/auth layer inside that same project:
 | Secrets | Secret Manager | Meta/Baseten keys, engine token, session key, Firebase web config. No `.env` file exists anywhere; the backend reads secrets at runtime. |
 | Images/builds | Artifact Registry + Cloud Build | Container images in the `charie` repo, built from `deploy/Dockerfile.*`. CI deploys on every push to dev. |
 
-Local runs need none of this: file store, no login gate, heuristic analysis.
+Local runs need none of this: file store and the local-owner dev login on the login page (no Firebase needed), heuristic analysis until you add keys.
 
 ## Meta models (honest status)
 
@@ -187,25 +187,26 @@ labeled (`analysisSource: heuristic` on every finding).
 
 ## Judges quickstart (run it locally, no keys needed)
 
-Prereqs: Node.js 20+ and npm. Three terminals, all from the repo root.
+Prereqs: Node.js 20+ and npm. One install at the root, then three terminals, all from the repo root.
 
 ```bash
+npm install
+
 # Terminal 1: the buggy demo store
-npm install --workspace apps/demo-target
 npm run demo:target
 # -> http://localhost:3101 (ShopFast, buggy build)
 
 # Terminal 2: the agent engine (HTTP service)
-npm install --workspace services/agent-engine
 npm exec --workspace services/agent-engine -- playwright install chromium
 npm run serve --workspace services/agent-engine
 # -> http://localhost:3103 (engine API; local file reports)
 
-# Terminal 3: the dashboard (no login needed locally)
-npm install --workspace apps/portal
+# Terminal 3: the dashboard
 npm run portal:dev
-# -> open http://localhost:3102 in a browser
+# -> open http://localhost:3102 and press Continue as local owner
 ```
+
+**Zero keys? Everything below still works.** With no API keys at all, the full loop - tickets, investigation with screenshots and repro steps, verify, scans, pentest, Guardian demo, Meet calls with guests and Charie in the room, reports - runs end to end. What changes without keys is only the polish, and it is labelled honestly wherever it appears: finding prose stays heuristic (`analysisSource: heuristic`), chat uses the heuristic router, Charie's call voice uses the browser voice, and screen vision, image redesigns, and voice transcription stay off until `META_API_KEY` and/or `BASETEN_API_KEY` are set (see Live-model mode). Nothing hard-fails for lack of a key.
 
 Then click through the loop (about 5 minutes):
 
@@ -247,6 +248,12 @@ engine (there is deliberately no `.env` file):
 export META_API_KEY=... META_API_BASE_URL=https://api.meta.ai/v1
 ```
 
+On Windows PowerShell that is:
+
+```powershell
+$env:META_API_KEY="..." ; $env:META_API_BASE_URL="https://api.meta.ai/v1"
+```
+
 The same investigation then upgrades from heuristic analysis to Muse Spark
 diagnosis. In prod, keys come from Secret Manager instead; see
 [docs/META_STACK.md](docs/META_STACK.md) for the full secret list.
@@ -266,7 +273,7 @@ diagnosis. In prod, keys come from Secret Manager instead; see
 ## Docs
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - system design, agent roles, data flow
-- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) - the 5-minute judging demo, beat by beat
+- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) - the 3-minute judging demo, beat by beat
 - [docs/META_STACK.md](docs/META_STACK.md) - every Meta model/API and where it is used
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - database collections
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately *not* in the hackathon build

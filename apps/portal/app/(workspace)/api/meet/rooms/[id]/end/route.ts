@@ -28,6 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       transcript: live.lines.slice(-120),
       notes: live.notes,
       summary: live.summary || undefined,
+      screenLog: live.visionLog.slice(-180),
     });
     await store.postMeetSignal(roomId, { from: "host", to: "*", kind: "end", payload: "" }).catch(() => null);
   }
