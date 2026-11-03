@@ -105,6 +105,25 @@ export async function seedSignals(account?: string): Promise<{ ingested: number;
   return post("/signals/seed", {}, 180000, account);
 }
 
+/** Pentest with the engine's real status, so a 429 busy reads as busy, not unreachable. */
+export async function runPentestDetailed(account?: string): Promise<{ report: PentestView | null; status: number; error?: string }> {
+  try {
+    const res = await fetch(`${base()}/pentest/run`, {
+      method: "POST",
+      headers: headers(account),
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(180000),
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      return { report: null, status: res.status, error: j.error };
+    }
+    return { report: (await res.json()) as PentestView, status: res.status };
+  } catch {
+    return { report: null, status: 0, error: "engine unreachable" };
+  }
+}
+
 export async function runPentest(account?: string): Promise<PentestView | null> {
   return post<PentestView>("/pentest/run", {}, 180000, account);
 }

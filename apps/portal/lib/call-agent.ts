@@ -15,7 +15,8 @@ import {
   addAction, addThought, getAgent, getLive, setAgentEnabled, speak, updateAction,
   type AgentAction, type LiveLine,
 } from "./livecall";
-import { charieShouldReply } from "./room-status";
+import { charieShouldReply, isScreenSeeQuestion, screenVisionReply } from "./room-status";
+import { getVision } from "./livecall";
 import { answerMessage } from "./charie-chat";
 
 /**
@@ -33,7 +34,7 @@ async function engineReply(roomId: string, line: LiveLine): Promise<string | nul
   try {
     const ans = await answerMessage({
       history, uid: undefined, surface: "meet-call",
-      extraNotes: ["You are speaking aloud in a live video call as Charie, a warm male teammate. Reply in one or two short spoken sentences. Use contractions and plain words. No markdown, no lists, no links, no ticket ids or URLs read aloud."],
+      extraNotes: ["You are speaking aloud in a live video call as Charie, a warm male teammate. Reply in one or two short spoken sentences. Use contractions and plain words. No markdown, no lists, no links, no ticket ids or URLs read aloud.", "Screen truth: you do NOT get a live video feed and cannot watch anyone's screen. You only see a single frame when a participant shares, vision is on, and a Charie, look capture succeeds - that description then appears in this history as your own line. Never say you can see a screen, or that you are looking at it, unless such a captured-frame description is already in this history. Otherwise say you cannot see it yet and ask them to share and press Charie, look."],
     });
     if (!ans.text || ans.model === "heuristic" && /engine is unreachable/i.test(ans.text)) return null;
     return ans.text.trim().slice(0, 600) || null;
@@ -77,6 +78,12 @@ export async function onLiveLine(roomId: string, line: LiveLine) {
   // Speak back: Charie answers any participant (teammate or customer) who
   // asks a question or addresses her by name. Engine text when reachable,
   // an honest heuristic acknowledgement otherwise - never silent.
+  if (isScreenSeeQuestion(line.text)) {
+    const vision = getVision(roomId);
+    addThought(roomId, vision ? `Screen question from ${line.speaker}: answering from the last captured frame (${vision.at}).` : `Screen question from ${line.speaker}: no frame captured yet, saying so honestly.`);
+    speak(roomId, screenVisionReply(vision?.text ?? null));
+    return;
+  }
   if (charieShouldReply(line.text)) {
     addThought(roomId, `Replying to ${line.speaker}: "${line.text.slice(0, 120)}"`);
     const reply = await engineReply(roomId, line);

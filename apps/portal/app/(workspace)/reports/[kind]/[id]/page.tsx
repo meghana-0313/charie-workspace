@@ -61,12 +61,27 @@ export default async function ReportPage({ params }: { params: Promise<{ kind: s
 
       <div className="card">
         <div className="card-title">Execution Details</div>
-        {checks ? (
+        {report.findings && report.findings.length > 0 ? (
+          <div className="stack">
+            {report.findings.map((f) => (
+              <div key={f.id} className="small" style={{ margin: 0 }}>
+                <p style={{ margin: "0 0 4px" }}><strong>{f.title}</strong> <span className={`sev ${f.severity}`}>{f.severity}</span></p>
+                {(f.reproSteps ?? []).length > 0 && (
+                  <ol className="repro" style={{ margin: "4px 0" }}>
+                    {f.reproSteps!.map((s, i) => <li key={i}>{s}</li>)}
+                  </ol>
+                )}
+                <p style={{ margin: "4px 0 0" }}>Charie analysis: {f.suspectedCause || NR}{f.confidence ? ` (confidence: ${f.confidence})` : ""}{f.analysisSource ? ` - source: ${f.analysisSource}` : ""}</p>
+                {f.suggestedFix && <p style={{ margin: "2px 0 0" }}>Suggested fix: {f.suggestedFix}</p>}
+              </div>
+            ))}
+          </div>
+        ) : checks ? (
           <div className="stack">
             {checks.map((c, i) => (
               <p key={i} className="small row" style={{ flexWrap: "nowrap" }}>
                 <span className={`check-dot ${c.pass ? "done" : "todo"}`}>{c.pass ? "✓" : "!"}</span>
-                <span><strong>{c.name}</strong>{c.owasp ? <span className="muted"> ({c.owasp})</span> : null}<br /><span className="muted">{c.evidence || NR}</span></span>
+                <span><strong>{c.name}</strong>{c.owasp ? <span className="muted"> ({c.owasp})</span> : null}<br /><span className="muted">{c.evidence || NR}</span><br /><span className="small">Charie analysis: {c.pass ? "this check passed, so no action is needed here." : "this check failed - the evidence above is what Charie found, and it needs a fix."}</span></span>
               </p>
             ))}
           </div>

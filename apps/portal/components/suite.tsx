@@ -287,27 +287,42 @@ export function NightShiftButton({ orderIds }: { orderIds?: string[] }) {
 
 export function PentestButton() {
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
   async function run() {
     setBusy(true);
+    setMsg("Running: the engine probes the configured targets one check at a time. This can take a couple of minutes.");
     const r = await post("/api/guardian/pentest");
     setBusy(false);
-    if (r.ok) location.reload();
+    if (r.ok) { location.reload(); return; }
+    if (r.status === 429 || String(r.data.error ?? "").includes("busy")) setMsg("Not started: the engine is busy with another run (it does one at a time). Wait for that run to finish, then retry - nothing was scanned just now.");
+    else if (r.status === 403) setMsg("Not started: pen-tests are admin only on this account.");
+    else setMsg("Not started: " + String(r.data.error ?? "engine unreachable. Check that the engine is running, then retry."));
   }
   return (
-    <button disabled={busy} onClick={run}>{busy ? "Scanning…" : "Run pen-test suite"}</button>
+    <span className="row">
+      <button disabled={busy} onClick={run}>{busy ? "Scanning…" : "Run pen-test suite"}</button>
+      {msg && <span className="small muted" role="status" style={{ maxWidth: 420 }}>{msg}</span>}
+    </span>
   );
 }
 
 export function SweepButton() {
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
   async function run() {
     setBusy(true);
+    setMsg("");
     const r = await post("/api/guardian/sweep");
     setBusy(false);
-    if (r.ok) location.reload();
+    if (r.ok) { location.reload(); return; }
+    if (r.status === 429 || String(r.data.error ?? "").includes("busy")) setMsg("Not started: the engine is busy with another run (one at a time). Wait, then retry.");
+    else setMsg("Not started: " + String(r.data.error ?? "engine unreachable."));
   }
   return (
-    <button className="secondary" disabled={busy} onClick={run}>{busy ? "Sweeping…" : "Sweep now"}</button>
+    <span className="row">
+      <button className="secondary" disabled={busy} onClick={run}>{busy ? "Sweeping…" : "Sweep now"}</button>
+      {msg && <span className="small muted" role="status">{msg}</span>}
+    </span>
   );
 }
 

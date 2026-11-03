@@ -22,7 +22,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const activeTask = openTickets[0];
   const recentAttachments = (active?.messages ?? []).flatMap((m) => m.attachments ?? []).slice(-4);
   return (
-    <>
+    <div className="chat-page">
       <PageHead
         crumbs={[["/", "Home"], ["/chat", "Chat"]]}
         title={<>Chat with Charie <Badge tone="minor">Agent Online</Badge></>}
@@ -74,6 +74,6 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
           <p><Link href="/tickets" className="btn secondary sm">Open in Tickets</Link></p>
         </div>
       </div>
-    </>
+    </div>
   );
 }

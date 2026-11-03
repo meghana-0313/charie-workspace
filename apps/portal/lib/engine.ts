@@ -44,7 +44,10 @@ export async function spawnEngineRun(opts: { targetUrl: string; goal: string; ve
       baselineRunId: opts.baseline,
     }),
   });
-  if (!res.ok) throw new Error(`engine rejected run (${res.status})`);
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(j.error ? `${j.error} (${res.status})` : `engine rejected run (${res.status})`);
+  }
   return ((await res.json()) as { runId: string }).runId;
 }
 

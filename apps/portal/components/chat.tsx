@@ -277,22 +277,18 @@ export function ChatPanel({ threadId, initial }: { threadId: string | null; init
       </div>
 
       <div className="chat-modelbar">
-        <label className="small" style={{ margin: 0 }}>Model
-          <select value={modelChoice} onChange={(e) => { const v = e.target.value as ChatModelChoice; setModelChoice(v); try { localStorage.setItem("charie-chat-model", v); } catch { /* private mode */ } }} aria-label="Chat model">
+        <label className="ctl">Model
+          <select value={modelChoice} onChange={(e) => { const v = e.target.value as ChatModelChoice; setModelChoice(v); try { localStorage.setItem("charie-chat-model", v); } catch { /* private mode */ } }} aria-label="Chat model" title={COMING_SOON_MODELS.map((m) => `${m.label} (${m.provider}) - coming soon`).join("\n")}>
             {CHAT_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label} - {m.provider}</option>)}
             {COMING_SOON_MODELS.map((m) => <option key={m.label} disabled>{m.label} - Coming Soon</option>)}
           </select>
         </label>
-        <label className="small" style={{ margin: 0 }}>Effort
+        <label className="ctl">Effort
           <select value={effort} onChange={(e) => { const v = e.target.value as ChatEffort; setEffort(v); try { localStorage.setItem("charie-chat-effort", v); } catch { /* private mode */ } }} aria-label="Reasoning effort">
             {CHAT_EFFORTS.map((e2) => <option key={e2.id} value={e2.id}>{e2.label}</option>)}
           </select>
         </label>
-        <span className="small muted">{servedModel ? `Served by: ${modelLabel(servedModel)}` : "Served by: not answered yet"}</span>
-        <details className="small muted">
-          <summary style={{ cursor: "pointer" }}>Coming soon</summary>
-          {COMING_SOON_MODELS.map((m) => <div key={m.label}>{m.label} ({m.provider}) - {m.why}</div>)}
-        </details>
+        <span className="served">{servedModel ? `Served by ${modelLabel(servedModel)}` : "Not answered yet"}</span>
       </div>
       <form
         onSubmit={(e) => {
