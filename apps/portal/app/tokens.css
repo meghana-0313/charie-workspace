@@ -39,7 +39,7 @@
   --line-strong: #33465a;
 
   --ink: #eef4f2;
-  --ink-muted: #9db0ad;
+  --ink-muted: #aebfbb;
   --ink-faint: #8aa39e;
 
   --accent: #0fbfae;
@@ -59,8 +59,8 @@
   --info: #38bdf8;
   --info-dim: rgba(56, 189, 248, 0.13);
 
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fraunces", "Inter", system-ui, serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 14px;
@@ -90,7 +90,7 @@
   --topbar-bg: rgba(10, 15, 20, 0.92);
   --row-hover: rgba(255, 255, 255, 0.03);
   --scrollbar: #2c404d;
-  --dot: rgba(160, 200, 195, 0.05);
+  --dot: transparent;
   --sidebar-bg: #0d141b;
   --sev-high: #fb923c;
 }
@@ -107,7 +107,7 @@
 
   --ink: #141a2e;
   --ink-muted: #4c5878;
-  --ink-faint: #5b678f;
+  --ink-faint: #47557a;
 
   --accent: #0f766e;
   --accent-hover: #115e59;
@@ -132,7 +132,7 @@
   --topbar-bg: rgba(236, 239, 247, 0.92);
   --row-hover: rgba(21, 24, 54, 0.035);
   --scrollbar: #c0c9e0;
-  --dot: rgba(20, 26, 46, 0.05);
+  --dot: transparent;
   --sev-high: #c2410c;
 }
 

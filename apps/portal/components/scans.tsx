@@ -99,7 +99,15 @@ export function UxReviewButton() {
       const created = await fetch("/api/tickets", { method: "POST", body: fd });
       if (!created.ok) throw new Error("ticket failed");
       const tkt = (await created.json()) as { id: string; roomId: string; targetUrl: string; goal: string };
-      await post("/api/runs", { ticketId: tkt.id, roomId: tkt.roomId, kind: "investigate", targetUrl: tkt.targetUrl, goal: tkt.goal });
+      const runRes = await post("/api/runs", { ticketId: tkt.id, roomId: tkt.roomId, kind: "investigate", targetUrl: tkt.targetUrl, goal: tkt.goal });
+      if (!runRes.ok) {
+        setBusy(false);
+        const err = String(runRes.data.error ?? "");
+        setError(err.includes("429") || err.includes("busy")
+          ? "The ticket was filed, but the investigation did not start: the engine is busy with another run. Open the ticket and press Run investigation when it frees up."
+          : `The ticket was filed, but the investigation did not start: ${err || "engine unreachable"}. Open the ticket from Tickets and run it there.`);
+        return;
+      }
       location.href = `/tickets/${tkt.id}`;
     } catch {
       setBusy(false);

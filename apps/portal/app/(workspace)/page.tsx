@@ -62,7 +62,7 @@ export default async function Dashboard() {
         const days = Array.from({ length: 7 }, (_, i) => {
           const d = new Date(Date.now() - (6 - i) * 864e5);
           const key = d.toISOString().slice(0, 10);
-          return { label: d.toLocaleDateString("en-US", { weekday: "narrow" }), count: runs.filter((r) => r.createdAt.slice(0, 10) === key).length };
+          return { label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }), narrow: d.toLocaleDateString("en-US", { weekday: "narrow" }), count: runs.filter((r) => r.createdAt.slice(0, 10) === key).length };
         });
         const maxDay = Math.max(1, ...days.map((d) => d.count));
         const sweepPts = sweeps.slice(-10).map((s, i) => `${i * 28},${64 - (s.pass ? 52 : 10)}`).join(" ");
@@ -83,9 +83,10 @@ export default async function Dashboard() {
                 <div className="section-label">Agent runs, last 7 days</div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 84 }} role="img" aria-label={`Runs per day: ${days.map((d) => d.count).join(", ")}`}>
                   {days.map((d, i) => (
-                    <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                      <div style={{ height: 62, display: "flex", alignItems: "flex-end" }}><div style={{ width: "100%", height: `${Math.max(6, (d.count / maxDay) * 100)}%`, background: i === 6 ? "var(--accent)" : "#f59e0b", borderRadius: 4 }} /></div>
-                      <div className="small muted">{d.label}</div>
+                    <div key={i} style={{ flex: 1, textAlign: "center" }} title={`${d.label}: ${d.count} run(s)`}>
+                      <div className="small" style={{ fontWeight: 600 }}>{d.count}</div>
+                      <div style={{ height: 48, display: "flex", alignItems: "flex-end" }}><div style={{ width: "100%", height: `${Math.max(6, (d.count / maxDay) * 100)}%`, background: i === 6 ? "var(--accent)" : "var(--accent)", opacity: i === 6 ? 1 : 0.45, borderRadius: 4, transition: "height .6s ease" }} /></div>
+                      <div className="small muted">{d.narrow}</div>
                     </div>
                   ))}
                 </div>
@@ -94,8 +95,8 @@ export default async function Dashboard() {
               <div>
                 <div className="section-label">Run completion</div>
                 <div className="row" style={{ flexWrap: "nowrap" }}>
-                  <span className="donut" style={{ background: runs.length === 0 ? "var(--surface-overlay)" : `conic-gradient(#22c55e 0% ${runPct}%, #ef4444 ${runPct}% ${runPct + failPct}%, #f59e0b ${runPct + failPct}% ${runPct + failPct + activePct}%, var(--surface-overlay) ${runPct + failPct + activePct}%)` }}><span style={{ background: "var(--surface)", borderRadius: "50%", width: 56, height: 56, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><strong>{runs.length ? `${runPct}%` : "-"}</strong></span></span>
-                  <span className="small muted">{runs.length === 0 ? "No runs yet - the chart fills in as Charie works." : <><span style={{ color: "#22c55e" }}>●</span> {doneRuns} finished · <span style={{ color: "#ef4444" }}>●</span> {failedRuns} failed · <span style={{ color: "#f59e0b" }}>●</span> {activeRuns} in progress<br />{openTickets.length} ticket(s) still open.</>}</span>
+                  <span className="donut" title={runs.length ? `${doneRuns} finished (${runPct}%), ${failedRuns} failed (${failPct}%), ${activeRuns} in progress (${activePct}%)` : "No runs yet"} style={{ background: runs.length === 0 ? "var(--surface-overlay)" : `conic-gradient(var(--ok) 0% ${runPct}%, var(--danger) ${runPct}% ${runPct + failPct}%, var(--warn) ${runPct + failPct}% ${runPct + failPct + activePct}%, var(--surface-overlay) ${runPct + failPct + activePct}%)` }}><span style={{ background: "var(--surface)", borderRadius: "50%", width: 56, height: 56, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><strong>{runs.length ? `${runPct}%` : "-"}</strong></span></span>
+                  <span className="small muted">{runs.length === 0 ? "No runs yet - the chart fills in as Charie works." : <><span style={{ color: "var(--ok)" }}>●</span> {doneRuns} finished ({runPct}%) · <span style={{ color: "var(--danger)" }}>●</span> {failedRuns} failed ({failPct}%) · <span style={{ color: "var(--warn)" }}>●</span> {activeRuns} in progress ({activePct}%)<br />{openTickets.length} ticket(s) still open.</>}</span>
                 </div>
               </div>
               <div>
@@ -103,8 +104,8 @@ export default async function Dashboard() {
                 {sweeps.length === 0 ? <p className="small muted">No sweeps yet. Guardian sweeps draw their trend here.</p> : (
                   <>
                     <svg viewBox="0 0 260 76" style={{ width: "100%", height: 76 }} role="img" aria-label="Sweep pass trend">
-                      <polyline points={sweepPts || "0,64 252,12"} fill="none" stroke="#22c55e" strokeWidth="2.5" />
-                      {sweeps.slice(-10).map((s, i) => <circle key={i} cx={i * 28} cy={64 - (s.pass ? 52 : 10)} r="3.5" fill={s.pass ? "#22c55e" : "#ef4444"} />)}
+                      <polyline points={sweepPts || "0,64 252,12"} fill="none" stroke="var(--ok)" strokeWidth="2.5" />
+                      {sweeps.slice(-10).map((s, i) => <circle key={i} cx={i * 28} cy={64 - (s.pass ? 52 : 10)} r="4" fill={s.pass ? "var(--ok)" : "var(--danger)"}><title>{`${s.at.slice(0, 16).replace("T", " ")}: ${s.pass ? "passed" : "failed"}`}</title></circle>)}
                     </svg>
                     <p className="small muted" style={{ margin: "4px 0 0" }}>{sweeps.filter((s) => s.pass).length}/{sweeps.length} sweeps passed.</p>
                   </>
@@ -115,15 +116,15 @@ export default async function Dashboard() {
         );
       })()}
 
-      <div className="status-banner">
-        <span className="icon-orb green"><Icon name="check" size={22} /></span>
+      <div className="status-banner" style={openIncidents.length > 0 ? { borderColor: "var(--danger)" } : undefined}>
+        <span className={`icon-orb ${openIncidents.length > 0 ? "red" : "green"}`}><Icon name={openIncidents.length > 0 ? "alert" : "check"} size={22} /></span>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <strong style={{ color: "var(--ok)", fontSize: "var(--text-lg)" }}>{openIncidents.length === 0 ? "All systems operational" : `${openIncidents.length} incident(s) need attention`}</strong>
+          <strong style={{ color: openIncidents.length > 0 ? "var(--danger)" : "var(--ok)", fontSize: "var(--text-lg)" }}>{openIncidents.length === 0 ? "All systems operational" : `${openIncidents.length} incident(s) need attention`}</strong>
           <div className="small muted">{openIncidents.length === 0 ? "Running smoothly. No critical incidents." : "Charie is investigating. Review the priority queue below."}</div>
         </div>
-        <span className="small"><strong>{repos[0] ? `${repos[0].owner}/${repos[0].repo}` : "No repo connected"}</strong><br /><span className="muted">main</span></span>
-        <span className="small"><span className="env-dot" style={{ display: "inline-block", marginRight: 6 }} />Production</span>
-        <span className="small muted">Last check: {lastSweep ? when(lastSweep.at) : "never"} <span className="spark">╱╲╱╲</span></span>
+        <span className="small"><strong>{repos[0] ? `${repos[0].owner}/${repos[0].repo}` : "No repo connected"}</strong><br /><span className="muted">{repos[0]?.branch ?? "no branch"}</span></span>
+        <span className="small"><span className="env-dot" style={{ display: "inline-block", marginRight: 6 }} />{process.env.PORTAL_STORE === "firestore" ? "Production" : "Development"}</span>
+        <span className="small muted">Last check: {lastSweep ? when(lastSweep.at) : "never"}</span>
       </div>
 
       <div className="stats">

@@ -62,7 +62,7 @@ export function ReportBrowser({ reports }: { reports: ReportSummary[] }) {
               <span className="small muted">{r.kindLabel} · {r.at.slice(0, 16).replace("T", " ")}</span>
               <strong>{r.title}</strong>
               <span className="small muted">{r.target.slice(0, 60)}</span>
-              <span className="row"><span className="badge">{r.status}</span>{r.severity && <span className={`sev ${r.severity}`}>{r.severity}</span>}<span className="small muted">{r.result}</span></span>
+              <span className="row"><span className="badge" data-tone={r.status === "failed" ? "failed" : r.status === "done" ? "done" : undefined} style={r.status === "failed" ? { background: "var(--danger-dim)", color: "var(--danger)" } : r.status === "done" ? { background: "var(--ok-dim)", color: "var(--ok)" } : undefined}>{r.status}</span>{r.severity && <span className={`sev ${r.severity}`}>{r.severity}</span>}<span className="small muted">{r.result}</span></span>
               <span className="small mono muted">{r.id}</span>
             </Link>
           ))}

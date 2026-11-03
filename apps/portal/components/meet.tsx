@@ -586,7 +586,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         </>
       )}
       <div className="card">
-        <div className="card-title">Join “{roomTitle}”</div>
+        <div className="card-title">Ready to join</div>
         <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Camera starts off. Turn it on only if you want to be seen.</p>
         {!audioOnly && !startCamOff && (
           <div className="meet-preview-card">
@@ -613,6 +613,11 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
 
   const tiles = Object.values(peers);
   return (
+    <>
+    <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+      <span className="small" style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>{roomTitle}</span>
+      <span className="small muted">{tiles.length + 1} in call{agentOn ? " · Charie is in" : ""}{agentSpeaking ? " · Charie speaking" : ""}</span>
+    </div>
     <div className="war-layout">
       <div className="war-main">
         <div className={`meet-grid${spotlight ? " has-spot" : ""}`}>
@@ -676,6 +681,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         />
       </aside>
     </div>
+    </>
   );
 }
 

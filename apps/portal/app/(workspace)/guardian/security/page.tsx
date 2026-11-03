@@ -37,7 +37,7 @@ export default async function SecurityPage() {
         <div className="card"><EmptyState title="No scans yet" body="Run the suite to grade the deployment." /></div>
       ) : (
         <>
-          <div className="card" style={{ borderLeft: "4px solid var(--accent)" }}>
+          <div className="card" style={{ borderLeft: `4px solid ${failed.length === 0 ? "var(--ok)" : failed.some((c) => c.severity === "critical") ? "var(--danger)" : "var(--warn)"}` }}>
             <p style={{ margin: 0 }}>
               {failed.length === 0
                 ? <>Good news: the latest scan passed all {latest.checks.length} checks (grade {latest.grade}). Nothing to fix - the detail below is evidence.</>

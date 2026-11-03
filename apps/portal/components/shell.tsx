@@ -116,6 +116,17 @@ export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, al
 }) {
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
+  // The search trigger advertises Cmd/Ctrl-K: make the shortcut real.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const initials = (userLabel ?? "C").split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("") || "C";
   const toggle = (m: string) => setMenu((cur) => (cur === m ? null : m));
   const close = () => setMenu(null);

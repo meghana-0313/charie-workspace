@@ -12,6 +12,7 @@ export function GroundedShot({ src, alt, boxes }: { src: string; alt: string; bo
   return (
     <span className="shot-wrap">
       <a href={src} target="_blank" rel="noreferrer" title="Click to view full size"><img className="shot thumb" src={src} alt={alt} /></a>
+      {boxes.length > 0 && <span className="gbox-source">Grounded by SAM 3.1</span>}
       {boxes.map((b, i) => (
         <span
           key={i}

@@ -41,7 +41,7 @@ export default async function ReportPage({ params }: { params: Promise<{ kind: s
         <p className="page-sub">{report.kindLabel} · {report.at.slice(0, 16).replace("T", " ")} · <span className="mono">{report.id}</span></p>
       </div>
 
-      <div className="card" style={{ borderLeft: "4px solid var(--accent)" }}>
+      <div className="card" style={{ borderLeft: `4px solid ${report.status === "failed" ? "var(--danger)" : report.severity === "critical" || report.severity === "blocker" || report.severity === "high" ? "var(--warn)" : "var(--ok)"}` }}>
         <div className="card-title" style={{ marginBottom: 4 }}>The short version</div>
         <p style={{ margin: 0 }}>
           {report.status === "failed"

@@ -83,13 +83,13 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
             <EmptyState title="No runs yet" body="File a ticket and the investigation starts by itself." />
           ) : (
             <table>
-              <thead><tr><th>Task</th><th>Agent</th><th>Progress</th><th>Status</th><th>Started</th><th></th></tr></thead>
+              <thead><tr><th>Task</th><th>Agent</th><th>Stage</th><th>Status</th><th>Started</th><th></th></tr></thead>
               <tbody>
                 {cards.map((c, i) => (
                   <tr key={c.run.id} style={i === 0 ? { background: "var(--accent-dim)" } : undefined}>
                     <td><Link href={`/tickets/${c.run.ticketId}`}><strong>{c.run.kind === "verify" ? "Verify fix" : "Investigate"} · {c.run.id.slice(0, 14)}</strong></Link><br /><span className="small muted">{c.count} finding(s) · {c.run.targetUrl.replace(/^https?:\/\//, "").slice(0, 30)}</span></td>
                     <td><span className="row" style={{ flexWrap: "nowrap" }}><span className="initials">C</span><span className="small">charie-code</span></span></td>
-                    <td><span className="row" style={{ flexWrap: "nowrap" }}><span className="progress"><i style={{ width: c.run.status === "done" ? "100%" : c.run.status === "failed" ? "38%" : "64%" }} /></span><span className="small">{c.run.status === "done" ? "100%" : c.run.status === "failed" ? "38%" : "64%"}</span></span></td>
+                    <td className="small muted">{c.run.status === "done" ? "Findings ready" : c.run.status === "failed" ? "Stopped - see report" : "Driving the app"}</td>
                     <td><Badge tone={c.run.status}>{c.run.status}</Badge></td>
                     <td className="small muted">{when(c.run.createdAt)}</td>
                     <td><span className="row" style={{ flexWrap: "nowrap" }}><Link className="small" href={`/reports/agent-run/${c.run.id}`}>Report</Link>{c.prompt ? <CopyButton text={c.prompt} label="Copy prompt" /> : null}</span></td>
@@ -113,8 +113,8 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                   <p style={{ color: "var(--ok)", margin: "4px 0" }}><strong>{selected.run.status === "done" ? "Completed" : selected.run.status}</strong></p>
                   <p className="small muted">Charie analyzed the issue, collected evidence, and prepared the handoff.</p>
                 </div>
-                <span className="donut" style={{ background: `conic-gradient(var(--accent) ${selected.run.status === "done" ? 100 : 64}%, var(--surface-overlay) 0)` }}>
-                  <span style={{ background: "var(--surface)", borderRadius: "50%", width: 62, height: 62, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{selected.run.status === "done" ? "100%" : "64%"}</span>
+                <span className="donut" title={selected.run.status === "done" ? "Finished" : selected.run.status} style={{ background: `conic-gradient(var(--accent) ${selected.run.status === "done" ? 100 : 25}%, var(--surface-overlay) 0)` }}>
+                  <span style={{ background: "var(--surface)", borderRadius: "50%", width: 62, height: 62, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>{selected.run.status === "done" ? "Done" : selected.run.status}</span>
                 </span>
               </div>
               <table>
@@ -127,7 +127,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
               </table>
               <div className="section-label">Current step</div>
               <p className="small">{selected.run.status === "done" ? "Findings ready for your coding agent." : "Running investigation…"}</p>
-              <div className="progress" style={{ marginBottom: 12 }}><i style={{ width: selected.run.status === "done" ? "100%" : "64%" }} /></div>
+              <p className="small muted" style={{ marginBottom: 12 }}>{selected.run.status === "done" ? "Stage: finished." : selected.run.status === "failed" ? "Stage: stopped - the report names why." : "Stage: driving the app and collecting evidence. Live steps are in the ticket room."}</p>
               <div className="row">
                 <Link href={`/reports/agent-run/${selected.run.id}`} className="btn secondary sm">Report</Link>
                 <Link href={`/tickets/${selected.run.ticketId}`} className="btn sm">Live Logs</Link>
