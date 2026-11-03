@@ -119,7 +119,16 @@ export function splitSpeakChunks(text: string): string[] {
     else cur = cur ? `${cur} ${s}` : s;
   }
   if (cur) chunks.push(cur);
-  return chunks.slice(0, 4);
+  // The FIRST chunk is deliberately tiny: her voice starts after one short
+  // clause (~a second of synthesis), the rest streams in behind it.
+  if (chunks.length > 0 && chunks[0].length > 70) {
+    const first = chunks[0];
+    const cut = Math.max(first.lastIndexOf(", ", 70), first.lastIndexOf("; ", 70), first.lastIndexOf(" ", 70));
+    if (cut > 20) {
+      chunks.splice(0, 1, first.slice(0, cut + 1).trim(), first.slice(cut + 1).trim(), ...chunks.slice(1));
+    }
+  }
+  return chunks.slice(0, 5);
 }
 
 export function charieShouldReply(text: string): boolean {

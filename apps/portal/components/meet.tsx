@@ -1080,7 +1080,9 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       }
     };
     void poll();
-    const t = setInterval(poll, 800);
+    // 350ms: her replies should reach the speaker almost as they land in
+    // the transcript, not up to a second later.
+    const t = setInterval(poll, 350);
     return () => {
       stop = true;
       clearInterval(t);

@@ -42,6 +42,8 @@ const long = splitSpeakChunks(`${"A very long sentence about the checkout failur
 assert.ok(long.length >= 2 && long[0].length <= 170, "long replies split into early-playable chunks");
 assert.deepEqual(splitSpeakChunks("Just one sentence"), ["Just one sentence"]);
 assert.deepEqual(splitSpeakChunks("  "), []);
-assert.ok(splitSpeakChunks("A. B. C. D. E. F. G. H.").length <= 4);
+assert.ok(splitSpeakChunks("A. B. C. D. E. F. G. H.").length <= 5);
+const clauses = splitSpeakChunks("The checkout failed at the payment step, the card was declined by the bank, and the order never got created for the customer.");
+assert.ok(clauses[0].length <= 75, "first spoken chunk is one short clause so her voice starts fast");
 
 console.log("room-status tests passed");
