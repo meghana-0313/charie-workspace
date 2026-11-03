@@ -49,13 +49,17 @@ async function visionCall(
   };
   const choice = data.choices?.[0];
   const msg = choice?.message;
-  // Content can be a plain string, an array of text parts, or - when the
-  // reasoning budget ran out - only reasoning_content. Accept all three,
-  // exactly like baseten.ts does for text calls.
+  // Content can be a plain string or an array of text parts. Deliberately
+  // NOT reasoning_content: for vision that is the model's private scratch
+  // work ("We need to answer in ONE short sentence... We must comply?")
+  // and reading it aloud leaks the prompt itself - the bug users heard.
   let text = "";
   if (typeof msg?.content === "string") text = msg.content;
   else if (Array.isArray(msg?.content)) text = msg.content.map((p) => p.text ?? "").join(" ");
-  text = (text || msg?.reasoning_content || "").trim();
+  text = text.trim();
+  if (/^(we need to|we are charie|we should (answer|say)|we must comply|there'?s no disallowed)/i.test(text)) {
+    throw new Error("model leaked its reasoning instead of answering");
+  }
   if (!text) throw new Error(`answered empty (finish_reason=${choice?.finish_reason ?? "unknown"})`);
   return text;
 }
@@ -75,10 +79,22 @@ export async function describeScreenDetailed(
 ): Promise<{ ok: true; text: string; model: string } | { ok: false; reason: string }> {
   if (!image.startsWith("data:image/")) return { ok: false, reason: "no image frame was captured" };
   const failures: string[] = [];
+  // One retry with the full (non-fast) budget when a reasoning model spent
+  // the fast budget thinking and answered empty or leaked its scratch work.
+  const attempt = async (base: string, key: string, model: string): Promise<string> => {
+    try {
+      return await visionCall(base, key, model, image, question, fetchImpl, fast);
+    } catch (e) {
+      if (fast && /empty|leaked/.test((e as Error).message)) {
+        return visionCall(base, key, model, image, question, fetchImpl, false);
+      }
+      throw e;
+    }
+  };
   const meta = secret("META_API_KEY");
   if (meta) {
     try {
-      const text = await visionCall(secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1", meta, secret("META_SPARK_MODEL") ?? "muse-spark-1.3", image, question, fetchImpl, fast);
+      const text = await attempt(secret("META_API_BASE_URL") ?? "https://api.meta.ai/v1", meta, secret("META_SPARK_MODEL") ?? "muse-spark-1.3");
       if (text) return { ok: true, text: text.slice(0, 600), model: "muse-spark-1.3 (meta vision)" };
       failures.push("Meta Muse Spark answered empty");
     } catch (e) { failures.push(`Meta Muse Spark: ${(e as Error).message}`); }
@@ -88,7 +104,7 @@ export async function describeScreenDetailed(
   const baseten = secret("BASETEN_API_KEY");
   if (baseten && hasBasetenKey()) {
     try {
-      const text = await visionCall(secret("SPARK_OPEN_ENDPOINT") ?? "https://inference.baseten.co/v1", baseten, sparkOpenModelId(), image, question, fetchImpl, fast);
+      const text = await attempt(secret("SPARK_OPEN_ENDPOINT") ?? "https://inference.baseten.co/v1", baseten, sparkOpenModelId());
       if (text) return { ok: true, text: text.slice(0, 600), model: `${sparkOpenModelId()} (baseten vision)` };
       failures.push("Baseten Muse Spark Open answered empty");
     } catch (e) { failures.push(`Baseten Muse Spark Open: ${(e as Error).message}`); }

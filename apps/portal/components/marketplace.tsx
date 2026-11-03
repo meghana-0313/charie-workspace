@@ -5,41 +5,28 @@
 import { useState } from "react";
 import { Badge } from "./ui";
 
-/** Brand marks as simple geometric SVGs in brand colors (tiles per reference). */
+/**
+ * Integration marks: neutral monogram tiles, deliberately not redrawn
+ * brand logos. Hand-drawn approximations of real logos (the old switch)
+ * were inaccurate (an owl for Sentry, a paw for Datadog) and recoloured
+ * copies breach most vendors' mark guidelines. A letter in the brand's
+ * colour beside the real product name is honest nominative use: it
+ * identifies the product without claiming its logo. Charie is not
+ * affiliated with or endorsed by these products.
+ */
+const APP_INITIALS: Record<string, string> = {
+  github: "GH", gitlab: "GL", jira: "J", slack: "S", sentry: "Se", datadog: "Dd",
+  aws: "AWS", gcp: "G", firebase: "F", linear: "L", discord: "D",
+  azure: "Az", cloudflare: "Cf", supabase: "Sb", webhook: "</>",
+};
+
 export function AppLogo({ app }: { app: string }) {
-  const s = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": true } as const;
-  switch (app) {
-    case "github":
-      return <svg {...s}><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34a2.65 2.65 0 0 0-1.11-1.46c-.91-.62.07-.61.07-.61a2.1 2.1 0 0 1 1.53 1 2.12 2.12 0 0 0 2.9.83 2.13 2.13 0 0 1 .63-1.33c-2.22-.25-4.56-1.11-4.56-4.94a3.87 3.87 0 0 1 1-2.67 3.6 3.6 0 0 1 .1-2.64s.84-.27 2.75 1a9.5 9.5 0 0 1 5 0c1.91-1.3 2.75-1 2.75-1a3.6 3.6 0 0 1 .1 2.64 3.87 3.87 0 0 1 1 2.67c0 3.84-2.34 4.68-4.57 4.93a2.4 2.4 0 0 1 .68 1.85V21c0 .27.18.58.69.48A10 10 0 0 0 12 2z" /></svg>;
-    case "gitlab":
-      return <svg {...s}><path d="M12 21.5L8.2 9.9h7.6zM5.6 21L3.1 13.2a1.5 1.5 0 0 1 .6-1.7L8.2 9.9zm12.8 0l2.5-7.8a1.5 1.5 0 0 0-.6-1.7l-4.5-1.6zm-10-11.6L6.6 4.6a.55.55 0 0 0-1 0L4.2 9.3a1.5 1.5 0 0 0 .6 1.7zm9.2 0l1.8-5.3a.55.55 0 0 1 1 0l1.4 4.7a1.5 1.5 0 0 1-.6 1.7z" /></svg>;
-    case "jira":
-      return <svg {...s}><path d="M11.5 3h9v9h-4.7V7.7H11.5zm-6.2 6.3h9v9H9.6V14H5.3zm-3.2 6.2h9v9H6.4v-4.3H2.1z" transform="scale(0.92)" /></svg>;
-    case "slack":
-      return <svg {...s}><path d="M9.4 3.5a1.8 1.8 0 0 0-1.8 1.8v3.6a1.8 1.8 0 1 0 3.6 0V5.3a1.8 1.8 0 0 0-1.8-1.8zm9.3 5.4h-3.6a1.8 1.8 0 1 0 0 3.6h3.6a1.8 1.8 0 1 0 0-3.6zM5.3 13.1a1.8 1.8 0 1 0 0 3.6h3.6a1.8 1.8 0 1 0 0-3.6zm9.3 1.8v3.6a1.8 1.8 0 1 0 3.6 0v-3.6a1.8 1.8 0 1 0-3.6 0z" /></svg>;
-    case "sentry":
-      return <svg {...s}><path d="M12 3a7 7 0 0 1 7 7c0 2.4-1.2 4.2-2.6 5.6L21 21h-3.4l-3.2-3.6A7 7 0 0 1 5 10a7 7 0 0 1 7-7zm-2.2 6.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm4.4 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z" /></svg>;
-    case "datadog":
-      return <svg {...s}><circle cx="8" cy="8" r="2.2" /><circle cx="15" cy="6.5" r="2" /><circle cx="18.5" cy="11" r="2" /><path d="M12 12.5c3 0 5.5 2.1 5.5 4.6 0 1.6-1.2 2.6-3 2.6-1 0-1.7-.4-2.5-.4s-1.5.4-2.5.4c-1.8 0-3-1-3-2.6 0-2.5 2.5-4.6 5.5-4.6z" /></svg>;
-    case "aws":
-      return <svg {...s}><path d="M4 8.5c0 4 3.2 6.5 6.6 6.5 1.7 0 3.6-.7 5-1.7l2.3 2a.5.5 0 0 1-.2.8c-1.9 1.4-4.5 2-6.8 2C6 18.1 2.8 14.7 2.5 10.6A8.6 8.6 0 0 1 4 8.5zm14.9 6.2c-.4-.5-1.7-.2-2.4-.1-.2 0-.2-.2 0-.4 1.3-.9 3.4-.6 3.6-.3.2.3-.1 2.3-1.2 3.3-.2.2-.4.1-.3-.1.3-.6 1-1.9.9-2.4zM9 5.2a3.4 3.4 0 0 1 6.8.3v.3c0 .3.1.4.4.7l1.2 1.7a.5.5 0 0 1-.3.8l-1.7.7a.5.5 0 0 1-.6-.3L13.4 7c-.9.7-2.2 1-3.4.9A3.2 3.2 0 0 1 9 5.2z" transform="scale(0.95)" /></svg>;
-    case "gcp":
-      return <svg {...s}><path d="M7 18a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18.3 10 3.8 3.8 0 0 1 17.5 18z" /></svg>;
-    case "firebase":
-      return <svg {...s}><path d="M12 2s1 3.2-1.6 6C8.2 10.3 6.5 12 6.5 15a5.5 5.5 0 0 0 11 0c0-2-1-3.6-2-5-.3 1-1 1.8-2 2.3.6-2.8-.3-7.3-1.5-10.3z" /></svg>;
-    case "linear":
-      return <svg {...s}><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M5.5 15.5a9 9 0 0 1 13-7M4 12h16M8 5.8a9 9 0 0 1 10.2 10.4" stroke="currentColor" strokeWidth="1.6" fill="none" /></svg>;
-    case "azure":
-      return <svg {...s}><path d="M9.5 3h8.2l3.3 18h-6.2l-1.5-3.4H6.6L4.9 21H1.6zm1.8 5.2L8.2 14h4.4l-1-5.8z" transform="scale(0.95)" /></svg>;
-    case "cloudflare":
-      return <svg {...s}><path d="M7 18a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18.3 10 3.8 3.8 0 0 1 17.5 18zM8 21h11l-1.2-2.6H9.4z" /></svg>;
-    case "supabase":
-      return <svg {...s}><path d="M13.4 2L4.6 13.5h5.6L9.4 22l8.8-11.5h-5.6z" /></svg>;
-    case "discord":
-      return <svg {...s}><path d="M6.5 5.5A13 13 0 0 1 9.6 4.6l.5 1a10.7 10.7 0 0 0-5 4.6A13.4 13.4 0 0 1 6.6 9.9c.1.2.2.5.3.7a10.8 10.8 0 0 0 3.3 5.7c.2.2.6.1.6-.4a7.7 7.7 0 0 1-.8-1.2c-.1-.2 0-.4.2-.5l.6-.3c.2-.1.4 0 .6.1a8.7 8.7 0 0 0 6.8 0c.2-.1.4-.2.6-.1l.6.3c.2.1.3.3.2.5l-.8 1.3c-.1.4.4.5.6.3a10.8 10.8 0 0 0 3.3-5.7c.1-.2.2-.5.3-.7-.5-.2-1-.4-1.5-.7a10.7 10.7 0 0 0-5-4.6l.5-1c1 .2 2.1.5 3.1.9a2 2 0 0 1 1.2 1.4l1.2 7a2.3 2.3 0 0 1-1 2.4 14.7 14.7 0 0 1-3.4 1.7c-.3.1-.6 0-.7-.3l-.6-1.2a10.6 10.6 0 0 1-3 0l-.6 1.2c-.1.3-.4.4-.7.3a14.7 14.7 0 0 1-3.4-1.7 2.3 2.3 0 0 1-1-2.4l1.2-7A2 2 0 0 1 6.5 5.5zM9.7 15.8a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zm4.6 0a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z" transform="scale(0.92) translate(1 0)" /></svg>;
-    default:
-      return <svg {...s}><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 1 0-5.7-5.7l-1.5 1.5M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 1 0 5.7 5.7l1.5-1.5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>;
-  }
+  const initials = APP_INITIALS[app] ?? app.slice(0, 2).toUpperCase();
+  return (
+    <span aria-hidden style={{ fontSize: initials.length > 2 ? 9 : 11, fontWeight: 700, letterSpacing: ".02em", lineHeight: 1, fontFamily: "var(--font-sans)" }}>
+      {initials}
+    </span>
+  );
 }
 
 const APP_COLORS: Record<string, [string, string]> = {
@@ -82,7 +69,7 @@ export function AppTiles({ githubConnected, jiraConnected, azureConnected, cloud
         {apps.map(([app, name, desc, state, href]) => {
           const [bg, fg] = APP_COLORS[app] ?? ["#202949", "#fff"];
           return (
-            <div key={app} className="app-tile">
+            <div key={app} className={state === "soon" ? "app-tile is-soon" : "app-tile"} aria-disabled={state === "soon" || undefined}>
               <div className="row" style={{ flexWrap: "nowrap" }}>
                 <span className="app-logo" style={{ background: bg, color: fg }}><AppLogo app={app} /></span>
                 <strong>{name}</strong>
@@ -100,6 +87,7 @@ export function AppTiles({ githubConnected, jiraConnected, azureConnected, cloud
           );
         })}
       </div>
+      <p className="small muted">Product names are trademarks of their owners. Tiles use letter marks only - Charie is not affiliated with or endorsed by these products.</p>
     </>
   );
 }

@@ -19,7 +19,7 @@ export default async function MeetRoomPage({ params }: { params: Promise<{ id: s
       <PageHead
         crumbs={[["/", "Home"], ["/guardian/zoom", "Meet"], [`/guardian/zoom/rooms/${room.id}`, room.title.slice(0, 40)]]}
         title={room.title}
-        sub="Native Charie room. Media flows peer to peer; the portal only exchanges connection setup."
+        sub="Media flows peer to peer; the portal only exchanges connection setup."
       />
       <MeetRoom
         roomId={room.id}

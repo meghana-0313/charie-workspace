@@ -19,9 +19,14 @@ const reply = (body: unknown) => async () => new Response(JSON.stringify(body), 
 const plain = await describeScreenDetailed(IMG, "what do you see?", reply({ choices: [{ finish_reason: "stop", message: { content: "A checkout page." } }] }) as typeof fetch);
 ok(plain.ok && plain.text.includes("checkout"), "string content parses");
 
-// Reasoning-only reply: content empty, answer in reasoning_content.
-const reasoning = await describeScreenDetailed(IMG, "what do you see?", reply({ choices: [{ finish_reason: "length", message: { content: "", reasoning_content: "The screen shows a checkout error." } }] }) as typeof fetch);
-ok(reasoning.ok && reasoning.text.includes("checkout error"), "reasoning_content fallback rescues an empty reply");
+// Reasoning-only reply: content empty, scratch work in reasoning_content.
+// Vision must NEVER speak that (it leaks the prompt); it reports empty.
+const reasoning = await describeScreenDetailed(IMG, "what do you see?", reply({ choices: [{ finish_reason: "length", message: { content: "", reasoning_content: "We need to answer in one short sentence. The screen shows a checkout error." } }] }) as typeof fetch);
+ok(!reasoning.ok && reasoning.reason.includes("finish_reason=length"), "reasoning scratch work is never spoken as a vision answer");
+
+// Leaked reasoning in content is rejected by name too.
+const leaked = await describeScreenDetailed(IMG, "what do you see?", reply({ choices: [{ finish_reason: "stop", message: { content: "We need to answer in ONE short sentence. We are Charie watching shared screen live." } }] }) as typeof fetch);
+ok(!leaked.ok && leaked.reason.includes("leaked"), "leaked reasoning in content is rejected");
 
 // Content as an array of text parts.
 const parts = await describeScreenDetailed(IMG, "what do you see?", reply({ choices: [{ finish_reason: "stop", message: { content: [{ type: "text", text: "A red error banner." }] } }] }) as typeof fetch);
