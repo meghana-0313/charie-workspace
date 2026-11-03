@@ -33,8 +33,10 @@ export async function POST(req: Request) {
     const email = String(decoded.email ?? "").toLowerCase();
     if (!email) return NextResponse.json({ error: "email required" }, { status: 401 });
     const chosen = String(body.userName ?? "").trim().slice(0, 60);
-    const name = chosen || String(decoded.name ?? email.split("@")[0]);
     const seat = await store.getSeatByEmail(email).catch(() => null);
+    // A name saved in Settings wins over the identity token, which can keep
+    // carrying an old display name forever (the incognito stale-name bug).
+    const name = (seat?.name ?? "").trim() || chosen || String(decoded.name ?? email.split("@")[0]);
     if (!seat) {
       const all = await store.listSeats().catch(() => []);
       if (all.length > 0) return NextResponse.json({ error: "not invited" }, { status: 403 });

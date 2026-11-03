@@ -795,6 +795,17 @@ export function MeetSwitch({ checked, onChange, label, disabled }: { checked: bo
 /** One-click voice check, run inside the click gesture so audio can play. */
 export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; onNote: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
+  // Warm the voice service as soon as this panel renders, so the click
+  // below plays from cache instead of paying a 10-30s cold start.
+  const warmed = useRef(false);
+  useEffect(() => {
+    if (warmed.current) return;
+    warmed.current = true;
+    fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "Hi, this is Charie." }),
+    }).catch(() => {});
+  }, [roomId, qp]);
   async function test() {
     if (busy) return;
     setBusy(true);
@@ -802,7 +813,7 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
     try {
       const res = await fetch(`/api/meet/rooms/${roomId}/tts${qp}`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: "Hi, this is Charie. If you can hear me, my voice is working." }),
+        body: JSON.stringify({ text: "Hi, this is Charie." }),
       });
       if (!res.ok) { onNote(`Voice test failed: the voice service answered ${res.status}. Check CHARIE_TTS_URL and the Modal deployment, then retry.`); setBusy(false); return; }
       const blob = await res.blob();

@@ -72,7 +72,7 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
           <span className="side-mark"><CharieMark /></span>
           <span>
             <span className="side-name">{workspaceName ?? "CHARIE"}</span>
-            <div className="side-sub">Autonomous Engineering Intelligence</div>
+            
           </span>
         </Link>
         <button type="button" className="icon-btn nav-toggle" aria-expanded={!collapsed} aria-controls="charie-sidebar-nav" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((c) => !c)}>
@@ -129,7 +129,7 @@ export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, al
             </button>
             {menu === "ws" && (
               <div className="menu" role="menu">
-                <div className="menu-head"><strong className="small">{workspaceName ?? "Charie"}</strong><br /><span className="sub small muted">Autonomous Engineering Intelligence</span></div>
+                <div className="menu-head"><strong className="small">{workspaceName ?? "Charie"}</strong></div>
                 <Link className="menu-item" href="/settings" onClick={close}><Icon name="gear" /> Workspace settings</Link>
               </div>
             )}

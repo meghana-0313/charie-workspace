@@ -6,10 +6,21 @@ import { useEffect, useState } from "react";
 import { signOutFirebase } from "@/lib/firebase-client";
 
 /** Runs in <head> before paint so the theme never flashes. */
-export const themeInitScript = `(function(){try{var t=localStorage.getItem("charie-theme");if(!t&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.dataset.theme="light";}catch(e){}})();`;
+export const themeInitScript = `(function(){try{var t=null;try{t=localStorage.getItem("charie-theme");}catch(e){}if(!t){var m=document.cookie.match(/(?:^|; )charie-theme=([a-z]+)/);if(m)t=m[1];}if(!t&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.dataset.theme="light";try{localStorage.setItem("charie-theme",t||"dark");}catch(e){}document.cookie="charie-theme="+(t||"dark")+"; path=/; max-age=31536000; samesite=lax";}catch(e){}})();`;
+
+function saveTheme(light: boolean) {
+  try { localStorage.setItem("charie-theme", light ? "light" : "dark"); } catch { /* storage blocked */ }
+  try { document.cookie = `charie-theme=${light ? "light" : "dark"}; path=/; max-age=31536000; samesite=lax`; } catch { /* cookies blocked */ }
+}
 
 export function ThemeToggle() {
   const [light, setLight] = useState(() => typeof document !== "undefined" && document.documentElement.dataset.theme === "light");
+  useEffect(() => {
+    const sync = () => setLight(document.documentElement.dataset.theme === "light");
+    sync();
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
   return (
     <button
       className="icon-btn"
@@ -21,10 +32,10 @@ export function ThemeToggle() {
         setLight(next);
         if (next) {
           document.documentElement.dataset.theme = "light";
-          localStorage.setItem("charie-theme", "light");
+          saveTheme(true);
         } else {
           delete document.documentElement.dataset.theme;
-          localStorage.setItem("charie-theme", "dark");
+          saveTheme(false);
         }
       }}
     >
