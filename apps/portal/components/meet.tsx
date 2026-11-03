@@ -1146,7 +1146,10 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
     // other with no synthesis gap between them.
     const upcoming = agentLines[spokenRef.current];
     if (upcoming) {
-      for (const c of splitSpeakChunks(speakableText(upcoming.text))) void fetchTts(roomId, qp, c).catch(() => {});
+      // Prefetch ONLY the next line's first chunk - anything more queues
+      // ahead of what she is about to say on a single voice container.
+      const first = splitSpeakChunks(speakableText(upcoming.text))[0];
+      if (first) void fetchTts(roomId, qp, first).catch(() => {});
     }
     if (!text) { setSpeakTick((n) => n + 1); return; }
     speakingRef.current = true;
@@ -1181,10 +1184,12 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       // Sentence-by-sentence: the first chunk starts playing as soon as it
       // is synthesized instead of waiting for the whole reply's audio.
       const chunks = splitSpeakChunks(text);
-      const pending = chunks.map((c) => fetchTts(roomId, qp, c).catch(() => null));
+      // Sequential, never parallel: one warm CPU voice container serves
+      // requests in turn, so firing all chunks at once makes the FIRST
+      // chunk wait behind the rest - the super-slow start users heard.
       for (let i = 0; i < chunks.length; i++) {
         if (gen !== speakGenRef.current) return;
-        const blob = await pending[i];
+        const blob = await fetchTts(roomId, qp, chunks[i]).catch(() => null);
         if (gen !== speakGenRef.current) return;
         if (!blob) {
           if (i === 0) { setVoiceNote("Human voice service unavailable, using the browser voice for this line."); browserFallback(); }

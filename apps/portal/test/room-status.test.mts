@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, splitSpeakChunks } from "../lib/room-status";
+import { isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, shortVisionConfirm, splitSpeakChunks } from "../lib/room-status";
 
 // Screen questions are detected so they never reach a free-form model guess.
 assert.equal(isScreenSeeQuestion("Sorry, can you see my screen?"), true);
@@ -45,5 +45,9 @@ assert.deepEqual(splitSpeakChunks("  "), []);
 assert.ok(splitSpeakChunks("A. B. C. D. E. F. G. H.").length <= 5);
 const clauses = splitSpeakChunks("The checkout failed at the payment step, the card was declined by the bank, and the order never got created for the customer.");
 assert.ok(clauses[0].length <= 75, "first spoken chunk is one short clause so her voice starts fast");
+
+const confirm = shortVisionConfirm("Your Usage page shows a 1.1K rupee spike on November 3rd. No error visible. Click Billing next.");
+assert.match(confirm, /same screen/i);
+assert.ok(!confirm.includes("Click Billing"), "confirmation never re-reads the whole frame");
 
 console.log("room-status tests passed");

@@ -131,6 +131,16 @@ export function splitSpeakChunks(text: string): string[] {
   return chunks.slice(0, 5);
 }
 
+/**
+ * She just described this exact frame out loud (a Look or a watch alert).
+ * Re-reading it word for word when asked "can you see?" is the
+ * says-the-same-thing-twice bug: confirm briefly instead.
+ */
+export function shortVisionConfirm(visionText: string): string {
+  const firstSentence = (visionText.split(/(?<=[.!?])\s/)[0] ?? visionText).slice(0, 150).trim();
+  return `Yep, I'm looking at that same screen: ${firstSentence}`;
+}
+
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
   if (!t) return false;

@@ -438,7 +438,8 @@ button.recording { background: var(--danger); color: #fff; }
 .chip-select .chev { margin-left: auto; color: var(--ink-faint); }
 .avatar-dot { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-strong); color: var(--on-accent); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--text-sm); flex: none; }
 button.chip-select { cursor: pointer; text-align: left; font: inherit; color: inherit; }
-button.chip-select:hover, button.avatar-dot:hover { border-color: var(--line-strong); filter: brightness(1.08); }
+button.chip-select:hover { background: var(--surface-overlay); border-color: var(--line-strong); color: var(--ink); filter: none; }
+button.avatar-dot:hover { border-color: var(--line-strong); filter: brightness(1.08); }
 button.avatar-dot { border: 1px solid transparent; cursor: pointer; font: inherit; }
 .menu-wrap { position: relative; }
 .menu-backdrop { position: fixed; inset: 0; z-index: 55; background: transparent !important; border: none; box-shadow: none; padding: 0; cursor: default; }
