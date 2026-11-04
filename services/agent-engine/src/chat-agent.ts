@@ -76,6 +76,7 @@ Rules:
 - Normally answer with text after 1-3 tool results. Do not keep calling tools hoping for better data.
 - Compound questions: answer every part. "What can you do" comes from the help result; "how is my system health" comes from the snapshot health, schedules, and repos; "how many calls this week" comes from the snapshot meet counts. If a number is not in the snapshot or a tool result, say you do not have it - never call random tools hunting for it.
 - Only cite ids, URLs, statuses, and numbers that appeared in tool results or the snapshot. Never invent them.
+- If the user says "try again", "try now", or "retry" after a failed result, re-issue the same tool call that was proposed or attempted earlier in the conversation (same kind, same target). Never answer a retry request with help.
 - If the request needs a target URL you do not have, ask for it in a text reply.
 - Approvals, dispatches, verifies, pushes, and external writes happen on the ticket page by a human: link there, never claim you did them.
 - You are also a normal conversational assistant: greetings, general knowledge, small talk, and questions unrelated to work get a direct friendly text answer, no tool needed. Never refuse a question just because it is not about tickets.
@@ -163,6 +164,21 @@ export function heuristicTurn(history: ChatTurn[], demoTargetUrl?: string): Chat
   if (ticketId) {
     return { kind: "tool", tool: "ticket_status", args: { ticketId }, model: "heuristic" };
   }
+  // "Try now / try again" after a failed or proposed scan re-issues that
+  // exact scan (the portal turns it back into a consent card). It must
+  // never degrade into a help dump the way it used to.
+  if (/^(try (again|now)|retry|run it again|go ahead)\b/.test(low)) {
+    for (const t of [...history].reverse()) {
+      if (t.role === "user") continue;
+      const m = t.content.match(/(a11y|firstrun|pentest)\s*[-:]\s*(https?:\/\/[^\s"'\)]+)/i)
+        ?? t.content.match(/(accessibility|first.?run|security)\s+(?:scan\s+)?(?:on\s+)?(https?:\/\/[^\s"'\)]+)/i);
+      if (m) {
+        const kindWord = m[1].toLowerCase();
+        const kind = kindWord.startsWith("access") || kindWord === "a11y" ? "a11y" : kindWord.startsWith("first") ? "firstrun" : kindWord === "security" ? "pentest" : kindWord;
+        return { kind: "tool", tool: "start_scan", args: { kind, targetUrl: m[2].replace(/[.,;]+$/, "") }, model: "heuristic" };
+      }
+    }
+  }
   // UX / redesign is an investigation ticket (the /ux flow), never a scan kind.
   const uxIntent = /(\bux\b|user experience|redesign)/.test(low);
   if (uxIntent && scanUrl) {
@@ -232,7 +248,10 @@ export function heuristicTurn(history: ChatTurn[], demoTargetUrl?: string): Chat
   const lastTool = [...history].reverse().find((t) => t.role === "tool");
   const lastUser = [...history].reverse().find((t) => t.role === "user");
   if (lastTool && (!lastUser || history.indexOf(lastTool) > history.indexOf(lastUser))) {
-    return { kind: "text", text: lastTool.content.slice(0, 1500), model: "heuristic" };
+    // Tool content arrives labelled "[tool_name] ...": that label is
+    // plumbing for the loop, never something to show the user.
+    const cleanTool = lastTool.content.replace(/^\[[a-z_]+\]\s*/i, "");
+    return { kind: "text", text: cleanTool.slice(0, 1500), model: "heuristic" };
   }
   return { kind: "tool", tool: "help", args: {}, model: "heuristic" };
 }
