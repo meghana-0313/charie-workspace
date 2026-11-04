@@ -336,10 +336,10 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     else if (t.role === "tool") messages.push({ role: "user", content: `TOOL RESULT: ${t.content}` });
     else messages.push({ role: "user", content: t.content });
   }
+  const meetCall = typeof input.snapshot === "object" && input.snapshot !== null && (input.snapshot as { surface?: string }).surface === "meet-call";
   // Baseten first unless the user picked Meta: Muse Spark Open on Baseten credits.
   if (hasBasetenKey() && input.model !== "meta") {
     try {
-      const meetCall = typeof input.snapshot === "object" && input.snapshot !== null && (input.snapshot as { surface?: string }).surface === "meet-call";
       const out = await sparkOpenChat(messages, { maxTokens: meetCall ? 1200 : effortBudget("baseten", input.effort), temperature: 0.4, fetchImpl: input.fetchImpl });
       const parsed = parseTurnReply(out);
       // An unparseable model reply is a provider failure, not an answer:
@@ -359,7 +359,7 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     return heuristicTurn(input.history, demoTarget);
   }
   try {
-    const out = await chat(messages, { model: modelId("spark"), maxTokens: effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
+    const out = await chat(messages, { model: modelId("spark"), maxTokens: meetCall ? 1200 : effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
     if (parsed.model === "heuristic") return heuristicTurn(input.history, demoTarget);
     return { ...parsed, model: parsed.model === "spark" ? modelId("spark") : parsed.model };

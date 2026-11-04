@@ -487,6 +487,11 @@ button.avatar-dot { border: 1px solid transparent; cursor: pointer; font: inheri
 .wave-bars i { width: 3px; background: var(--accent-ink); border-radius: 2px; animation: wavePulse 1s ease-in-out infinite; }
 .wave-bars i:nth-child(2) { animation-delay: .12s; } .wave-bars i:nth-child(3) { animation-delay: .24s; } .wave-bars i:nth-child(4) { animation-delay: .36s; } .wave-bars i:nth-child(5) { animation-delay: .48s; }
 @keyframes wavePulse { 0%,100% { height: 5px; } 50% { height: 15px; } }
+
+/* Navigation loading skeleton (see (workspace)/loading.tsx) */
+.skel { border-radius: 8px; background: color-mix(in srgb, var(--ink) 9%, transparent); animation: skelPulse 1.2s ease-in-out infinite; }
+@keyframes skelPulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
 .thought { font-family: var(--font-mono); font-size: 12px; border-top: 1px solid var(--line); padding: 8px 0; color: var(--ink-muted); }
 .thought b { color: var(--accent-ink); font-weight: 650; }
 .consent-card { border: 1px solid var(--accent); background: var(--accent-dim); border-radius: var(--radius-md); padding: var(--space-3); margin: var(--space-2) 0; }

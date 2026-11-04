@@ -33,7 +33,7 @@ async function engineReply(roomId: string, line: LiveLine): Promise<string | nul
   }));
   try {
     const ans = await answerMessage({
-      history, uid: undefined, surface: "meet-call",
+      history, uid: undefined, surface: "meet-call", effort: "low",
       extraNotes: ["You are speaking aloud in a live video call as Charie. Be brief like a human in a meeting: ONE short sentence, at most 25 words, unless they explicitly ask for detail. Lead with the answer - no preamble, no restating their question, no filler like 'great question'. If a short answer would mislead, say the key point and offer to expand. Plain words, contractions. No markdown, no lists, no links, no ticket ids or URLs read aloud.", "Screen truth: you do NOT get a live video feed and cannot watch anyone's screen. You only see a single frame when a participant shares, vision is on, and a Charie, look capture succeeds - that description then appears in this history as your own line. Never say you can see a screen, or that you are looking at it, unless such a captured-frame description is already in this history. Otherwise say you cannot see it yet and ask them to share and press Charie, look."],
     });
     if (!ans.text || ans.model === "heuristic" && /engine is unreachable/i.test(ans.text)) return null;

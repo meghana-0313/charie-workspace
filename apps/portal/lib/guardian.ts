@@ -19,21 +19,36 @@ function headers(account?: string): Record<string, string> {
   return h;
 }
 
+// Short-lived cache for engine list reads. Tab-hopping re-renders every
+// page on the server, and re-asking the engine for the same lists each
+// time made clicks feel ignored. Four seconds is fresh enough for lists
+// and makes repeat navigation near-instant; any write clears it.
+const GET_CACHE = new Map<string, { at: number; value: unknown }>();
+const GET_TTL_MS = 4000;
+
 async function get<T>(path: string, timeout = 30000, account?: string): Promise<T | null> {
+  const key = `${account ?? ""}|${path}`;
+  const hit = GET_CACHE.get(key);
+  if (hit && Date.now() - hit.at < GET_TTL_MS) return hit.value as T;
   try {
     const res = await fetch(`${base()}${path}`, {
       headers: headers(account),
       cache: "no-store",
-      signal: AbortSignal.timeout(timeout),
+      // List reads must never hang a page: cap the wait well below the
+      // old 30s, which is what made tabs look unclickable.
+      signal: AbortSignal.timeout(Math.min(timeout, 12000)),
     });
     if (!res.ok) return null;
-    return (await res.json()) as T;
+    const value = (await res.json()) as T;
+    GET_CACHE.set(key, { at: Date.now(), value });
+    return value;
   } catch {
     return null;
   }
 }
 
 async function post<T>(path: string, body: unknown, timeout = 120000, account?: string): Promise<T | null> {
+  GET_CACHE.clear();
   try {
     const res = await fetch(`${base()}${path}`, {
       method: "POST",

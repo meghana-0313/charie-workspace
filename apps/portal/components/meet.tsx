@@ -592,10 +592,33 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   if (!joined) {
     return (
       <div className="stack">
+      <div className="card">
+        <div className="card-title">Ready to join</div>
+        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Camera starts off. Turn it on only if you want to be seen.</p>
+        {!audioOnly && !startCamOff && (
+          <div className="meet-preview-card">
+            <video ref={previewVideo} autoPlay playsInline muted className="meet-preview" aria-label="Camera preview" />
+            <span className="meet-name">{name || "You"} (preview)</span>
+          </div>
+        )}
+        {startCamOff && !audioOnly && <div className="meet-preview-card"><div className="meet-wait" style={{ height: "100%" }}>Camera is off. Nobody can see you. Switch Camera off to preview.</div></div>}
+        <label className="small muted" htmlFor="meet-name" style={{ display: "block", margin: "10px 0 4px" }}>Your name</label>
+        <div className="row" style={{ flexWrap: "nowrap", maxWidth: 430 }}>
+          <input id="meet-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Meghana" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 0 }} />
+          <button onClick={join} style={{ flex: "none" }}>{audioOnly ? "Join audio only" : "Join call"}</button>
+        </div>
+        <div className="stack" style={{ marginTop: 8 }}>
+          <MeetSwitch checked={startMuted} onChange={setStartMuted} label="Start muted" />
+          <MeetSwitch checked={startCamOff} onChange={(v) => { setStartCamOff(v); if (!v) setPreviewArmed(true); }} label="Camera off" disabled={audioOnly} />
+          <MeetSwitch checked={audioOnly} onChange={(v) => { setAudioOnly(v); if (v) setStartCamOff(true); }} label="Audio only" />
+        </div>
+        {previewErr && <p className="small" style={{ color: "var(--danger)" }}>{previewErr}</p>}
+        {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
+      </div>
       {!token && savedTranscript.length > 0 && (
         <>
           <div className="card">
-            <div className="card-title">Previous session in this room</div>
+            <div className="card-title">Previous session in this room (history below - camera and join are above)</div>
             <p className="small muted">This room already has a call history. Rejoin below to continue it - Charie keeps the context.</p>
             {savedSummary && <p className="small" style={{ whiteSpace: "pre-wrap" }}>{savedSummary}</p>}
           </div>
@@ -625,29 +648,6 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           )}
         </>
       )}
-      <div className="card">
-        <div className="card-title">Ready to join</div>
-        <p className="muted small">{token ? "Step 2 of 2: your check-in is done. " : ""}Camera starts off. Turn it on only if you want to be seen.</p>
-        {!audioOnly && !startCamOff && (
-          <div className="meet-preview-card">
-            <video ref={previewVideo} autoPlay playsInline muted className="meet-preview" aria-label="Camera preview" />
-            <span className="meet-name">{name || "You"} (preview)</span>
-          </div>
-        )}
-        {startCamOff && !audioOnly && <div className="meet-preview-card"><div className="meet-wait" style={{ height: "100%" }}>Camera is off. Nobody can see you. Switch Camera off to preview.</div></div>}
-        <label className="small muted" htmlFor="meet-name" style={{ display: "block", margin: "10px 0 4px" }}>Your name</label>
-        <div className="row" style={{ flexWrap: "nowrap", maxWidth: 430 }}>
-          <input id="meet-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Meghana" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 0 }} />
-          <button onClick={join} style={{ flex: "none" }}>{audioOnly ? "Join audio only" : "Join call"}</button>
-        </div>
-        <div className="stack" style={{ marginTop: 8 }}>
-          <MeetSwitch checked={startMuted} onChange={setStartMuted} label="Start muted" />
-          <MeetSwitch checked={startCamOff} onChange={(v) => { setStartCamOff(v); if (!v) setPreviewArmed(true); }} label="Camera off" disabled={audioOnly} />
-          <MeetSwitch checked={audioOnly} onChange={(v) => { setAudioOnly(v); if (v) setStartCamOff(true); }} label="Audio only" />
-        </div>
-        {previewErr && <p className="small" style={{ color: "var(--danger)" }}>{previewErr}</p>}
-        {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
-      </div>
       </div>
     );
   }

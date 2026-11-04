@@ -82,6 +82,13 @@ process.env.META_API_KEY = "fake-test-key";
 const sparkReply = async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"tool": "list_schedules", "args": {}}' } }] }), { status: 200 });
 const s = await chatTurn({ history: [u("any schedules?")], fetchImpl: sparkReply as typeof fetch });
 ok(s.kind === "tool" && s.tool === "list_schedules" && s.model.includes("muse-spark"), "scripted Spark reply drives a tool");
+let callMaxTokens = 0;
+const capFetch = async (_url: unknown, init?: { body?: string }) => {
+  try { callMaxTokens = (JSON.parse(String(init?.body ?? "{}")) as { max_tokens?: number }).max_tokens ?? 0; } catch { /* keep 0 */ }
+  return new Response(JSON.stringify({ choices: [{ message: { content: "{\"text\": \"On it.\"}" } }] }), { status: 200 });
+};
+const mc = await chatTurn({ history: [u("what do you see?")], snapshot: { surface: "meet-call" }, fetchImpl: capFetch as typeof fetch });
+ok(mc.kind === "text" && callMaxTokens > 0 && callMaxTokens <= 1200, "meet-call replies cap reasoning tokens at 1200 so spoken answers stay fast");
 const garbled = async () => new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), { status: 200 });
 const g = await chatTurn({ history: [u("can you do a first run or accessibility run or ux & redesign run?")], fetchImpl: garbled as typeof fetch });
 ok(g.kind === "text" && /URL/.test(g.text ?? "") && !(g.text ?? "").includes("could not parse"), "unparseable model reply falls back to the heuristic answer, never a parse dead-end");
