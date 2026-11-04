@@ -11,8 +11,11 @@ export const CHAT_MODELS: Array<{ id: ChatModelChoice; label: string; provider: 
   { id: "auto", label: "Auto", provider: "Baseten, then Meta", note: "Best available first" },
   { id: "baseten", label: "Muse Spark Open", provider: "Baseten", note: "meta-models/muse-spark-open-1026" },
   { id: "meta", label: "Muse Spark 1.3", provider: "Meta Model API", note: "muse-spark-1.3" },
-  { id: "heuristic", label: "Offline heuristic", provider: "Built in, no model", note: "Keyword router, no credits used" },
 ];
+// The offline heuristic router is deliberately NOT a picker option: it is
+// only Auto's last-resort fallback when no live Meta model answers, and
+// answers it serves are labelled heuristic. Forcing Baseten or Meta never
+// falls back to it silently - the user gets an honest unavailable message.
 
 export const COMING_SOON_MODELS: Array<{ label: string; provider: string; why: string }> = [
   { label: "Muse Wonder 1.0", provider: "Meta", why: "Deep-dive escalation, not a chat model yet" },
