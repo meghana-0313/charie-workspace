@@ -914,6 +914,7 @@ export function MeetSwitch({ checked, onChange, label, disabled }: { checked: bo
 // in-call speaker all await the SAME promise, so a cold voice service is
 // only ever paid once and never raced by duplicate requests.
 const ttsInflight = new Map<string, Promise<Blob>>();
+let lastTtsProvider = "";
 function fetchTts(roomId: string, qp: string, text: string): Promise<Blob> {
   const key = `${roomId}|${text}`;
   const existing = ttsInflight.get(key);
@@ -924,6 +925,7 @@ function fetchTts(roomId: string, qp: string, text: string): Promise<Blob> {
       body: JSON.stringify({ text }),
     });
     if (!res.ok) throw new Error(`voice ${res.status}`);
+    lastTtsProvider = res.headers.get("x-charie-tts") ?? "";
     return res.blob();
   })();
   ttsInflight.set(key, p);
@@ -970,7 +972,7 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
       URL.revokeObjectURL(url);
       if (played) onNote(readyMs > 4000
         ? `Voice test OK, but the voice service took ${Math.round(readyMs / 1000)}s to answer - that is a cold start on the Modal TTS side, not your browser. It stays warm while the call is open; if every first line is this slow, keep one container warm in Modal.`
-        : `Voice test OK: voice ready in ${readyMs}ms and played end to end. She will sound like this in the call.`);
+        : `Voice test OK: voice ready in ${readyMs}ms and played end to end (served by ${lastTtsProvider || "the configured voice provider"}). She will sound like this in the call.`);
       else onNote("Voice test failed: audio could not play in this browser. Click once anywhere, check your output device and volume, then retry.");
     } catch {
       onNote("Voice test failed: the voice service is unreachable. Check CHARIE_TTS_URL, then retry.");
