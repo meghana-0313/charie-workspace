@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
 import { Icon } from "./icons";
-import { CHARIE_SPEECH_RATE, charieAskLine, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks, transcriptStamp } from "@/lib/room-status";
+import { CHARIE_SPEECH_RATE, charieAskLine, isEchoOfAgent, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks, transcriptStamp } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -1412,10 +1412,12 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           // Barge-in on FINAL human speech only - and never on Charie's own
           // voice coming back through the speakers (echo would silence her
           // before she ever speaks, the bug this guard fixes).
-          const heard = text.toLowerCase().replace(/[^a-z0-9 ]/g, "");
-          const mine = (currentSpokenRef.current || "").toLowerCase().replace(/[^a-z0-9 ]/g, "");
-          const echo = mine.length > 8 && (mine.includes(heard.slice(0, 24)) || heard.includes(mine.slice(0, 24)));
-          if (!echo) interruptRef.current();
+          const recentAgent = linesRef.current.filter((l) => l.role === "agent").slice(-5).map((l) => l.text);
+          const echo = isEchoOfAgent(text, [...recentAgent, currentSpokenRef.current || ""]);
+          if (echo) continue;
+          interruptRef.current();
+          // Non-echo human speech: barge-in, then post the line.
+{}
           // Screen question? Capture this exact moment first (fast lane),
           // then post - her answer describes now, not a stale memory.
           void (async () => {

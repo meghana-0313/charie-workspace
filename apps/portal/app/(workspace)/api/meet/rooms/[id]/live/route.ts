@@ -4,6 +4,7 @@ import { store } from "@/lib/store";
 import { getLive, hydrateRoom, postLine } from "@/lib/livecall";
 import { onLiveLine } from "@/lib/call-agent";
 import { displayName, identity } from "@/lib/who";
+import { isEchoOfAgent } from "@/lib/room-status";
 
 // Live transcript relay (ephemeral memory, never stored). Members use their
 // session, guests their invite token. Roles: session = teammate, token = customer.
@@ -45,6 +46,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!clean) return NextResponse.json({ error: "text required" }, { status: 400 });
   const speaker = who.role === "teammate" ? who.name : String(name ?? "").trim().slice(0, 60) || "Guest";
   hydrateRoom(roomId, { transcript: room.transcript as never, summary: room.summary, screenLog: room.screenLog });
+  // Echo guard (server side, defense in depth): a "human" line that
+  // repeats what Charie just said is her own voice through the speakers.
+  // It never enters the transcript and never triggers a reaction.
+  const recentAgentTexts = getLive(roomId).lines.filter((l) => l.role === "agent").slice(-5).map((l) => l.text);
+  if (isEchoOfAgent(clean, recentAgentTexts)) {
+    return NextResponse.json({ echo: true, dropped: true });
+  }
   const line = postLine(roomId, { speaker, role: who.role, text: clean });
   // Charie listens along: may propose a consent card (never acts alone) and
   // now speaks a reply to questions. Awaited so the reply lands in the
