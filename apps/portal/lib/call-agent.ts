@@ -38,7 +38,7 @@ async function engineReply(roomId: string, line: LiveLine): Promise<string | nul
   // restated as an instruction it cannot contradict, and causes the
   // frame cannot show must be named as unknowable, not guessed.
   const screenNote = vision
-    ? `Screen ground truth: at ${vision.at} you captured and described this frame: "${vision.text}". It is in this history as your own line. For anything about the screen, use ONLY this: never deny seeing it, never contradict it, never repeat the full description unless asked. If asked WHY something in it happened (for example why usage spiked), say the frame shows the fact but cannot show the cause, and offer the next place to check.`
+    ? `Screen ground truth: at ${vision.at} you captured and described this frame: "${vision.text}". It is in this history as your own line. For anything about the screen, use ONLY this: never deny seeing it, never contradict it, never repeat the full description unless asked. If asked WHY something in it happened (for example why usage spiked), say the frame shows the fact but cannot show the cause, and offer the next place to check. If the frame shows an action that failed with no visible error (a checkout with no confirmation, a button that did nothing), do not guess: ask them to press F12, open the Network tab, and repeat the action once, then look again - the failed request and its status (for example POST /api/checkout 500) will be readable in your next captured frame, and you can name it exactly.`
     : "Screen truth: no frame has been captured in this call yet. Do not claim to see any screen; ask them to share and press Charie, look.";
   try {
     const ans = await answerMessage({
