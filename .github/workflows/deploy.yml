@@ -131,7 +131,7 @@ jobs:
               --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/charie/portal:${{ github.sha }} \
               --region ${{ env.REGION }} \
               --update-env-vars "GCP_PROJECT_ID=${{ env.PROJECT_ID }},GCS_BUCKET=${{ env.PROJECT_ID }}-ghostqa,PORTAL_STORE=firestore,ENGINE_URL=${{ env.ENGINE_URL }},PORTAL_PUBLIC_URL=https://charie-portal-ehfuotlisq-uc.a.run.app" \
-              --update-secrets "ENGINE_TOKEN=ENGINE_TOKEN:latest,FIREBASE_WEB_CONFIG=FIREBASE_WEB_CONFIG:latest,AUTOMATION_KEY=AUTOMATION_KEY:latest,CRON_KEY=CRON_KEY:latest,SESSION_KEY=SESSION_KEY:latest,CHARIE_TTS_URL=CHARIE_TTS_URL:latest,VAPID_PUBLIC=VAPID_PUBLIC:latest,VAPID_PRIVATE=VAPID_PRIVATE:latest" \
+              --update-secrets "ENGINE_TOKEN=ENGINE_TOKEN:latest,FIREBASE_WEB_CONFIG=FIREBASE_WEB_CONFIG:latest,AUTOMATION_KEY=AUTOMATION_KEY:latest,CRON_KEY=CRON_KEY:latest,SESSION_KEY=SESSION_KEY:latest,CHARIE_TTS_URL=CHARIE_TTS_URL:latest,CARTESIA_API_KEY=CARTESIA_API_KEY:latest,VAPID_PUBLIC=VAPID_PUBLIC:latest,VAPID_PRIVATE=VAPID_PRIVATE:latest" \
               --update-labels "managed-by=github-actions,commit-sha=${{ github.sha }}" \
               --memory 1Gi --cpu 1 --timeout 300 \
               --allow-unauthenticated --service-account ${{ env.SERVICE_ACCOUNT }}; then

@@ -70,7 +70,7 @@ This is the honest definition used everywhere in the product: **autonomous withi
 - **Muse Code** built this repo and, at runtime, consumes Charie's MCP fix packets and must check verification proof before calling a fix done.
 - Voice and hearing stay honest: speaking is Kokoro on Modal (not a Meta model), live-call hearing is the browser recognizer. Full lane-by-lane detail: [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
-## Why this is a real B2B business, not a demo
+## The business case: buyers, stickiness, deployment, safety
 
 - **Who buys it:** SaaS support and solutions teams drowning in "can you send a screenshot" calls; small product teams with no night coverage; solo builders who are their own on-call. One workspace replaces a meeting bot, a QA runner, a pentest scanner, a monitoring pager, and half the ticket busywork - with proof attached for compliance-minded buyers.
 - **Why they stay:** every call, investigation, incident, and fix becomes account-scoped evidence history. Switching away means losing the audit trail.
