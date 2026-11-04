@@ -1,13 +1,13 @@
 // Shared Demo Site frontend helpers: cart in localStorage, product loading.
 export function getCart() {
   try {
-    return JSON.parse(localStorage.getItem("shopfast-cart") ?? "[]");
+    return JSON.parse(localStorage.getItem("demo-site-cart") ?? "[]");
   } catch {
     return [];
   }
 }
 export function setCart(items) {
-  localStorage.setItem("shopfast-cart", JSON.stringify(items));
+  localStorage.setItem("demo-site-cart", JSON.stringify(items));
   updateCartBadge();
 }
 export function addToCart(id, qty = 1) {
