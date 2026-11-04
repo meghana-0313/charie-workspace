@@ -121,9 +121,9 @@ Zero keys changes only polish, and the UI says so: finding prose is labelled `he
 
 ## Demo Mode (no login, sample data, real AI)
 
-On the login page, press **Explore Charie Demo - no login needed**. No account, no email, no OAuth, no keys to configure. You land in a seeded Demo Workspace (a banner says so on every page) with three sample projects - ShopFlow, TravelMate, WorkBoard - 8 tickets, 4 investigation runs whose reports open with findings, 2 labelled simulated Guard incidents, a simulated GitHub repo (`circle-back/demo-shopflow`, builds labelled simulated), autopilot schedules, and a sample Meet call Charie assisted. Everything is internally consistent: the runs belong to the tickets, the reports belong to the runs, and another account cannot see any of it.
+On the login page, press **Explore Charie Demo - no login needed**. No account, no email, no OAuth, no keys to configure. You land in a seeded Demo Workspace (a banner says so on every page) with three sample projects - Demo Site, TravelMate, WorkBoard - 8 tickets, 4 investigation runs whose reports open with findings, 2 labelled simulated Guard incidents, a simulated GitHub repo (`circle-back/demo-site`, builds labelled simulated), autopilot schedules, and a sample Meet call Charie assisted. Everything is internally consistent: the runs belong to the tickets, the reports belong to the runs, and another account cannot see any of it.
 
-- **Try everything:** file tickets, approve, chat, open reports, explore Guard, start a Meet room. Against the local ShopFast target (http://localhost:3101) investigations run for real with Playwright.
+- **Try everything:** file tickets, approve, chat, open reports, explore Guard, start a Meet room. Against the local demo site (http://localhost:3101) investigations run for real with Playwright.
 - **Your progress is saved** in the same store as real data (local files on your machine, Firestore on the hosted demo) under the demo account only. **Reset Demo Workspace** in the banner restores the seed and removes only demo changes - never real user data.
 - **Simulated vs live is labelled:** sample builds and incidents say "simulated"; seeded findings say SAMPLE DEMO DATA. Nothing simulated is presented as a live result.
 

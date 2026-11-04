@@ -18,7 +18,7 @@ See README.md for the product story; this file is working notes for the agent.
   `./reports/<ts>/`, uploaded to GCS when `GCS_BUCKET` set. New checks:
   `src/a11y.ts` (POST /a11y/run), `src/firstrun.ts` (POST /firstrun/run).
 - `services/mcp-server/` - MCP adapter over engine reports. Smoke: `npm run smoke`.
-- `apps/demo-target/` - buggy ShopFast store (port 3101) + `--fixed` build.
+- `apps/demo-target/` - buggy Demo Site store (port 3101) + `--fixed` build.
 - `deploy/` - Dockerfiles (portal, engine, demo) for Cloud Run.
 - `docs/` - ARCHITECTURE, DEMO_SCRIPT, META_STACK, FIRESTORE_SCHEMA, ROADMAP.
 

@@ -18,7 +18,7 @@ for (const room of seed.rooms) {
   for (const runId of room.runIds) assert.ok(seed.runs.some((r) => r.id === runId), `room run ${runId} exists`);
 }
 const subjects = seed.tickets.map((t) => t.subject).join(" ");
-for (const project of ["ShopFlow", "TravelMate", "WorkBoard"]) assert.match(subjects, new RegExp(project), `project ${project} present`);
+for (const project of ["Demo Site", "TravelMate", "WorkBoard"]) assert.match(subjects, new RegExp(project), `project ${project} present`);
 assert.ok(seed.incidents.every((i) => i.simulated === true), "sample incidents are labelled simulated");
 assert.ok(seed.builds.every((b) => /simulated/i.test(b.detail ?? "")), "sample builds are labelled simulated");
 assert.ok(seed.schedules.length >= 4, "autopilot has sample schedules for every kind");

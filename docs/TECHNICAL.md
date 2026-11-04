@@ -103,7 +103,7 @@ Components:
 |---|---|---|---|
 | Portal | `apps/portal/` | Next.js 15, React 19 | Workspace UI, auth gate, rooms, approvals, reports, Meet signaling, Chat UI |
 | Agent engine | `services/agent-engine/` | Node, TypeScript, Playwright | Investigation loop, scans, Guardian brain, vision, chat agent, pentest |
-| Demo target | `apps/demo-target/` | Next.js | ShopFast, an intentionally buggy store plus a fixed build for verification |
+| Demo target | `apps/demo-target/` | Next.js | Demo Site, an intentionally buggy store plus a fixed build for verification |
 | MCP server | `services/mcp-server/` | Node stdio | Lets coding agents pull findings and fix packets locally |
 | Modal TTS | `services/modal-tts/modal_app.py` | Modal, Kokoro-82M | Warm text-to-speech for Meet |
 | Web SDK | `apps/portal/public/charie.js` | Browser script | Drop-in production error and signal reporting |
@@ -500,7 +500,7 @@ Windows sandbox note for this repo's own development (in [AGENTS.md](../AGENTS.m
 
 | Suite | Command | Covers |
 |---|---|---|
-| Engine regression | `npm run test --workspace services/agent-engine` (first file) | Seeded-bug loop finds the ShopFast bugs, model ID defaults, finding shape |
+| Engine regression | `npm run test --workspace services/agent-engine` (first file) | Seeded-bug loop finds the Demo Site bugs, model ID defaults, finding shape |
 | Engine server | same command (second file) | HTTP handlers, auth, run lifecycle |
 | Guardian-plus | same command (third file) | Incidents, work orders, night shift, signals |
 | Access | same command (fourth file) | Account scoping and partition isolation |
@@ -570,14 +570,14 @@ Tests are offline-safe: model calls are stubbed with fake fetch implementations,
 Requirement source: the hackathon Demo Mode specification (sample data, zero-login, real Meta models, labelled simulations). Implementation:
 
 - **Entry:** the login page offers "Explore Charie Demo - no login needed". `POST /api/session` with `{demo: true}` mints a normal HMAC session for the reserved uid `demo-workspace` (`apps/portal/lib/demo.ts`). Production authentication is untouched; this is a separate restricted path, not an auth bypass - the session can only ever read and write records owned by the demo uid, which is exactly how per-account scoping already isolates every customer.
-- **Seed:** `ensureDemoWorkspace()` runs on demo entry and is idempotent. `buildDemoSeed()` (pure, unit-tested in `apps/portal/test/demo.test.mts`) creates three projects as ticket groups (ShopFlow against the real local demo target http://localhost:3101, TravelMate and WorkBoard as labelled simulated targets), 8 tickets with rooms and agent summaries, 4 investigation runs, 2 incidents with `simulated: true`, one simulated GitHub repo (`circle-back/demo-shopflow`) with builds whose detail text says simulated, 2 autopilot schedules, and 1 ended Meet room with a transcript and screen log. Store additions used: `saveTicket`, `saveRoom`, `clearDemoData` in both adapters.
+- **Seed:** `ensureDemoWorkspace()` runs on demo entry and is idempotent. `buildDemoSeed()` (pure, unit-tested in `apps/portal/test/demo.test.mts`) creates three projects as ticket groups (Demo Site against the real local demo target http://localhost:3101, TravelMate and WorkBoard as labelled simulated targets), 8 tickets with rooms and agent summaries, 4 investigation runs, 2 incidents with `simulated: true`, one simulated GitHub repo (`circle-back/demo-site`) with builds whose detail text says simulated, 2 autopilot schedules, and 1 ended Meet room with a transcript and screen log. Store additions used: `saveTicket`, `saveRoom`, `clearDemoData` in both adapters.
 - **Seeded reports open with findings:** run ids are `demo-run-*`. The engine serves them from committed fixtures in `services/agent-engine/demo-reports/<runId>/findings.json` plus `report.md` (`reports/` is gitignored, hence the separate folder), via a path-safe fallback in `GET /runs/:id` (`services/agent-engine/src/server.ts`). Fixture content is labelled SAMPLE DEMO DATA and `analysisSource: heuristic`; it never claims a live model produced it. Covered by `services/agent-engine/test/server.test.mts`.
 - **Progress is saved:** demo records live in the same store as production data (JSON files under `apps/portal/.data` locally, Firestore hosted), scoped to the demo uid. Anything a judge creates while exploring persists across refresh and restart on that host.
 - **Reset:** the demo banner ("DEMO WORKSPACE - Sample data and simulated integrations") carries Reset Demo Workspace, calling `POST /api/demo/reset`, which requires the demo session itself and calls `clearDemoData(DEMO_UID)` then reseeds. It cannot delete any other account's records (both adapters delete strictly by demo uid and its ticket/room/repo children).
 - **Simulated integrations:** GitHub in Demo Mode is the seeded repo plus builds, labelled simulated in their own text; there is no demo GitHub OAuth and nothing creates real issues, PRs, or commits. Creating tickets, approvals, chat threads, and Meet rooms in Demo Mode is real - against demo data.
 - **Live AI, no fakes:** demo chat, investigations, and vision use the same model lanes as production (section 21). If no live model answers, demo chat replaces a free-form heuristic reply with an explicit "no live model configured" message (`DEMO_AI_OFFLINE` in `apps/portal/lib/charie-chat.ts`); tool-grounded answers over real workspace data still work because they cite records, not model invention. Seeded sample data is labelled sample, never presented as model output.
 - **Where keys come from:** the engine resolves secrets environment-first, then Google Cloud Secret Manager with the caller's Application Default Credentials (`services/agent-engine/src/secrets.ts`). On the hosted demo, Cloud Run mounts the owner's secrets, so judges get real Meta model answers with zero setup. On the owner's own machine, `gcloud auth application-default login` plus `GCP_PROJECT_ID` achieves the same. A third-party judge running locally without keys gets the honest unavailable message for AI, while the workspace still browses. Owner keys are never embedded in the repo, the client, or demo data.
-- **Known demo limits:** seeded tickets carry seed-week dates; pentest/a11y/firstrun sample lists come from live engine runs rather than seeded fixtures (run them against the local target); the simulated TravelMate and WorkBoard targets do not execute - their seeded history is for browsing, and live execution uses ShopFlow/ShopFast.
+- **Known demo limits:** seeded tickets carry seed-week dates; pentest/a11y/firstrun sample lists come from live engine runs rather than seeded fixtures (run them against the local target); the simulated TravelMate and WorkBoard targets do not execute - their seeded history is for browsing, and live execution uses the demo site.
 
 
 

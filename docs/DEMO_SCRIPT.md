@@ -1,6 +1,6 @@
 # Demo script (3 minutes, hosted portal)
 
-**One story, then breadth.** The whole demo follows one ShopFlow checkout
+**One story, then breadth.** The whole demo follows one Demo Site checkout
 failure from customer complaint to verified fix. Signals, security, and Meet
 appear only as a fast montage near the end. Judges should remember one
 complete autonomous loop: ticket to evidence, evidence to fix, fix to proof.
@@ -16,7 +16,7 @@ response, or a reasoning trace.
 | Time | Screen | Do | Say |
 |---|---|---|---|
 | 0:00-0:20 | Cold open: the demo incident card with its 03:07 AM timestamp, then the camera settles on Home and the Night Shift Digest | Start on the red incident and the time, not a static dashboard. Slow zoom into the digest card as the second sentence lands. | "Your software broke at 3 AM. Nobody noticed. Nobody investigated. Nobody fixed it. Except Charie. By the time your team starts its morning, Charie has already investigated what went wrong." |
-| 0:20-0:50 | The ShopFlow checkout ticket (`demo-tkt-checkout`), then the failing journey: screenshot, repro steps, trace or log for the failing step | Show the real app failure first, then the evidence Charie filed. Zoom into the screenshot, then the exact repro step that breaks. | "A customer reported that checkout was not working. Instead of just summarising the complaint, Charie opened the application, reproduced the customer's journey, and found where it broke. Here is the screenshot. Here is the exact reproduction path. This is not an AI guessing what went wrong. It is an investigation backed by evidence." |
+| 0:20-0:50 | The Demo Site checkout ticket (`demo-tkt-checkout`), then the failing journey: screenshot, repro steps, trace or log for the failing step | Show the real app failure first, then the evidence Charie filed. Zoom into the screenshot, then the exact repro step that breaks. | "A customer reported that checkout was not working. Instead of just summarising the complaint, Charie opened the application, reproduced the customer's journey, and found where it broke. Here is the screenshot. Here is the exact reproduction path. This is not an AI guessing what went wrong. It is an investigation backed by evidence." |
 | 0:50-1:15 | Finding detail: SAM grounding boxes on the screenshot, the findings list, and the execution report showing the model that actually ran | Pause on the grounded element (the checkout total or button the finding is about). Then show the report header with its model and provider label. | "Charie uses Meta's models to understand what it sees, connect the evidence, and explain the failure. Every important finding is linked to its source, and the report names the model that did the work. You can inspect the evidence behind the conclusion instead of blindly trusting an AI-generated answer." |
 | 1:15-1:45 | The proposed fix instruction on the ticket, your approval click, then the MCP fix packet / handoff view | Click Approve fix instruction on camera. Show the scoped packet the coding agent receives. Keep this beat about control, not tools. | "Now Charie proposes what needs to change. I review it, and I approve it. Through MCP, Charie sends a scoped fix packet directly to my coding agent, running locally or in the cloud. The developer stays in control. The repetitive investigation is automated." |
 | 1:45-2:15 | Verification run: the same checkout journey re-run, ending on the before/after comparison, failed before and passed after | This is the emotional payoff. Hold on the green verified result a beat longer than feels natural. Do not rush past it. | "But here is the important part. Charie does not stop after suggesting a fix. It runs the same journey again and checks the result. Did it actually work? Did something else break? Fixed, regressed, or inconclusive, every outcome has evidence. Because a proposed fix is not proof. Verification is." |
@@ -25,7 +25,7 @@ response, or a reasoning trace.
 
 ## Pre-stage checklist (before recording)
 
-- [ ] Demo workspace entered once through Explore Charie Demo, so the seed has topped up: ShopFlow checkout ticket investigated end to end, verification green, linked report and findings open in tabs.
+- [ ] Demo workspace entered once through Explore Charie Demo, so the seed has topped up: Demo Site checkout ticket investigated end to end, verification green, linked report and findings open in tabs.
 - [ ] The checkout finding has a screenshot with SAM grounding boxes; if the prepared run has none, use a run that does and make it the story ticket.
 - [ ] Night Shift Digest present on Home (run a night shift or use the seeded digest the hour before).
 - [ ] One signals cluster with a hot, angry share on the Signals page.

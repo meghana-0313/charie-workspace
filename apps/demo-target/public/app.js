@@ -1,4 +1,4 @@
-// Shared ShopFast frontend helpers: cart in localStorage, product loading.
+// Shared Demo Site frontend helpers: cart in localStorage, product loading.
 export function getCart() {
   try {
     return JSON.parse(localStorage.getItem("shopfast-cart") ?? "[]");

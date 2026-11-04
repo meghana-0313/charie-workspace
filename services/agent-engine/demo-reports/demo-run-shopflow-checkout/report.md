@@ -1,4 +1,4 @@
-# ShopFlow checkout investigation (sample demo report)
+# Demo Site checkout investigation (sample demo report)
 
 SAMPLE DEMO DATA - seeded for hackathon judging so every report page opens with coherent content. It is not a live run. Start a real investigation from the ticket and Charie will drive the app with Playwright and, when configured, real Meta models.
 
