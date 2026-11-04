@@ -470,7 +470,7 @@ Engine APIs are listed in section 6. Portal APIs (all session-gated except guest
 
 ## 26. Configuration and secrets
 
-Secret names (values live in the environment or Secret Manager, never in code): `META_API_KEY`, `META_API_BASE_URL` (`https://api.meta.ai/v1`), `META_SPARK_MODEL`, `META_WONDER_MODEL`, `META_IMAGE_MODEL`, `META_VOICE_MODEL`, `META_SAM_MODEL`, `BASETEN_API_KEY`, `SPARK_OPEN_MODEL_ID`, `SPARK_OPEN_ENDPOINT`, `GLIMMER_ENDPOINT`, `GLIMMER_MODEL`, `GLIMMER_API_KEY`, `ENGINE_TOKEN`, `FIREBASE_WEB_CONFIG`, `AUTOMATION_KEY`, `CRON_KEY`, `SESSION_KEY`, `CHARIE_TTS_URL` (portal), optional `CHARIE_TTS_MODAL_KEY` and `CHARIE_TTS_MODAL_SECRET`.
+Secret names (values live in the environment or Secret Manager, never in code): `META_API_KEY`, `META_API_BASE_URL` (`https://api.meta.ai/v1`), `META_SPARK_MODEL`, `META_WONDER_MODEL`, `META_IMAGE_MODEL`, `META_VOICE_MODEL`, `META_SAM_MODEL`, `BASETEN_API_KEY`, `SPARK_OPEN_MODEL_ID`, `SPARK_OPEN_ENDPOINT`, `GLIMMER_ENDPOINT`, `GLIMMER_MODEL`, `GLIMMER_API_KEY`, `ENGINE_TOKEN`, `FIREBASE_WEB_CONFIG`, `AUTOMATION_KEY`, `CRON_KEY`, `SESSION_KEY`, `CHARIE_TTS_URL` (portal), optional `CHARIE_TTS_MODAL_KEY` and `CHARIE_TTS_MODAL_SECRET`, `CARTESIA_API_KEY` (portal, primary call voice when set; create the secret before the first deploy that mounts it or Cloud Run rejects the revision).
 
 Behaviour matrix:
 
