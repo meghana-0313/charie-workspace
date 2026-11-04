@@ -7,6 +7,7 @@ import { consentCard, needsConsent, type ConsentCard } from "./consent";
 import { readFindings } from "./engine";
 import { runA11y, runFirstRun, runPentest } from "./guardian";
 import { fileTicketAndInvestigate } from "./tickets";
+import { isRepeatCall, summarizeToolResults, toolSignature, type ToolResultEntry } from "./chat-loop";
 
 const ENGINE_TIMEOUT = 60000;
 
@@ -176,26 +177,60 @@ export async function answerMessage(opts: {
   const actions: string[] = [];
   let model = "heuristic";
   try {
-    const [tickets, schedules, repos, docs] = await Promise.all([
+    const [tickets, schedules, repos, docs, meetRooms] = await Promise.all([
       store.listTickets(opts.uid).catch(() => []),
       store.listSchedules(opts.uid).catch(() => []),
       store.listRepos(opts.uid).catch(() => []),
       store.listContextDocs(opts.uid).catch(() => []),
+      store.listMeetRooms(opts.uid).catch(() => []),
     ]);
+    const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+    const roomsThisWeek = meetRooms.filter((r) => new Date(r.updatedAt).getTime() >= weekAgo);
+    const assistedThisWeek = roomsThisWeek.filter(
+      (r) => (r.transcript ?? []).some((l) => l.role === "agent"),
+    ).length;
     const snapshot = {
       ...(opts.surface ? { surface: opts.surface } : {}),
       tickets: tickets.slice(0, 10).map((t) => ({ id: t.id, subject: t.subject, status: t.status })),
       schedules: schedules.map((s) => `${s.kind}/${s.preset}/${s.enabled ? "on" : "off"}`),
       repos: repos.map((r) => `${r.owner}/${r.repo}:${r.status}`),
+      health: {
+        openTickets: tickets.filter((t) => !/closed|verified|done/i.test(t.status)).length,
+        totalTickets: tickets.length,
+        schedulesOn: schedules.filter((s) => s.enabled).length,
+        reposConnected: repos.length,
+      },
+      meet: {
+        callsThisWeek: roomsThisWeek.length,
+        callsCharieAssistedThisWeek: assistedThisWeek,
+        totalCalls: meetRooms.length,
+      },
     };
     const contextNotes = [...docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`), ...(opts.extraNotes ?? [])];
     const convo: LoopTurn[] = [...opts.history];
+    const seenCalls = new Set<string>();
+    const collected: ToolResultEntry[] = [];
+    let repeatWarned = false;
     for (let i = 0; i < 5; i++) {
       const turn = await engineTurn(convo, snapshot, contextNotes, { model: opts.model, effort: opts.effort });
-      if (!turn) return { text: "The engine is unreachable right now. Try again in a bit.", model, actions };
+      if (!turn) {
+        return collected.length > 0
+          ? { text: summarizeToolResults(collected), model, actions }
+          : { text: "The engine is unreachable right now. Try again in a bit.", model, actions };
+      }
       model = turn.model ?? model;
       if (turn.kind === "text") return { text: turn.text ?? "Done.", model, actions };
       const args = turn.args && typeof turn.args === "object" ? (turn.args as Record<string, unknown>) : {};
+      const toolName = turn.tool ?? "";
+      // A repeated identical call adds nothing and once burned the whole
+      // loop (help, help, help). Warn once, then stop and synthesize.
+      if (isRepeatCall(seenCalls, toolName, args)) {
+        if (repeatWarned) break;
+        repeatWarned = true;
+        convo.push({ role: "tool", content: `[system] You already ran ${toolName} with the same arguments and its result is above. Do not call it again. Answer the user now with a text reply using the results and snapshot you have.` });
+        continue;
+      }
+      seenCalls.add(toolSignature(toolName, args));
       // Side-effect tools never run silently in chat: propose a consent
       // card and stop. The tool runs only after an Approve click, which
       // calls executeChatTool from the consent endpoint.
@@ -207,16 +242,22 @@ export async function answerMessage(opts: {
           consent: { ...card, args },
         };
       }
-      actions.push([turn.tool ?? "?", ...Object.values(args).map((v) => String(v).slice(0, 60))].join(" ").slice(0, 160));
+      actions.push([toolName, ...Object.values(args).map((v) => String(v).slice(0, 60))].join(" ").slice(0, 160));
+      convo.push({ role: "assistant", content: `Called tool ${toolName}.` });
       try {
-        const result = await executeTool(turn.tool ?? "", args, opts.uid);
-        convo.push({ role: "tool", content: result.slice(0, 3000) });
+        const result = await executeTool(toolName, args, opts.uid);
+        collected.push({ tool: toolName, result: result.slice(0, 3000) });
+        convo.push({ role: "tool", content: `[${toolName}] ${result.slice(0, 3000)}` });
       } catch (e) {
-        convo.push({ role: "tool", content: `error: ${(e as Error).message.slice(0, 200)}` });
+        convo.push({ role: "tool", content: `[${toolName}] error: ${(e as Error).message.slice(0, 200)}` });
       }
     }
-    const last = await engineTurn(convo, snapshot, contextNotes, { model: opts.model, effort: opts.effort });
-    return { text: last?.kind === "text" ? (last.text ?? "Done.") : "I ran out of steps. Ask me to continue.", model, actions };
+    // One final chance for the model to write the answer, then a
+    // deterministic synthesis from what was actually collected. The user
+    // never sees a step-count dead end again.
+    const last = await engineTurn(convo, snapshot, [...contextNotes, "FINAL ANSWER REQUIRED: reply with a text answer now, no tool call. Use the tool results and the snapshot (health and meet counts included). If a number was never provided, say you do not have it instead of guessing."], { model: opts.model, effort: opts.effort }).catch(() => null);
+    if (last?.kind === "text" && last.text) return { text: last.text, model: last.model ?? model, actions };
+    return { text: summarizeToolResults(collected), model, actions };
   } catch (e) {
     return { text: `Chat failed: ${(e as Error).message.slice(0, 200)}`, model, actions };
   }

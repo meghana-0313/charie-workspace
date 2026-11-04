@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3102",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/csp.test.mts test/firestore-clean.test.mts test/keys.test.mts test/meet-rooms.test.mts test/middleware.test.mts test/presence.test.mts test/room-status.test.mts test/session.test.mts"
+    "test": "tsx --test test/chat-loop.test.mts test/csp.test.mts test/firestore-clean.test.mts test/keys.test.mts test/meet-rooms.test.mts test/middleware.test.mts test/presence.test.mts test/room-status.test.mts test/session.test.mts"
   },
   "dependencies": {
     "firebase": "^13.1.0",
