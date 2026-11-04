@@ -119,6 +119,20 @@ Open http://localhost:3102 and press **Continue as local owner**. Then:
 
 Zero keys changes only polish, and the UI says so: finding prose is labelled `heuristic`, chat uses the heuristic router, call voice uses the browser voice, and screen vision, image redesigns, and voice transcription wait for keys. Nothing hard-fails. Full detail in [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
+## Demo Mode (no login, sample data, real AI)
+
+On the login page, press **Explore Charie Demo - no login needed**. No account, no email, no OAuth, no keys to configure. You land in a seeded Demo Workspace (a banner says so on every page) with three sample projects - ShopFlow, TravelMate, WorkBoard - 8 tickets, 4 investigation runs whose reports open with findings, 2 labelled simulated Guard incidents, a simulated GitHub repo (`circle-back/demo-shopflow`, builds labelled simulated), autopilot schedules, and a sample Meet call Charie assisted. Everything is internally consistent: the runs belong to the tickets, the reports belong to the runs, and another account cannot see any of it.
+
+- **Try everything:** file tickets, approve, chat, open reports, explore Guard, start a Meet room. Against the local ShopFast target (http://localhost:3101) investigations run for real with Playwright.
+- **Your progress is saved** in the same store as real data (local files on your machine, Firestore on the hosted demo) under the demo account only. **Reset Demo Workspace** in the banner restores the seed and removes only demo changes - never real user data.
+- **Simulated vs live is labelled:** sample builds and incidents say "simulated"; seeded findings say SAMPLE DEMO DATA. Nothing simulated is presented as a live result.
+
+**About AI in Demo Mode - the honest version.** Demo Mode never fakes AI. Live AI actions (Chat answers, investigation analysis, test plans, call vision) call the real models: Baseten Muse Spark Open first for chat, Meta Muse Spark 1.3 direct, the lanes in the model table below. Those calls need a key on the host that runs the engine:
+
+- **Hosted demo (the live URL above):** the engine runs with the owner's Secret Manager keys mounted, so judges get real Meta model answers without configuring anything.
+- **Your own machine:** set `META_API_KEY` and/or `BASETEN_API_KEY` as environment variables, or sign in with `gcloud auth application-default login` plus `GCP_PROJECT_ID` and the engine reads your Secret Manager secrets itself (env wins first, then Secret Manager - there is no `.env` file).
+- **A judge's machine with no keys:** the sample workspace still opens and browses fully, but AI answers say plainly that no live model is configured instead of inventing one. We will not ship the owner's private API keys inside a public repo - that would leak them - and we will not pretend a heuristic is a Meta model.
+
 ## How it works, in one picture
 
 ```text

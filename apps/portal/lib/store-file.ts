@@ -95,8 +95,20 @@ export const fileStore = {
     }
   },
 
+  /** Upsert a full ticket record (demo seeding). */
+  async saveTicket(t: Ticket): Promise<void> {
+    const all = tickets.read();
+    all[t.id] = t;
+    tickets.write(all);
+  },
   async getRoom(id: string): Promise<Room | null> {
     return rooms.read()[id] ?? null;
+  },
+  /** Upsert a full room record (demo seeding). */
+  async saveRoom(r: Room): Promise<void> {
+    const all = rooms.read();
+    all[r.id] = r;
+    rooms.write(all);
   },
   async getRoomByTicket(ticketId: string): Promise<Room | null> {
     return Object.values(rooms.read()).find((r) => r.ticketId === ticketId) ?? null;
@@ -444,6 +456,36 @@ export const fileStore = {
     const all = contextDocs.read();
     delete all[id];
     contextDocs.write(all);
+  },
+
+  /** Delete every record owned by one uid (demo workspace reset only). */
+  async clearDemoData(demoUid: string): Promise<void> {
+    const t = tickets.read();
+    const demoTicketIds = new Set(Object.values(t).filter((x) => x.uid === demoUid).map((x) => x.id));
+    for (const id of demoTicketIds) delete t[id];
+    tickets.write(t);
+    const r = rooms.read();
+    const demoRoomIds = new Set(Object.values(r).filter((x) => demoTicketIds.has(x.ticketId)).map((x) => x.id));
+    for (const id of demoRoomIds) delete r[id];
+    rooms.write(r);
+    const m = messages.read();
+    for (const id of demoRoomIds) delete m[id];
+    messages.write(m);
+    const a = approvals.read();
+    for (const id of demoRoomIds) delete a[id];
+    approvals.write(a);
+    const drop = <T extends { uid?: string }>(f: { read(): Record<string, T>; write(v: Record<string, T>): void }) => {
+      const all = f.read();
+      for (const [id, v] of Object.entries(all)) if (v.uid === demoUid) delete all[id];
+      f.write(all);
+    };
+    const demoRepoIds = new Set(Object.values(repos.read()).filter((x) => x.uid === demoUid).map((x) => x.id));
+    drop(runs); drop(incidents); drop(repos); drop(schedules); drop(meetRooms); drop(threads); drop(connectors); drop(syncRules); drop(contextDocs);
+    const b = builds.read();
+    for (const [id, v] of Object.entries(b)) if (demoRepoIds.has(v.repoId)) delete b[id];
+    builds.write(b);
+    const ev = gevents.read().filter((e) => e.uid !== demoUid);
+    gevents.write(ev);
   },
 
   async getSetting(key: string): Promise<string | null> {

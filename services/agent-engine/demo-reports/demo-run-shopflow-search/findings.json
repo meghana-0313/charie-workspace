@@ -1,0 +1,17 @@
+[
+  {
+    "id": "usability-search-filter-mismatch",
+    "category": "usability",
+    "severity": "minor",
+    "title": "Category filter shows products from other categories",
+    "goal": "Find a product using search filters",
+    "reproSteps": ["Open the catalogue", "Apply one category filter", "Observe products from other categories in the results"],
+    "evidence": { "screenshots": [], "trace": "sample-demo-trace", "logs": ["SAMPLE DEMO DATA: seeded finding for judging."] },
+    "suspectedCause": "The sample filter applies after pagination, so the first page contains unfiltered items.",
+    "confidence": "medium",
+    "suggestedFix": "Filter before pagination and show the active filter as a removable chip.",
+    "regressionCheck": "Apply a category filter and assert every result belongs to it.",
+    "status": "open",
+    "analysisSource": "heuristic"
+  }
+]

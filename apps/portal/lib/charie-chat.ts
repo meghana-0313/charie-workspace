@@ -8,6 +8,9 @@ import { readFindings } from "./engine";
 import { runA11y, runFirstRun, runPentest } from "./guardian";
 import { fileTicketAndInvestigate } from "./tickets";
 import { isRepeatCall, summarizeToolResults, toolSignature, type ToolResultEntry } from "./chat-loop";
+import { DEMO_UID } from "./demo";
+
+export const DEMO_AI_OFFLINE = "Demo Mode uses real Meta models for AI answers, and no live model is configured on this host yet - so I will not fake a reply. The sample workspace (projects, runs, reports, findings) is fully browsable, and I can still answer from workspace tools. To make demo AI live here, start the engine with META_API_KEY and/or BASETEN_API_KEY set (environment, or Secret Manager via your Google Cloud login), then ask again.";
 
 const ENGINE_TIMEOUT = 60000;
 
@@ -219,7 +222,16 @@ export async function answerMessage(opts: {
           : { text: "The engine is unreachable right now. Try again in a bit.", model, actions };
       }
       model = turn.model ?? model;
-      if (turn.kind === "text") return { text: turn.text ?? "Done.", model, actions };
+      if (turn.kind === "text") {
+        // Demo Mode honesty: the heuristic router may not impersonate a
+        // Meta model. Tool-grounded answers (actions taken) stay, since
+        // they are real workspace data; free-form heuristic replies are
+        // replaced with the plain unavailable message.
+        if (opts.uid === DEMO_UID && model === "heuristic" && actions.length === 0) {
+          return { text: DEMO_AI_OFFLINE, model, actions };
+        }
+        return { text: turn.text ?? "Done.", model, actions };
+      }
       const args = turn.args && typeof turn.args === "object" ? (turn.args as Record<string, unknown>) : {};
       const toolName = turn.tool ?? "";
       // A repeated identical call adds nothing and once burned the whole

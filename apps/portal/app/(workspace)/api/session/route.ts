@@ -4,6 +4,7 @@ import { adminApp } from "@/lib/firebase";
 import { automationKeyOk, devLoginAllowed, mintSession, SESSION_COOKIE } from "@/lib/auth";
 import { identity } from "@/lib/who";
 import { store, uid } from "@/lib/store";
+import { DEMO_EMAIL, DEMO_NAME, DEMO_UID, ensureDemoWorkspace } from "@/lib/demo";
 
 const WEEK = 7 * 24 * 3600;
 
@@ -53,7 +54,17 @@ export async function POST(req: Request) {
     return res;
   }
 
-  // 2. Local owner (file-store mode only: judges, local dev).
+  // 2. Demo Mode (public, no login): a restricted session scoped to the
+  // seeded demo workspace uid. Per-account scoping is the isolation
+  // boundary - this session can only see and change demo records.
+  if ((body as { demo?: boolean }).demo === true) {
+    await ensureDemoWorkspace().catch(() => {});
+    const res = NextResponse.json({ ok: true, name: DEMO_NAME, demo: true });
+    setSession(res, mintSession({ uid: DEMO_UID, email: DEMO_EMAIL, name: DEMO_NAME }), WEEK);
+    return res;
+  }
+
+  // 3. Local owner (file-store mode only: judges, local dev).
   if (body.localOwner === true) {
     if (!devLoginAllowed()) return NextResponse.json({ error: "dev login disabled" }, { status: 403 });
     const res = NextResponse.json({ ok: true, name: "Local owner" });

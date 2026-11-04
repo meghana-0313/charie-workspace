@@ -1,0 +1,17 @@
+[
+  {
+    "id": "functional-booking-hotel-swap",
+    "category": "functional",
+    "severity": "major",
+    "title": "Confirmed trip shows a different hotel than the one selected",
+    "goal": "Book a hotel and see it in trip management",
+    "reproSteps": ["Search hotels", "Select the second hotel", "Complete the payment simulation", "Open the trip and compare the hotel"],
+    "evidence": { "screenshots": [], "trace": "sample-demo-trace", "logs": ["SAMPLE DEMO DATA: seeded finding for judging. TravelMate is a simulated demo target."] },
+    "suspectedCause": "The sample booking stores the first search result instead of the selected hotel id.",
+    "confidence": "high",
+    "suggestedFix": "Persist the selected hotel id through the payment step and render the trip from it.",
+    "regressionCheck": "Book the second hotel and assert the trip shows that hotel.",
+    "status": "verified",
+    "analysisSource": "heuristic"
+  }
+]

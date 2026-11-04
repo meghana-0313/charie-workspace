@@ -1,0 +1,17 @@
+[
+  {
+    "id": "functional-registration-email-validation",
+    "category": "functional",
+    "severity": "major",
+    "title": "Registration rejects valid email addresses with plus tags",
+    "goal": "Register a new account",
+    "reproSteps": ["Open registration", "Enter name and a valid email containing a plus tag", "Submit", "Observe the validation error"],
+    "evidence": { "screenshots": [], "trace": "sample-demo-trace", "logs": ["SAMPLE DEMO DATA: seeded finding for judging."] },
+    "suspectedCause": "The sample email regex does not allow plus addressing.",
+    "confidence": "high",
+    "suggestedFix": "Use a standards-based email validator that accepts plus tags and subdomains.",
+    "regressionCheck": "Register with a plus-tag email and assert the account is created.",
+    "status": "fix_proposed",
+    "analysisSource": "heuristic"
+  }
+]
