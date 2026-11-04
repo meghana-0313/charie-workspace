@@ -84,9 +84,28 @@ type Finding = {
   is *not* found, the engine regressed.
 - Customer apps (post-hackathon): any scoped web URL + optional source upload.
 
-## What lives where (target state)
+## Beyond the engine loop (portal surfaces)
 
-- Firestore: tickets, rooms, messages, findings, runs, verifications.
-- Cloud Storage: screenshots, recordings, traces, generated redesigns.
-- Portal (Next.js): rooms UI, report viewer, approvals.
-- MCP server: `findings.get`, `findings.list`, `fix.submit`, `verification.get`.
+- **Meet**: native mesh WebRTC rooms in the portal. Charie joins as a labelled
+  agent, sees shared-screen frames (still captures, never a raw server-side
+  video stream), speaks through Cartesia Sonic (Kokoro on Modal, then browser
+  voice as fallbacks), and files tickets from the call tagged `meet:<roomId>`.
+  Her replies show in a floating widget that drags, resizes by the corner,
+  minimizes, maximizes, and pops out into an always-on-top Document
+  Picture-in-Picture window over other tabs and apps (Chrome/Edge).
+- **Tickets page**: two sections. On-call tickets (the `meet:` tag) are
+  pre-digested - call summary, top finding, root cause, proposed fix, approval
+  state - above the Engineering tickets table. Approval happens on the ticket.
+- **Live Signals monitor**: the portal probes the watched site every 3
+  seconds (home, products, build flavor, checkout probe) and plots measured
+  latency with signals derived only from those live responses.
+- **Night shift**: approved work orders execute overnight; the portal renders
+  the digest as a visual report (status chips, report links, work-done card),
+  never a raw text dump.
+
+## What lives where
+
+- Firestore (or local JSON files): tickets, rooms, messages, findings, runs, verifications.
+- Cloud Storage: screenshots, traces, generated redesigns. Calls are never recorded.
+- Portal (Next.js): rooms UI, Meet, report viewer, approvals, live monitor.
+- MCP server: `list_runs`, `list_findings`, `get_finding` over engine reports (stdio plus a cloud endpoint on the portal).
