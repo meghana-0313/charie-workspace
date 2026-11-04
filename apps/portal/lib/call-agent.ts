@@ -94,6 +94,13 @@ export async function onLiveLine(roomId: string, line: LiveLine) {
     return;
   }
   if (isScreenSeeQuestion(line.text)) {
+    // A frame description spoken seconds ago already answered this -
+    // never follow it with a contradictory "I can't see" line.
+    const lastAgentLine = [...getLive(roomId).lines].reverse().find((l) => l.role === "agent");
+    if (lastAgentLine && /^I see\b/i.test(lastAgentLine.text) && Date.now() - new Date(lastAgentLine.at).getTime() < 15000) {
+      addThought(roomId, "Screen question already answered by the frame description just spoken; not repeating or contradicting it.");
+      return;
+    }
     const vision = getVision(roomId);
     addThought(roomId, vision ? `Screen question from ${line.speaker}: answering from the last captured frame (${vision.at}).` : `Screen question from ${line.speaker}: no frame captured yet, saying so honestly.`);
     // If she JUST described this frame aloud (Look/watch), do not re-read

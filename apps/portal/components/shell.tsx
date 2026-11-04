@@ -106,9 +106,10 @@ export function Sidebar({ env, workspaceName, ticketsOpen, incidentsOpen }: {
   );
 }
 
-export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, alerts = [] }: {
+export function Topbar({ workspaceName, repoName, branchName, repos = [], env, userLabel, alerts = [] }: {
   workspaceName?: string;
   repoName?: string;
+  branchName?: string;
   repos?: Array<{ id: string; name: string }>;
   env: string;
   userLabel?: string;
@@ -157,6 +158,17 @@ export function Topbar({ workspaceName, repoName, repos = [], env, userLabel, al
                   <Link key={r.id} className="menu-item" href={`/repos/${r.id}`} onClick={close}><Icon name="repo" /> {r.name}</Link>
                 ))}
                 <Link className="menu-item" href="/repos" onClick={close}><Icon name="plus" /> Connect a repository</Link>
+              </div>
+            )}
+          </div>
+          <div className="menu-wrap">
+            <button type="button" className="chip-select" aria-haspopup="menu" aria-expanded={menu === "branch"} onClick={() => toggle("branch")}>
+              <span><div className="k">Branch</div><div className="v">{branchName ?? "prod"}</div></span><span className="chev">▾</span>
+            </button>
+            {menu === "branch" && (
+              <div className="menu" role="menu">
+                <div className="menu-head"><strong className="small">{branchName ?? "prod"}</strong><br /><span className="sub small muted">Working branch for {repoName ?? "Charie demo site"}</span></div>
+                <Link className="menu-item" href="/repos" onClick={close}><Icon name="repo" /> Repositories and branches</Link>
               </div>
             )}
           </div>

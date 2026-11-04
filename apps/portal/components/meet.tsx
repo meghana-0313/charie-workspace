@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
 import { Icon } from "./icons";
-import { CHARIE_SPEECH_RATE, charieAskLine, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks, transcriptStamp } from "@/lib/room-status";
+import { CHARIE_SPEECH_RATE, charieAskLine, isEchoOfAgent, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks, transcriptStamp } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -710,6 +710,11 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           onAgentChange={setAgentOn}
           onAgentSpeak={setAgentSpeaking}
           onRequestShare={() => { void shareScreen().catch(() => {}); }}
+          callVideos={[
+            { id: "local", name: nameRef.current || name, stream: streamRef.current, local: true },
+            ...tiles.map((p) => ({ id: p.id, name: p.name, stream: p.stream })),
+          ]}
+          agentCard={agentOn ? { speaking: agentSpeaking } : null}
           getScreenFrame={() => {
             const video = localVideo.current;
             if (!sharing || !video || !video.videoWidth) return null;
@@ -1027,7 +1032,24 @@ export function AskCharie({ roomId, qp, name, onBeforePost }: { roomId: string; 
  * transcript lines everyone sees, so the widget can never show words she
  * did not actually say.
  */
-function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Array<{ at: string; text: string }> }) {
+/** One participant camera for the popped-out widget: same stream the
+ *  room tile shows, shrunk. No stream yet means an initials card. */
+function MiniVideo({ name, stream, local }: { name: string; stream: MediaStream | null; local?: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => { if (ref.current && stream) ref.current.srcObject = stream; }, [stream]);
+  return (
+    <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", background: "#101318", aspectRatio: "16 / 10" }}>
+      {stream ? <video ref={ref} autoPlay playsInline muted={local} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+          <span className="initials" style={{ width: 34, height: 34, fontSize: 14 }}>{(name || "?").slice(0, 1).toUpperCase()}</span>
+        </div>
+      )}
+      <span style={{ position: "absolute", left: 6, bottom: 6, background: "rgba(11,12,15,.72)", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 4 }}>{name}{local ? " (you)" : ""}</span>
+    </div>
+  );
+}
+
+function CharieWidget({ lines, thoughts, videos, agentCard }: { lines: LiveLineView[]; thoughts: Array<{ at: string; text: string }>; videos?: Array<{ id: string; name: string; stream: MediaStream | null; local?: boolean }>; agentCard?: { speaking: boolean } | null }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [open, setOpen] = useState(true);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -1100,6 +1122,21 @@ function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Ar
       </div>
       {open && (
         <div style={{ padding: "8px 10px", overflowY: "auto", ...(size || maxed ? { flex: 1 } : { maxHeight: pip ? undefined : 260 }) }}>
+          {pip && (videos?.length || agentCard) ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+              {(videos ?? []).map((v) => <MiniVideo key={v.id} name={v.name} stream={v.stream} local={v.local} />)}
+              {agentCard && (
+                <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", background: "radial-gradient(120% 120% at 50% 0%, #0b2e2a 0%, #071417 70%)", aspectRatio: "16 / 10", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div className="orb-wrap" style={{ width: 54, height: 54 }}>
+                    <span className="orb-ring" />
+                    <span className="orb-core" />
+                    <span className="orb-eyes"><i /><i /></span>
+                  </div>
+                  <span style={{ position: "absolute", left: 6, bottom: 6, background: "rgba(11,12,15,.72)", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 4 }}>CHARIE AI - {agentCard.speaking ? "Speaking" : "Listening"}</span>
+                </div>
+              )}
+            </div>
+          ) : null}
           {replies.map((l, i) => (
             <p key={i} className="small" style={{ margin: "0 0 6px" }}><span className="muted">{transcriptStamp(l.at)}</span> {l.text}</p>
           ))}
@@ -1118,10 +1155,12 @@ function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Ar
   );
 }
 
-export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange, getScreenFrame }: {
+export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange, getScreenFrame, callVideos, agentCard }: {
   roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string;
   onAgentChange?: (on: boolean) => void; onAgentSpeak?: (speaking: boolean) => void; onRequestShare?: () => void;
   getScreenFrame?: () => string | null;
+  callVideos?: Array<{ id: string; name: string; stream: MediaStream | null; local?: boolean }>;
+  agentCard?: { speaking: boolean } | null;
   visionOn?: boolean; onVisionChange?: (v: boolean) => void;
 }) {
   const qp = token ? `?token=${encodeURIComponent(token)}` : "";
@@ -1373,10 +1412,12 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           // Barge-in on FINAL human speech only - and never on Charie's own
           // voice coming back through the speakers (echo would silence her
           // before she ever speaks, the bug this guard fixes).
-          const heard = text.toLowerCase().replace(/[^a-z0-9 ]/g, "");
-          const mine = (currentSpokenRef.current || "").toLowerCase().replace(/[^a-z0-9 ]/g, "");
-          const echo = mine.length > 8 && (mine.includes(heard.slice(0, 24)) || heard.includes(mine.slice(0, 24)));
-          if (!echo) interruptRef.current();
+          const recentAgent = linesRef.current.filter((l) => l.role === "agent").slice(-5).map((l) => l.text);
+          const echo = isEchoOfAgent(text, [...recentAgent, currentSpokenRef.current || ""]);
+          if (echo) continue;
+          interruptRef.current();
+          // Non-echo human speech: barge-in, then post the line.
+{}
           // Screen question? Capture this exact moment first (fast lane),
           // then post - her answer describes now, not a stale memory.
           void (async () => {
@@ -1619,7 +1660,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         </>
       )}
       {msg && <p className="small" style={{ color: "var(--accent-ink)", marginTop: 8 }}>{msg}</p>}
-      <CharieWidget lines={lines} thoughts={agent.thoughts} />
+      <CharieWidget lines={lines} thoughts={agent.thoughts} videos={callVideos} agentCard={agentCard} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 /** Minimal page face: real Playwright pages and test stubs both fit. */
 export interface SnapPage {
   goto(url: string, opts?: Record<string, unknown>): Promise<unknown>;
-  evaluate<T>(fn: () => T): Promise<T>;
+  evaluate<T>(fn: (() => T) | string): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -193,7 +193,12 @@ export async function collectA11ySnapshot(
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     try {
+      // tsx/esbuild wraps named functions in a __name() helper; that
+      // helper does not exist inside the browser, so scrapeA11y would
+      // die with "__name is not defined" on every real run. Define it
+      // in the page first (string evaluate: no transpiled function).
       await page.goto(targetUrl, { waitUntil: "networkidle", timeout: 45000 });
+      await page.evaluate("globalThis.__name = (fn) => fn;");
       return await page.evaluate(scrapeA11y);
     } finally {
       await page.close();

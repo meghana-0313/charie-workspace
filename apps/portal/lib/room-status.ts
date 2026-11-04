@@ -62,6 +62,40 @@ export function clampCallReply(text: string): string {
   return (cut > 80 ? kept.slice(0, cut) : kept.slice(0, 260)).trim() + "...";
 }
 
+/**
+ * Echo detection: the room microphone hears Charie's own speaker output
+ * and the browser recognizer transcribes it as if a human spoke. A human
+ * line that largely repeats what Charie just said (containment either
+ * way, or >=70% shared words with any of her recent lines) is echo, not
+ * a person - it must never enter the transcript or trigger a reaction.
+ */
+export function isEchoOfAgent(text: string, agentTexts: string[]): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const heard = norm(text);
+  if (heard.length < 10) return false;
+  const heardWords = new Set(heard.split(" "));
+  for (const a of agentTexts) {
+    const mine = norm(a);
+    if (mine.length < 10) continue;
+    if (heard.length >= 14 && (mine.includes(heard) || heard.includes(mine))) return true;
+    const mineWords = new Set(mine.split(" "));
+    let shared = 0;
+    for (const w of heardWords) if (mineWords.has(w)) shared++;
+    const union = new Set([...heardWords, ...mineWords]).size;
+    if (union > 0 && shared / union >= 0.6 && shared >= 5) return true;
+    // Long shared run: the recognizer often garbles the middle of her
+    // sentence, so an exact 6-word run from her line is still echo.
+    const hw = heard.split(" ");
+    const mw = mine.split(" ");
+    for (let i = 0; i + 6 <= hw.length; i++) {
+      const run = hw.slice(i, i + 6).join(" ");
+      if (mine.includes(run)) return true;
+    }
+    void mw;
+  }
+  return false;
+}
+
 /** A participant is asking whether Charie can see their screen. These get a
  *  deterministic answer from real vision state, never a model guess. */
 export function isScreenSeeQuestion(text: string): boolean {
