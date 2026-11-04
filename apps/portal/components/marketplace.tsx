@@ -23,7 +23,7 @@ const APP_INITIALS: Record<string, string> = {
 export function AppLogo({ app }: { app: string }) {
   const initials = APP_INITIALS[app] ?? app.slice(0, 2).toUpperCase();
   return (
-    <span aria-hidden style={{ fontSize: initials.length > 2 ? 9 : 11, fontWeight: 700, letterSpacing: ".02em", lineHeight: 1, fontFamily: "var(--font-sans)" }}>
+    <span aria-hidden style={{ fontSize: initials.length > 2 ? 12 : 16, fontWeight: 700, letterSpacing: ".02em", lineHeight: 1.1, whiteSpace: "nowrap", fontFamily: "var(--font-sans)" }}>
       {initials}
     </span>
   );
@@ -59,11 +59,11 @@ export function AppTiles({ githubConnected, jiraConnected, azureConnected, cloud
   ];
   return (
     <>
-      <div className="tabs">
+      <div className="tabs" style={{ flexWrap: "wrap", overflow: "visible", alignItems: "center", rowGap: 8 }}>
         <span className="tab on" style={{ padding: "7px 14px" }}>All (15)</span>
-        <span className="small muted" style={{ alignSelf: "center" }}>Dev & Code (4) · Cloud (5) · Monitoring (3)</span>
+        <span className="muted" style={{ alignSelf: "center", fontSize: 14, lineHeight: 1.4 }}>Dev & Code (4) · Cloud (5) · Monitoring (3)</span>
         <span className="spacer" />
-        <span className="small muted" style={{ alignSelf: "center" }}>Only live connectors run actions; the rest are on the roadmap.</span>
+        <span className="muted" style={{ alignSelf: "center", fontSize: 14, lineHeight: 1.4 }}>Only live connectors run actions; the rest are on the roadmap.</span>
       </div>
       <div className="app-tiles" style={{ marginBottom: "var(--space-4)" }}>
         {apps.map(([app, name, desc, state, href]) => {
@@ -72,14 +72,14 @@ export function AppTiles({ githubConnected, jiraConnected, azureConnected, cloud
             <div key={app} className={state === "soon" ? "app-tile is-soon" : "app-tile"} aria-disabled={state === "soon" || undefined}>
               <div className="row" style={{ flexWrap: "nowrap" }}>
                 <span className="app-logo" style={{ background: bg, color: fg }}><AppLogo app={app} /></span>
-                <strong>{name}</strong>
+                <strong style={{ fontSize: 16 }}>{name}</strong>
                 <span className="spacer" />
                 {state === "connected" || state === "active" ? <span className="badge minor">Connected</span>
                   : state === "soon" ? <span className="badge">Soon</span>
                   : state === "via gcp" ? <span className="badge info">Via GCP</span>
                   : <a href={href} className="btn secondary sm">Connect</a>}
               </div>
-              <p className="small muted" style={{ marginBottom: 0 }}>{desc}</p>
+              <p className="muted" style={{ marginBottom: 0, marginTop: 10, lineHeight: 1.45 }}>{desc}</p>
               {(state === "connected" || state === "active" || state === "via gcp") && (
                 <p style={{ marginBottom: 0, marginTop: 8 }}><a href={href} className="small">Manage →</a></p>
               )}
