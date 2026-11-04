@@ -76,7 +76,7 @@ ok(done.code === 200 && doneBody.status === "done", "done run status");
 ok(doneBody.findings.length === 1 && doneBody.report === "# R", "done run payload");
 
 // Seeded Demo Mode fixture: served even though reports/ has no such dir.
-const demoRun = await call("GET", "/runs/demo-run-shopflow-checkout", H);
+const demoRun = await call("GET", "/runs/demo-run-demo-checkout", H);
 const demoBody = demoRun.json() as { status: string; findings: Array<{ title: string }>; report: string };
 ok(demoRun.code === 200 && demoBody.status === "done", "demo fixture run is done");
 ok(demoBody.findings.length >= 1 && demoBody.report.includes("SAMPLE DEMO DATA"), "demo fixture carries findings and its sample label");
