@@ -7,7 +7,7 @@
 // restores the seed. Simulated integrations are labelled as simulated.
 
 import { store } from "./store";
-import type { Incident, MeetRoom, PortalRun, RepoBuild, RepoConnection, Room, Schedule, Ticket } from "./types";
+import type { ChatThread, Connector, ContextDoc, Incident, MeetRoom, PortalRun, RepoBuild, RepoConnection, Room, Schedule, SyncRule, Ticket } from "./types";
 
 export const DEMO_UID = "demo-workspace";
 export const DEMO_EMAIL = "demo@charie.local";
@@ -31,6 +31,10 @@ export interface DemoSeed {
   repos: RepoConnection[];
   builds: RepoBuild[];
   schedules: Schedule[];
+  connectors: Connector[];
+  syncRules: SyncRule[];
+  contextDocs: ContextDoc[];
+  chatThread: ChatThread;
 }
 
 /** Pure seed builder (tested): every run points at a real ticket and room. */
@@ -95,14 +99,55 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
   const schedules: Schedule[] = [
     { id: "demo-sched-sweep", uid: DEMO_UID, kind: "sweep", preset: "daily", enabled: true, lastRunAt: t(1), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
     { id: "demo-sched-pentest", uid: DEMO_UID, kind: "pentest", preset: "weekly", enabled: true, lastRunAt: t(4), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(4) },
+    { id: "demo-sched-nightshift", uid: DEMO_UID, kind: "nightshift", preset: "daily", enabled: true, lastRunAt: t(1), lastStatus: "ok (sample): 1 verified, 1 scheduled", createdAt: t(9), updatedAt: t(1) },
+    { id: "demo-sched-logwatch", uid: DEMO_UID, kind: "logwatch", preset: "hourly", enabled: false, lastRunAt: t(2), lastStatus: "paused (sample)", createdAt: t(9), updatedAt: t(2) },
   ];
-  return { tickets, rooms, runs, messages, incidents, repos, builds, schedules };
+  const connectors: Connector[] = [
+    { id: "demo-conn-jira", uid: DEMO_UID, kind: "jira", name: "Jira (simulated sample)", status: "connected", detail: "Simulated connector for Demo Mode - no real Jira is contacted.", config: { domain: "sample.atlassian.net" }, lastSyncAt: t(1), lastSyncStatus: "ok (sample): 2 issues imported", createdAt: t(9), updatedAt: t(1) },
+    { id: "demo-conn-github", uid: DEMO_UID, kind: "github", name: "GitHub (simulated sample)", status: "connected", detail: "Simulated connector for Demo Mode - builds are sample records.", config: {}, lastSyncAt: t(1), lastSyncStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
+  ];
+  const syncRules: SyncRule[] = [
+    { id: "demo-rule-jira-shopflow", uid: DEMO_UID, connectorId: "demo-conn-jira", kind: "jira-pull", project: "SHOP", targetUrl: projects.shopflow, preset: "daily", enabled: true, importedKeys: ["SHOP-101 (sample)", "SHOP-102 (sample)"], lastRunAt: t(1), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
+  ];
+  const contextDocs: ContextDoc[] = [
+    { id: "demo-doc-runbook", uid: DEMO_UID, title: "ShopFlow demo runbook (sample)", source: "note", body: "Sample context doc. Checkout totals must match the cart after coupons; keyboard users must reach checkout; uploads over 5 MB need a clear error. Demo Mode data - edit or delete freely.", createdAt: t(8), updatedAt: t(2) },
+    { id: "demo-doc-release", uid: DEMO_UID, title: "Release notes (sample)", source: "note", body: "Sample context doc. TravelMate and WorkBoard are simulated targets in Demo Mode; ShopFlow runs against the local demo target.", createdAt: t(8), updatedAt: t(3) },
+  ];
+  const chatThread: ChatThread = {
+    id: "demo-thread-welcome", uid: DEMO_UID, title: "Demo workspace tour (sample)",
+    messages: [
+      { role: "user", text: "Hey! What can you do, how is my system health, and how many calls did Charie assist this week?", at: t(1) },
+      { role: "assistant", text: "Sample thread from the demo seed. I can list tickets and check status, read findings, file tickets that investigate themselves, run accessibility / first-run / security scans and UX reviews, list autopilot schedules, and check repo builds. Ask me in Chat and I will answer from this workspace.", model: "heuristic", at: t(1) },
+    ],
+    createdAt: t(1), updatedAt: t(1),
+  };
+  return { tickets, rooms, runs, messages, incidents, repos, builds, schedules, connectors, syncRules, contextDocs, chatThread };
 }
 
 async function applySeed(seed: DemoSeed): Promise<void> {
-  for (const ticket of seed.tickets) await store.saveTicket(ticket);
-  for (const room of seed.rooms) await store.saveRoom(room);
+  // Top-up only: records a demo visitor already has (or edited) are never
+  // overwritten. This is what lets new sample data reach demo workspaces
+  // seeded by an older build - the previous version returned early as
+  // soon as any ticket existed, so later seed additions never arrived.
+  const [haveTickets, haveIncidents, haveRepos, haveSchedules, haveConnectors, haveRules, haveDocs, haveThreads] = await Promise.all([
+    store.listTickets(DEMO_UID).catch(() => []),
+    store.listIncidents(DEMO_UID).catch(() => []),
+    store.listRepos(DEMO_UID).catch(() => []),
+    store.listSchedules(DEMO_UID).catch(() => []),
+    store.listConnectors(DEMO_UID).catch(() => []),
+    store.listSyncRules(DEMO_UID).catch(() => []),
+    store.listContextDocs(DEMO_UID).catch(() => []),
+    store.listThreads(DEMO_UID).catch(() => []),
+  ]);
+  const have = (list: Array<{ id: string }>) => new Set(list.map((x) => x.id));
+  const ticketIds = have(haveTickets);
+  for (const ticket of seed.tickets) if (!ticketIds.has(ticket.id)) await store.saveTicket(ticket);
+  const roomIds = new Set<string>();
+  for (const ticket of haveTickets) if (ticket.roomId) roomIds.add(ticket.roomId);
+  for (const room of seed.rooms) if (!roomIds.has(room.id)) await store.saveRoom(room);
+  const haveRuns = new Set((await store.listRuns(50, DEMO_UID).catch(() => [])).map((r) => r.id));
   for (const run of seed.runs) {
+    if (haveRuns.has(run.id)) continue;
     await store.createRun({ id: run.id, ticketId: run.ticketId, roomId: run.roomId, kind: run.kind, targetUrl: run.targetUrl, uid: DEMO_UID }).catch(() => {});
     await store.setRunStatus(run.id, "done").catch(() => {});
   }
@@ -112,10 +157,24 @@ async function applySeed(seed: DemoSeed): Promise<void> {
       await store.addMessage(m.roomId, { authorType: "agent", authorName: "Charie", body: m.body }).catch(() => {});
     }
   }
-  for (const inc of seed.incidents) await store.saveIncident(inc);
-  for (const repo of seed.repos) await store.saveRepo(repo);
-  for (const build of seed.builds) await store.saveBuild(build);
-  for (const s of seed.schedules) await store.saveSchedule(s);
+  const incidentIds = have(haveIncidents);
+  for (const inc of seed.incidents) if (!incidentIds.has(inc.id)) await store.saveIncident(inc);
+  const repoIds = have(haveRepos);
+  for (const repo of seed.repos) if (!repoIds.has(repo.id)) await store.saveRepo(repo);
+  for (const repo of seed.repos) {
+    const builds = await store.listBuilds(repo.id).catch(() => []);
+    const buildIds = new Set(builds.map((b) => b.id));
+    for (const build of seed.builds) if (build.repoId === repo.id && !buildIds.has(build.id)) await store.saveBuild(build);
+  }
+  const scheduleIds = have(haveSchedules);
+  for (const s of seed.schedules) if (!scheduleIds.has(s.id)) await store.saveSchedule(s);
+  const connectorIds = have(haveConnectors);
+  for (const c of seed.connectors) if (!connectorIds.has(c.id)) await store.saveConnector(c).catch(() => {});
+  const ruleIds = have(haveRules);
+  for (const r of seed.syncRules) if (!ruleIds.has(r.id)) await store.saveSyncRule(r).catch(() => {});
+  const docIds = have(haveDocs);
+  for (const d of seed.contextDocs) if (!docIds.has(d.id)) await store.saveContextDoc(d).catch(() => {});
+  if (!have(haveThreads).has(seed.chatThread.id)) await store.saveThread(seed.chatThread).catch(() => {});
   const rooms = await store.listMeetRooms(DEMO_UID).catch(() => []);
   if (rooms.length === 0) {
     const room = await store.createMeetRoom({ title: "ShopFlow checkout help - sample call", createdBy: DEMO_NAME, uid: DEMO_UID });
@@ -136,10 +195,9 @@ async function applySeed(seed: DemoSeed): Promise<void> {
   }
 }
 
-/** Seed the demo workspace once. Safe to call on every demo entry. */
+/** Seed the demo workspace. Safe on every demo entry: applySeed tops up
+ *  whatever an older build left missing and never overwrites edits. */
 export async function ensureDemoWorkspace(): Promise<void> {
-  const existing = await store.listTickets(DEMO_UID).catch(() => []);
-  if (existing.length > 0) return;
   await applySeed(buildDemoSeed());
 }
 

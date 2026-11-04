@@ -36,6 +36,19 @@ ok(parts.ok && parts.text.includes("error banner"), "array content parts parse")
 const empty = await describeScreenDetailed(IMG, "what do you see?", reply({ choices: [{ finish_reason: "length", message: { content: "" } }] }) as typeof fetch);
 ok(!empty.ok && empty.reason.includes("finish_reason=length"), "empty reply names its finish_reason");
 
+// Empty-then-answer: a non-fast look that burns its budget thinking
+// (finish_reason=length) retries with headroom instead of failing.
+let calls = 0;
+const flaky = async () => {
+  calls++;
+  const body = calls === 1
+    ? { choices: [{ finish_reason: "length", message: { content: "" } }] }
+    : { choices: [{ finish_reason: "stop", message: { content: "A checkout page with a red error banner." } }] };
+  return new Response(JSON.stringify(body), { status: 200 });
+};
+const retried = await describeScreenDetailed(IMG, "what do you see?", flaky as typeof fetch);
+ok(retried.ok && retried.text.includes("error banner") && calls === 2, "empty length reply retries with a bigger budget and answers");
+
 // No frame at all: honest, no provider call.
 const noFrame = await describeScreenDetailed("not-an-image", "hi", reply({}) as typeof fetch);
 ok(!noFrame.ok && noFrame.reason.includes("no image frame"), "missing frame is honest");
