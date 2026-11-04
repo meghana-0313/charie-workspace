@@ -1,8 +1,10 @@
-# Charie - the AI support engineer who joins the call, sees the screen, fixes the problem, then works the night shift
+# No more screenshots. No more back-and-forth. Charie joins the call, sees the screen, and fixes it live - then guards your product all night.
 
 [![Built with Muse Code](https://img.shields.io/badge/Built%20with-Muse%20Code-0668E1?logo=meta)](https://dev.meta.ai/lp/muse-code)
 
-**One line:** Charie joins your customer call, sees the customer's screen, solves the problem live, turns it into a verified fix, and then watches your production all night for the next one.
+**Stop sending screenshots to an AI chat and waiting for it to guess.** Charie joins the call with you, sees the customer's screen, analyses what is actually there, tells them what to try, watches the result, checks the error, debugs the next step, and guides them step by step - all inside the same call. No describing screens out loud. No screenshot ping-pong. No ticket written from memory afterwards. When a real fix is needed, she turns the call into a ticket, an investigation, and a verified fix, with a human approving every consequential step - then she stays awake all night watching for the next attack.
+
+**What Charie is, in the plain words:** an **AI support engineer** for your customers, **autonomous engineering intelligence** for your team, and your **standby on-call AI agent** for the night. Three jobs, one agent, one workspace.
 
 **Vision:** a world where no customer ever has to describe a screen over the phone, no solo developer ever wakes up to an attack that ran for six hours, and no bug is called "fixed" until software itself has proved it.
 
@@ -16,7 +18,9 @@ Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map:
 
 Charie was built by a solo developer with 4.5 years in customer-facing solutions and support roles.
 
-On support calls the same ritual repeats every day. The customer says "it shows an error". The agent says "can you read it to me". Then come screenshots over email, screen-share links that expire, "click the blue button - no, the other blue button", and a ticket written from memory after the call. The person who could actually see the screen is never the person on the call.
+On support calls the same ritual repeats every day. The customer says "it shows an error". The agent says "can you read it to me". Then come screenshots sent to an AI chat one at a time, "wait, that is the old screen, let me send a new one", screen-share links that expire, "click the blue button - no, the other blue button", and a ticket written from memory after the call. Every screenshot is a frozen guess: by the time the AI answers, the screen has already changed. The person who could actually see the screen is never the person on the call.
+
+Charie eliminates that entire loop. She does not need screenshots taken, uploaded, described, or explained. She joins the call herself, looks at the live shared screen, analyses it, tells the customer exactly what to try next, sees the result of that step on the next frame, checks whatever error appears, and keeps guiding - try this, did it work, try that - until the issue is solved on the call or has become a properly evidenced ticket with the investigation already started.
 
 The second pain is the night. A solo developer ships in the evening, sleeps, and finds in the morning that an attack, a broken checkout, or a flood of errors ran for hours with nobody watching. Big companies buy a night shift. Solo builders and small teams cannot.
 
@@ -36,9 +40,42 @@ Charie is one autonomous engineering teammate shipped as three products on one s
 
 Charie is not a chatbot bolted onto a dashboard. The same agent brain runs in Chat, inside Meet calls, in investigations, and in the night shift. Every consequential action waits for a human approval. Every claim of success needs a re-run.
 
+## Real autonomy: the agent loops (not one-shot prompts)
+
+Yes, the autonomy is real - and it is bounded on purpose, because businesses cannot ship an agent that acts without guardrails. Charie runs closed agent loops, each with an observe - decide - act - verify cycle:
+
+| Agent loop | How it runs on its own | Human guardrail |
+|---|---|---|
+| Live call loop | Hears you, captures a fresh screen frame, analyses, answers, tells the customer what to try, then looks again at the result and debugs the next error - repeating until solved or escalated | She never takes remote control; consequential actions appear as consent cards |
+| Watch loop | Samples the shared screen every few seconds, sends only changed frames, speaks only when something real breaks (never the same thing twice) | Host turns looking on; she stops talking the moment a human speaks |
+| Investigation loop | A ticket starts a Playwright run on its own: explores like a first-time user, collects evidence, grades findings, gets a second model opinion, writes repro and fix packets | A human approves the fix instruction before anything is dispatched |
+| Verification loop | After a fix, re-runs the exact journey that failed and diffs before/after; regressions reopen instead of passing quietly | Proof is shown to the team; Charie cannot mark her own work done without the re-run |
+| Guard and night-shift loop | Log watch, SDK signals, hourly sweeps, and the security suite feed deterministic detectors; incidents are triaged, challenged by a second model, and approved fix tasks execute overnight with a morning digest | Only approved or scheduled work orders run at night; verdict disagreements flag a human |
+| Repo loop | A push rebuilds, deploys, retests, posts status back to the commit, and can file its own ticket | Repo connection and scopes are granted by the account owner |
+
+This is the honest definition used everywhere in the product: **autonomous within approved scope, supervised where it matters.** Charie starts investigations, watching, sweeps, and night work without being poked; she stops and asks before she changes anything that matters.
+
+## Built on Meta Muse intelligence (the core technical features)
+
+- **Muse Spark Open on Baseten (`meta-models/muse-spark-open-1026`)** is the default Chat and Meet brain: a tool-using agent loop (maximum 5 tool turns, every action receipted) that files tickets, runs scans, reads findings, and checks builds - and independently re-grades findings as a second opinion and challenges Guard verdicts.
+- **Muse Spark `muse-spark-1.3` (Meta Model API, direct)** powers investigation reasoning and cause/fix prose, incident analysis, and is the first lane that sees your screen in Meet; it is also the Meta lane a user can pick in Chat.
+- **Muse Wonder `muse-wonder-1.0`** takes the hard cases: deep-dive root cause for low-confidence findings and blocker incident planning.
+- **Muse Image `muse-image-1.0`** turns usability findings into generated redesign screens a team can approve.
+- **SAM 3.1 `sam-3-1`** grounds failure screenshots in named UI regions, so evidence points at the actual control.
+- **Muse Voice Transcribe `muse-voice-transcribe-1.0`** turns spoken bug reports into structured tickets; **Muse Glimmer** (open weights) does fast ticket triage and Guard noise filtering.
+- **Muse Code** built this repo and, at runtime, consumes Charie's MCP fix packets and must check verification proof before calling a fix done.
+- Voice and hearing stay honest: speaking is Kokoro on Modal (not a Meta model), live-call hearing is the browser recognizer. Full lane-by-lane detail: [docs/TECHNICAL.md](docs/TECHNICAL.md).
+
+## Why this is a real B2B business, not a demo
+
+- **Who buys it:** SaaS support and solutions teams drowning in "can you send a screenshot" calls; small product teams with no night coverage; solo builders who are their own on-call. One workspace replaces a meeting bot, a QA runner, a pentest scanner, a monitoring pager, and half the ticket busywork - with proof attached for compliance-minded buyers.
+- **Why they stay:** every call, investigation, incident, and fix becomes account-scoped evidence history. Switching away means losing the audit trail.
+- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, Google sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
+- **Why it is safe to buy:** autonomy is guardrailed (approvals, consent cards, labelled heuristic fallbacks, no remote control, no call recording), so a business can adopt it without handing an agent the keys.
+
 ## The wow moments
 
-1. **She joins the call and actually sees.** Open a Meet room, send the guest link to a customer (no account needed on their side, consent first), share a screen, and ask out loud: "Charie, what is wrong here?" She captures a fresh frame of the shared screen, answers in one short spoken sentence, and keeps a timestamped memory of what the screen showed, so "what did it show two minutes ago?" has a real answer.
+1. **She joins the call and actually sees - so screenshots die here.** Open a Meet room, send the guest link to a customer (no account needed on their side, consent first), share a screen, and ask out loud: "Charie, what is wrong here?" Nobody takes a screenshot, uploads anything, or describes the screen. She captures a fresh frame herself, analyses it, answers in one short spoken sentence, tells the customer what to click or try, then looks again: did it work, what error appeared, what is the next step. That see - guide - see the result - debug loop repeats live until it is fixed in the call, and her timestamped screen memory means "what did it show two minutes ago?" also has a real answer.
 2. **She watches like a person, not a poller.** In watch mode the browser samples the shared screen locally, compares pixels, and only sends changed frames. She stays silent unless something real breaks, never repeats the same observation, and stops talking the moment a human starts speaking.
 3. **A bug becomes proof, not opinion.** File a ticket and Charie drives the real app with Playwright like a first-time user, records screenshots, repro steps, console and network evidence, proposes a fix, and after your approval re-runs the exact same journey and diffs before and after.
 4. **The night shift is real work, not a cron label.** Threats from log watch, the drop-in SDK, sweeps, and a security test suite become triaged incidents. Approved fix tasks execute overnight and the morning digest shows what ran, what passed, and what still needs a human.
@@ -53,7 +90,7 @@ Charie is not a chatbot bolted onto a dashboard. The same agent brain runs in Ch
 | Meeting bot | Records and transcribes | Joins live, sees the shared screen, answers during the call, proposes actions as consent cards |
 | Test runner | Pass or fail on scripts you wrote | Explores like a first-time user, writes the repro, proposes the fix, verifies the fix |
 | Pentest scanner | A PDF of findings | Triaged incidents, approved fix tasks, re-tests, morning digest |
-| Support copilot | Suggests text to the agent | Sees what the customer sees and guides the click, on the call |
+| Support copilot / AI chat with screenshots | You take and send a screenshot in chat, describe it, wait, then send the next one; it guesses from frozen images and the back-and-forth never ends | No screenshots at all: Charie is on the call, sees the live screen, guides step by step, watches each result, and debugs the error that appears next |
 | Monitoring alert | Wakes you up | Investigates first, challenges its own verdict with a second model, brings you a plan |
 
 Pieces of this exist separately (screen-sharing support tools, meeting assistants, AI pentesters, agent builders). The closed loop - call, see, investigate, fix, verify, guard overnight - in one account-scoped workspace is the product.
@@ -113,15 +150,22 @@ A model counts as used only when a real request succeeds. Every surface degrades
 
 | Model | Where Charie uses it |
 |---|---|
-| Muse Spark `muse-spark-1.3` | Investigation reasoning, finding cause/fix prose, Chat and Meet agent brain, incident analysis, live screen vision (first lane) |
+| Muse Spark `muse-spark-1.3` (Meta Model API, direct) | Investigation reasoning, finding cause/fix prose, incident analysis, live screen vision (first lane), and Chat/Meet only when Meta lane is picked or Baseten is unavailable |
 | Muse Wonder `muse-wonder-1.0` | Deep-dive escalation for hard or low-confidence findings and blocker incidents |
 | Muse Image `muse-image-1.0` | Screen redesigns generated from usability findings |
 | Muse Voice Transcribe `muse-voice-transcribe-1.0` | Spoken bug reports turned into structured tickets |
 | SAM 3.1 `sam-3-1` | Grounding boxes on failure screenshots, shown as "Grounded by SAM 3.1" |
-| Muse Spark Open `meta-models/muse-spark-open-1026` (Baseten) | Independent second opinion that re-grades findings, adversarial check on Guard verdicts, second vision lane |
+| Muse Spark Open `meta-models/muse-spark-open-1026` (open weights, hosted on Baseten - a different model from `muse-spark-1.3`) | Default Chat and Meet brain in Auto mode, independent second opinion that re-grades findings, adversarial check on Guard verdicts, second vision lane |
 | Muse Glimmer (open weights, Ollama by default) | Fast ticket triage: goal extraction, severity pre-grade, dedup |
 | Kokoro-82M on Modal (not a Meta model) | Charie's warm spoken voice in calls, one always-warm container |
 | Muse Code | Built this repo, and at runtime consumes MCP fix packets |
+
+**Which model actually answers you in Chat and Meet (read this carefully):**
+
+- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten, Meta, or Heuristic with the model pill; every reply labels which lane answered.
+- Seeing the screen (vision): the order flips. **Meta Muse Spark `muse-spark-1.3` direct first**, Baseten Muse Spark Open second.
+- Speaking (voice out): **not a Meta model and not Baseten.** Charie's voice is Kokoro-82M hosted on **Modal** (`CHARIE_TTS_URL`), falling back to the browser voice.
+- Hearing (voice in): the browser Web Speech API in calls. **Muse Voice Transcribe `muse-voice-transcribe-1.0`** is used only for voice bug-report tickets, not live-call listening.
 
 File-by-file mapping, secret names, and fallbacks: [docs/META_STACK.md](docs/META_STACK.md) and [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
@@ -149,7 +193,7 @@ Production runs on one Google Cloud project: Cloud Run services `charie-portal`,
 ## Hackathon submission
 
 - **Track:** Indie Developer (solo build).
-- **Problem statement:** Push the Frontier - AI autonomy in software engineering and support: an agent that sees, investigates, verifies, schedules, and syncs fixes across GitHub and Jira with humans approving consequential steps.
+- **Problem statement:** Build for Your World - AI built for the world of support engineers and solo builders: an agent that joins their customer calls, sees the screen, investigates, verifies, schedules, and syncs fixes across GitHub and Jira with humans approving consequential steps.
 - **New work:** everything in this repo was built during the hackathon. Nothing predates it.
 - **Built with:** Muse Code by Meta. Look for the `Built-with: Muse Code by Meta` trailer in the commit history.
 

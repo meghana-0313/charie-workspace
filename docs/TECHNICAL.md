@@ -61,6 +61,20 @@ Design rules enforced in code, not just copy:
 7. No secret files. There is no `.env` file by design. Secrets resolve environment first, then Google Cloud Secret Manager.
 8. Calls are not recordings. Meet audio and video are never recorded. Live notes and transcript are saved only when participants opt in.
 
+Autonomy model - real, bounded, and auditable:
+
+Charie is described in product language as an AI support engineer (customer-facing job), autonomous engineering intelligence (platform category), and a standby on-call AI agent (night job). The autonomy behind those words is a set of closed agent loops, each running observe - decide - act - verify without a human prompting every step, and each stopping for approval before side effects that matter:
+
+| Loop | Observe | Decide | Act | Verify | Code |
+|---|---|---|---|---|---|
+| Chat and Meet tool loop | Conversation, transcript, account context | Model picks a tool or a text answer | Tool executes (file, scan, read, check); side-effect tools become consent cards | Tool result is fed back for up to 5 turns; every action receipted | `apps/portal/lib/charie-chat.ts` (loop, `needsConsent`), `services/agent-engine/src/chat-agent.ts`, `apps/portal/lib/call-agent.ts` |
+| Investigation and verification loop | Playwright trace, screenshots, console and network | Heuristic grading, Spark enrichment, Wonder escalation, Spark Open second opinion | Report, repro, fix packets; fix dispatched after approval | Identical journey re-run, before/after diff, regressions reopen | `src/explorer.ts`, `src/analyst.ts`, `src/wonder.ts`, `src/baseten.ts`, `src/verifier.ts`, `src/job.ts` |
+| Live call and watch loop | Speech, fresh screen frames, changed-frame sampler | Screen question and history detection, vision model answer | Speaks one short step, guides the customer, looks again at the result | New frame confirms or contradicts the step; timestamped screen log is the record | `apps/portal/components/meet.tsx`, `src/vision.ts`, `apps/portal/lib/livecall.ts`, `apps/portal/lib/room-status.ts` |
+| Guard and night-shift loop | Logs, SDK signals, hourly sweeps, pentest results | Deterministic detectors, Glimmer pre-filter, Spark verdict, Spark Open adversarial challenge | Approved responses and work orders execute; push alerts on blockers | Containment and fix verification; morning digest built only from executed records | `src/guardian.ts`, `src/nightshift.ts`, `src/sweep.ts`, `src/logwatch.ts`, `src/workorders.ts` |
+| Repo loop | GitHub push webhook | Build and test outcome | Deploy, status back to commit, self-filed ticket on failure | Re-test on the next push closes or reopens the ticket | `apps/portal/lib/github.ts`, `apps/portal/lib/gcp.ts`, `/api/github/webhook` |
+
+Core technical features built on Meta Muse intelligence are mapped lane by lane in section 21: Spark Open (Baseten) as the default tool-using brain and adversarial second opinion, Spark 1.3 direct for investigation prose and first-lane screen vision, Wonder for deep dives, Image for redesigns, SAM 3.1 for grounding, Voice Transcribe for voice tickets, Glimmer for triage, and Muse Code consuming MCP fix packets with a proof check. Modal Kokoro voice and browser speech recognition are deliberately not labelled as Meta intelligence.
+
 ## 2. System architecture
 
 ```text
@@ -191,7 +205,7 @@ How a turn works:
 1. The portal sends the conversation, the selected model and effort, and account context.
 2. The engine runs a tool loop: the model may call tools that file tickets, start scans, read findings, check build and run status, and read reports. Each tool result returns to the model for the next step.
 3. Every executed action produces a receipt shown in the UI, so a user can see what Charie actually did, not just what she said.
-4. Model order: Baseten Muse Spark Open first when `BASETEN_API_KEY` resolves, then Meta Muse Spark, then the built-in heuristic router. The reply carries its model label (for example `(baseten)` or `heuristic`) so the source is never hidden.
+4. Model order (important, often misread): the Chat and Meet brain is **not** `muse-spark-1.3` by default. In Auto mode it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`** (open weights served by Baseten, a different model from `muse-spark-1.3`) when `BASETEN_API_KEY` resolves, then **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then the built-in heuristic router. Code: `services/agent-engine/src/chat-agent.ts` provider order comment and selection (`hasBasetenKey() && model !== "meta"` first, `chat()` with `modelId("spark")` second). Chat exposes pills to force Baseten, Meta, or Heuristic (`apps/portal/lib/chat-models.ts`); Meet has no picker, so Auto order always applies in calls (`apps/portal/lib/call-agent.ts` calls the same `answerMessage` loop with `surface: "meet-call"`). The reply carries its model label (for example `(baseten)` or `heuristic`) so the source is never hidden.
 5. Parsing is defensive. Replies are expected as structured output, but if a model answers in prose with braces in it, a salvage pass extracts the intent instead of dead-ending with "I could not parse that". Regression tests cover this (`services/agent-engine/test/chat-agent.test.mts`).
 6. UI contract: the chat page never scrolls as a page. Only the message pane scrolls. Model and effort are compact pill controls, chosen to stay small and quiet next to the composer.
 
@@ -384,12 +398,12 @@ Rule: a model counts as used only after a real request succeeds. Every call site
 
 | Model | ID and endpoint | Job | Code | Prompt shape | Fallback |
 |---|---|---|---|---|---|
-| Muse Spark | `muse-spark-1.3`, `https://api.meta.ai/v1` (`META_API_BASE_URL`) | Finding cause/fix enrichment, chat agent brain, incident analysis, screen vision lane 1 | `src/meta-client.ts` (`chat`, `enrichFinding`, `modelId`), `src/analyst.ts`, `src/chat-agent.ts`, `src/vision.ts` | Enrichment: exactly two lines, `CAUSE:` then `FIX:`. Vision fast: one sentence, max 25 words. Chat: tool-loop system prompt | Heuristic analyst and router; reply labelled `heuristic` |
+| Muse Spark | `muse-spark-1.3`, `https://api.meta.ai/v1` (`META_API_BASE_URL`, Meta direct) | Finding cause/fix enrichment, incident analysis, screen vision lane 1, Chat/Meet Meta lane (only when picked in Chat or when Baseten is unavailable) | `src/meta-client.ts` (`chat`, `enrichFinding`, `modelId`), `src/analyst.ts`, `src/chat-agent.ts`, `src/vision.ts` | Enrichment: exactly two lines, `CAUSE:` then `FIX:`. Vision fast: one sentence, max 25 words. Chat: tool-loop system prompt | Heuristic analyst and router; reply labelled `heuristic` |
 | Muse Wonder | `muse-wonder-1.0` | Deep-dive escalation for low-confidence or multi-file findings, blocker incident planning | `src/wonder.ts` | Root-cause plus fix proposal replacing low-confidence Spark prose | Spark prose stays, confidence unchanged |
 | Muse Image | `muse-image-1.0` | Screen redesigns from usability findings | `src/redesign.ts` | Evidence-linked generation, 2-3 alternatives plus trade-offs and component plan | Written briefs only, page says screens need the key |
 | Muse Voice Transcribe | `muse-voice-transcribe-1.0` | Voice bug reports to structured tickets | `src/voice.ts`, engine `POST /transcribe`, portal intake | Transcription to goal plus repro fields | Manual text intake |
 | SAM 3.1 | `sam-3-1` | Grounding boxes on failure screenshots and before/after diff regions | `src/grounding.ts` | Segmentation of the cited control; boxes stored in `findings[].grounding` | Whole-shot fallback box, UI chip "Grounded by SAM 3.1" only when real boxes exist |
-| Muse Spark Open | `meta-models/muse-spark-open-1026`, `https://inference.baseten.co/v1` (Baseten) | Second-opinion re-grade of findings, adversarial check on Guard verdicts, chat brain first lane, vision lane 2 | `src/baseten.ts` (`sparkOpenChat`, `secondOpinion`, `parseGrade`), `src/vision.ts`, `src/chat-agent.ts` | Re-grade: exactly `SEVERITY:` then `NOTE:`. Disagreement lowers confidence | No second opinion; confidence unchanged |
+| Muse Spark Open | `meta-models/muse-spark-open-1026`, `https://inference.baseten.co/v1` (Baseten, open weights, not `muse-spark-1.3`) | Default Chat and Meet brain in Auto mode, second-opinion re-grade of findings, adversarial check on Guard verdicts, vision lane 2 | `src/baseten.ts` (`sparkOpenChat`, `secondOpinion`, `parseGrade`), `src/vision.ts`, `src/chat-agent.ts` | Re-grade: exactly `SEVERITY:` then `NOTE:`. Disagreement lowers confidence | No second opinion; confidence unchanged |
 | Muse Glimmer | Open weights, Ollama `http://localhost:11434/v1`, model `muse-glimmer:30b` by default (`GLIMMER_ENDPOINT`, `GLIMMER_MODEL`) | Ticket triage: goal extraction, severity pre-grade, dedup; Guard noise pre-filter | `src/glimmer.ts`, `src/triage.ts`, engine `POST /triage` | Small structured extraction prompts | Heuristic triage, fail-open |
 | Muse Code | Meta coding agent | Built this repo; at runtime consumes MCP fix packets and returns fixes for verification | `services/mcp-server/`, portal `POST /api/mcp` | Fix packet markdown per finding | Human applies the fix manually |
 
@@ -528,7 +542,7 @@ Tests are offline-safe: model calls are stubbed with fake fetch implementations,
 
 | What judges weigh | Where Charie answers it |
 |---|---|
-| Frontier ambition | An agent that joins live customer calls, sees screens, investigates, verifies, and guards overnight in one loop (README wow moments) |
+| Build for Your World (problem statement) | Built for the world of support engineers and solo builders: joins their live customer calls, sees screens, investigates, verifies, and guards overnight in one loop (README wow moments and founder story) |
 | Real problem, real user | Built from 4.5 years of support pain and a solo developer's night-shift risk (README story) |
 | Meta model usage, depth not logos | Eight Meta technologies, each at the job it is best at, file-traced in section 21 and [META_STACK.md](META_STACK.md) |
 | Open-weight build | Muse Spark Open on Baseten as chat brain, second opinion, and vision lane 2; Muse Glimmer triage; Kokoro voice on Modal |
