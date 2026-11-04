@@ -1,6 +1,6 @@
 import { listClusters } from "@/lib/guardian";
 import { identity, scopeUid } from "@/lib/who";
-import { ClusterTicketButton, ProposeWorkOrderButton, SeedSignalsButton, SignalsIngestForm } from "@/components/suite";
+import { ClusterTicketButton, LiveMonitorPanel, ProposeWorkOrderButton, SeedSignalsButton, SignalsIngestForm } from "@/components/suite";
 import { Icon } from "@/components/icons";
 import { Badge, PageHead } from "@/components/ui";
 
@@ -14,7 +14,7 @@ export default async function SignalsPage() {
       <PageHead
         crumbs={[["/", "Home"], ["/guardian/signals", "Live Signals"]]}
         title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="signal" size={19} /></span> Live Signals</>}
-        sub="Support, chat, call transcripts, and reviews. Spark grades sentiment and theme per message; the engine clusters them into themes. Hot clusters become work orders."
+        sub="Two live feeds: the site monitor probes your product every 3 seconds and plots what it really measures, and message signals from support, chat, calls, and reviews - Spark grades sentiment per message, the engine clusters themes, hot clusters become work orders."
       />
       <div className="stats">
         <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="chat" size={20} /></span><div><div className="stat-num">{total}</div><div className="stat-label">Messages ingested</div></div></div></div>
@@ -22,6 +22,7 @@ export default async function SignalsPage() {
         <div className="stat"><div className="icon-stat"><span className="icon-orb red"><Icon name="alert" size={20} /></span><div><div className="stat-num">{Math.round(hottest * 100)}%</div><div className="stat-label">Hottest cluster heat</div></div></div></div>
         <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="ticket" size={20} /></span><div><div className="stat-num">{clusters.filter((c) => c.angryShare >= 0.5).length}</div><div className="stat-label">Hot clusters</div></div></div></div>
       </div>
+      <LiveMonitorPanel />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "var(--space-4)", alignItems: "start" }} className="home-grid">
         <div className="card">
           <div className="card-title">Theme clusters ({clusters.length})</div>

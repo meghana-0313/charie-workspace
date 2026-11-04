@@ -359,7 +359,7 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     return heuristicTurn(input.history, demoTarget);
   }
   try {
-    const out = await chat(messages, { model: modelId("spark"), maxTokens: meetCall ? 1200 : effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
+    const out = await chat(messages, { model: modelId("spark"), maxTokens: meetCall ? 500 : effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
     if (parsed.model === "heuristic") return heuristicTurn(input.history, demoTarget);
     return { ...parsed, model: parsed.model === "spark" ? modelId("spark") : parsed.model };

@@ -193,6 +193,9 @@ export function sampleFindings(runId: string): FindingView[] | null {
       { ...base, id: "demo-finding-checkout-payment", category: "functional", severity: "major", title: "Valid cards rejected at payment", suspectedCause: "Card expiry validation compares against the wrong month boundary.", suggestedFix: "Fix the expiry boundary comparison and cover the current month in tests.", regressionCheck: "A card expiring this month is accepted." },
     ];
   }
+  if (runId.includes("refund")) {
+    return [{ ...base, id: "demo-finding-refund-spinner", category: "functional", severity: "major", title: "Refund button spins forever, no refund created", suspectedCause: "The refund handler waits for a confirmation event the payment adapter never emits for already-settled orders, so the UI never leaves the pending state.", suggestedFix: "Time out the confirmation wait, surface the adapter state to the user, and disable repeat clicks while a refund is pending.", regressionCheck: "One refund click creates exactly one refund and the button settles with a clear result." }];
+  }
   if (runId.includes("registration")) {
     return [{ ...base, id: "demo-finding-email", category: "functional", severity: "major", title: "Valid email addresses rejected", suspectedCause: "The email pattern rejects plus-addressing and subdomains.", suggestedFix: "Use a standards-based email check and add plus-address cases.", regressionCheck: "user+tag@mail.example.com registers successfully." }];
   }

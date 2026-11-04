@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, shortVisionConfirm, splitSpeakChunks } from "../lib/room-status";
+import { clampCallReply, isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, shortVisionConfirm, splitSpeakChunks } from "../lib/room-status";
 
 // Screen questions are detected so they never reach a free-form model guess.
 assert.equal(isScreenSeeQuestion("Sorry, can you see my screen?"), true);
@@ -49,5 +49,12 @@ assert.ok(clauses[0].length <= 75, "first spoken chunk is one short clause so he
 const confirm = shortVisionConfirm("Your Usage page shows a 1.1K rupee spike on November 3rd. No error visible. Click Billing next.");
 assert.match(confirm, /same screen/i);
 assert.ok(!confirm.includes("Click Billing"), "confirmation never re-reads the whole frame");
+
+// Spoken call replies answer only what was asked: at most two sentences,
+// never a paragraph of extra narration, however verbose the model was.
+assert.equal(clampCallReply("Checkout is failing at payment. The card is being declined. Also your dashboard looks outdated and you should really redesign the settings page soon."), "Checkout is failing at payment. The card is being declined.");
+assert.equal(clampCallReply("Just the answer."), "Just the answer.");
+assert.equal(clampCallReply(""), "");
+assert.ok(clampCallReply("One very long explanation ".repeat(30)).length <= 263, "long single-sentence replies are capped for speech");
 
 console.log("room-status tests passed");

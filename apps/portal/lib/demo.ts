@@ -46,8 +46,9 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     travelmate: "https://demo.charie.local/travelmate",
     workboard: "https://demo.charie.local/workboard",
   };
-  const defs: Array<{ key: string; project: string; target: string; subject: string; body: string; status: Ticket["status"]; runId?: string; days: number }> = [
-    { key: "checkout", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout cart total is wrong and payment fails", body: "Customers report the cart total changes at checkout and valid cards are rejected. Project: Demo Site (demo target, runs locally at http://localhost:3101).", status: "verified", runId: "demo-run-shopflow-checkout", days: 6 },
+  const defs: Array<{ key: string; project: string; target: string; subject: string; body: string; status: Ticket["status"]; runId?: string; days: number; sourceRepo?: string }> = [
+    { key: "checkout", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout cart total is wrong and payment fails", body: "Customers report the cart total changes at checkout and valid cards are rejected. Project: Demo Site (demo target, runs locally at http://localhost:3101).", status: "verified", runId: "demo-run-shopflow-checkout", days: 6, sourceRepo: "meet:sample-call-checkout" },
+    { key: "call-refund", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: refund button spins forever (reported on a live call)", body: "On a Meet support call the customer showed Charie the refund button spinning forever after one click. Charie captured the frame, confirmed no refund was created, and filed this from the call. Call summary: customer clicked Refund once, the spinner never stopped, and order ORD-1042 still shows no refund.", status: "fix-proposed", runId: "demo-run-shopflow-refund", days: 1, sourceRepo: "meet:sample-call-refund" },
     { key: "registration", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: registration form rejects valid email addresses", body: "New users with valid emails see a validation error and cannot register. Project: Demo Site.", status: "fix-proposed", runId: "demo-run-shopflow-registration", days: 5 },
     { key: "search", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: search filters return unrelated products", body: "Filtering by category shows products from other categories. Project: Demo Site.", status: "in-room", runId: "demo-run-shopflow-search", days: 4 },
     { key: "a11y", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout button unreachable by keyboard", body: "Keyboard users cannot reach the checkout button. Project: Demo Site.", status: "verified", days: 3 },
@@ -65,7 +66,7 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     const roomId = `demo-room-${d.key}`;
     tickets.push({
       id: ticketId, uid: DEMO_UID, subject: d.subject, body: d.body,
-      goal: d.subject.replace(/^[^:]+: /, ""), targetUrl: d.target,
+      goal: d.subject.replace(/^[^:]+: /, ""), targetUrl: d.target, sourceRepo: d.sourceRepo,
       status: d.status, roomId, createdAt: t(d.days), updatedAt: t(Math.max(0, d.days - 1)),
     });
     rooms.push({ id: roomId, ticketId, title: d.subject, status: d.status === "closed" ? "resolved" : "open", runIds: d.runId ? [d.runId] : [], createdAt: t(d.days) });
