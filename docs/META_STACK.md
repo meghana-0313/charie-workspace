@@ -8,7 +8,7 @@ never from a stub.** Judges can trace each one to a file.
 
 | Meta model | Real job in the product | Code | Status |
 |---|---|---|---|
-| **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; chat agent brain (tool loop) | `services/agent-engine/src/analyst.ts` + `src/chat-agent.ts` via `meta-client.ts` | Live with `META_API_KEY` (key verified 200); heuristic fallback |
+| **Muse Spark** (series) | Core investigation reasoning: enriches heuristic findings with cause/fix prose; Chat/Meet Meta lane (tool loop) only when picked in Chat or when Baseten is unavailable - not the default brain | `services/agent-engine/src/analyst.ts` + `src/chat-agent.ts` via `meta-client.ts` | Live with `META_API_KEY` (key verified 200); heuristic fallback |
 | **Muse Wonder** | Deep-dive tier: multi-file / low-confidence findings escalated from Spark for root-cause + fix proposal | `services/agent-engine/src/wonder.ts` | Live: deep dives replace low-confidence prose (M5) |
 | **Muse Image** | Evidence-linked UI redesigns: 2-3 alternatives per usability finding + trade-offs + component plan | `services/agent-engine/src/redesign.ts` (in `report.md` + `briefs.json`) | Live: PNGs in `redesigns/` + briefs.json, first 2 usability findings (M2) |
 | **Muse Voice Transcribe** | Voice bug reports → structured tickets (record/attach audio at intake, transcribed to goal + repro) | `apps/portal/` intake + `services/agent-engine/src/voice.ts` + engine `/transcribe` | Live: voice-first tickets (M4) |
@@ -18,7 +18,7 @@ never from a stub.** Judges can trace each one to a file.
 
 | Meta model | Real job in the product | Runtime | Status |
 |---|---|---|---|
-| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Second-opinion analyst: independently re-grades Spark findings; disagreement lowers confidence | Baseten Model API (`src/baseten.ts`) | Live (slug verified 200); disagreement lowers confidence (M7) |
+| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Default Chat and Meet brain in Auto mode (Baseten first, different model from `muse-spark-1.3`); second-opinion analyst: independently re-grades Spark findings, disagreement lowers confidence; vision lane 2. Speaking voice is not this model - it is Kokoro on Modal, and hearing in calls is the browser recognizer | Baseten Model API (`src/baseten.ts`) | Live (slug verified 200); disagreement lowers confidence (M7) |
 | **Muse Glimmer** | Lightweight triage: ticket → goal extraction, severity pre-grade, finding dedup | Ollama-local default (`muse-glimmer:30b`), any OpenAI-compatible endpoint | Live when reachable via engine `/triage`, heuristic fallback (M6) |
 
 > No giant weight downloads on the Windows laptop without a hardware check first.
