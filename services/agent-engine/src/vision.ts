@@ -11,6 +11,7 @@ export type FetchImpl = typeof fetch;
 async function visionCall(
   base: string, key: string, model: string, image: string, question: string, fetchImpl: FetchImpl,
   fast = false,
+  maxTokensOverride?: number,
 ): Promise<string> {
   const res = await fetchImpl(`${base.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
@@ -29,7 +30,7 @@ async function visionCall(
       // Reasoning models spend tokens thinking before any visible answer;
       // 400 starved them into empty replies (the "answered empty" bug that
       // chat-agent.ts already fixed for text). Give vision real headroom.
-      max_tokens: fast ? 400 : 900,
+      max_tokens: maxTokensOverride ?? (fast ? 400 : 900),
       temperature: 0.3,
     }),
     signal: AbortSignal.timeout(30000),
@@ -86,7 +87,10 @@ export async function describeScreenDetailed(
       return await visionCall(base, key, model, image, question, fetchImpl, fast);
     } catch (e) {
       if (fast && /empty|leaked/.test((e as Error).message)) {
-        return visionCall(base, key, model, image, question, fetchImpl, false);
+        // Reasoning models were still finishing empty at 900 tokens
+        // (finish_reason=length on both providers): give the retry real
+        // headroom to finish thinking AND answer.
+        return visionCall(base, key, model, image, question, fetchImpl, false, 2200);
       }
       throw e;
     }
