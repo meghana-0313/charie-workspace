@@ -69,7 +69,7 @@ function validUrl(v: unknown): string | null {
 
 const HELP = [
   "I can: list tickets and their status, read findings, file tickets that investigate themselves,",
-  "run accessibility / first-run / security scans, list autopilot schedules, and check repo builds.",
+  "run accessibility / first-run / security scans, run UX & redesign reviews, list autopilot schedules, and check repo builds.",
   "Approvals, dispatches, verifies, and pushes stay with you on the ticket page.",
   "Try: 'status of tkt_x', 'file a bug for https://...', 'scan https://... for a11y'.",
 ].join(" ");
@@ -106,6 +106,22 @@ async function executeTool(tool: string, args: Record<string, unknown>, uid: str
     }
     case "start_scan": {
       const kind = str(args.kind);
+      // UX / redesign is not a scan: it is the /ux investigation flow.
+      // Accept the kind models naturally emit and file that ticket instead
+      // of dead-ending on an invalid scan kind.
+      if (kind === "ux" || kind === "redesign" || kind === "ux-review") {
+        const targetUrl = validUrl(args.targetUrl);
+        if (!targetUrl) return "Need a valid http(s) targetUrl for a UX review.";
+        let host = targetUrl;
+        try { host = new URL(targetUrl).host; } catch { /* keep raw url */ }
+        const { ticket, runId } = await fileTicketAndInvestigate({
+          subject: `UX review of ${host}`.slice(0, 140),
+          body: `Review the user experience of ${targetUrl}: walk the core journey as a new user and flag every usability issue with evidence. Draft redesign directions for the findings.`,
+          targetUrl,
+          ownerUid: uid,
+        });
+        return `Filed UX review ${ticket.id} (${runId ? "investigating now" : "engine unreachable, run it from the ticket page"}). Open /tickets/${ticket.id} - redesign briefs land on /ux.`;
+      }
       if (kind !== "a11y" && kind !== "firstrun" && kind !== "pentest") return "kind must be a11y, firstrun, or pentest.";
       if (kind === "a11y" || kind === "firstrun") {
         const targetUrl = validUrl(args.targetUrl);

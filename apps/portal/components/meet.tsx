@@ -93,6 +93,11 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   const [startCamOff, setStartCamOff] = useState(true);
   const [audioOnly, setAudioOnly] = useState(false);
   const [previewErr, setPreviewErr] = useState("");
+  // Preview auto-acquisition is armed only until the user leaves or the
+  // call ends. After that the camera must stay off (light out) until the
+  // user explicitly turns the lobby camera back on - never reacquire on
+  // the way out, which is what kept the camera light on after exiting.
+  const [previewArmed, setPreviewArmed] = useState(true);
   const localVideo = useRef<HTMLVideoElement>(null);
   const previewVideo = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -143,6 +148,11 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
     // keeps capturing the screen after Leave / End / unmount.
     screenRef.current?.getTracks().forEach((t) => t.stop());
     screenRef.current = null;
+    // Detach the elements too: a stopped stream left in srcObject can
+    // hold the device open in some browsers until the element releases it.
+    if (localVideo.current) localVideo.current.srcObject = null;
+    if (previewVideo.current) previewVideo.current.srcObject = null;
+    setPreviewArmed(false);
     setSharing(false);
     try { window.speechSynthesis?.cancel(); } catch { /* not supported */ }
     joinedRef.current = false;
@@ -266,7 +276,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
   // Pre-join device preview: see yourself before anyone else does. The same
   // stream is reused on Join so the permission prompt only fires once.
   useEffect(() => {
-    if (joined) return;
+    if (joined || !previewArmed) return;
     let cancelled = false;
     (async () => {
       try {
@@ -291,9 +301,22 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
       if (!joinedRef.current) {
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        if (previewVideo.current) previewVideo.current.srcObject = null;
       }
     };
-  }, [joined, audioOnly, startCamOff]);
+  }, [joined, audioOnly, startCamOff, previewArmed]);
+
+  // Unmount (sidebar navigation, back button, tab close via SPA route):
+  // stopping tracks here is the last guarantee the camera/mic light goes
+  // out without needing a page refresh.
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      screenRef.current?.getTracks().forEach((t) => t.stop());
+      screenRef.current = null;
+    };
+  }, []);
 
   // Pre-join toggles act on the preview immediately: checking "Camera off"
   // stops the preview track (camera light out) instead of only applying at
@@ -308,8 +331,12 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
       if (previewVideo.current) previewVideo.current.srcObject = null;
     } else if (!audioOnly && stream.getVideoTracks().length === 0) {
       navigator.mediaDevices.getUserMedia({ video: true }).then((fresh) => {
-        if (!streamRef.current) return;
-        streamRef.current.addTrack(fresh.getVideoTracks()[0]);
+        const track = fresh.getVideoTracks()[0];
+        if (!streamRef.current || !track) {
+          fresh.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current.addTrack(track);
         if (previewVideo.current) previewVideo.current.srcObject = streamRef.current;
       }).catch(() => {});
     }
@@ -615,7 +642,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         </div>
         <div className="stack" style={{ marginTop: 8 }}>
           <MeetSwitch checked={startMuted} onChange={setStartMuted} label="Start muted" />
-          <MeetSwitch checked={startCamOff} onChange={setStartCamOff} label="Camera off" disabled={audioOnly} />
+          <MeetSwitch checked={startCamOff} onChange={(v) => { setStartCamOff(v); if (!v) setPreviewArmed(true); }} label="Camera off" disabled={audioOnly} />
           <MeetSwitch checked={audioOnly} onChange={(v) => { setAudioOnly(v); if (v) setStartCamOff(true); }} label="Audio only" />
         </div>
         {previewErr && <p className="small" style={{ color: "var(--danger)" }}>{previewErr}</p>}

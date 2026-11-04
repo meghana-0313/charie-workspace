@@ -2,6 +2,7 @@
 // Local dev: ENGINE_URL=http://localhost:3103 (engine `npm run serve`).
 // Prod: the Cloud Run engine URL + ENGINE_TOKEN (secret mount).
 
+import { sampleFindings } from "./demo-samples";
 import type { FindingView } from "./types";
 
 function base(): string {
@@ -61,7 +62,9 @@ export async function runStatus(runId: string): Promise<"running" | "done" | "fa
 
 export async function readFindings(runId: string): Promise<FindingView[] | null> {
   const s = await runState(runId).catch(() => null);
-  return s?.findings ?? null;
+  if (s?.findings && s.findings.length > 0) return s.findings;
+  // Seeded demo runs have no engine artifacts: serve their sample findings.
+  return sampleFindings(runId) ?? s?.findings ?? null;
 }
 
 /** The engine's own failure reason for a run, when it recorded one. */

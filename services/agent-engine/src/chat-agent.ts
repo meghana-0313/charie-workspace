@@ -61,7 +61,9 @@ Tools:
 - list_tickets {} - recent tickets (id, subject, status).
 - ticket_status {"ticketId": "..."} - one ticket, its room, runs, approvals.
 - file_ticket {"subject": "...", "body": "...", "targetUrl": "https://..."} - file and auto-investigate. targetUrl is required.
-- start_scan {"kind": "a11y|firstrun|pentest", "targetUrl": "https://..."} - one-click scan. targetUrl required except pentest.
+- start_scan {"kind": "a11y|firstrun|pentest", "targetUrl": "https://..."} - one-click scan. targetUrl required except pentest. There is no "ux" scan kind.
+- A UX / redesign / user-experience review runs as an investigation: with a target URL call file_ticket with subject "UX review of <host>" and a body asking to walk the core journey as a new user and flag usability friction. Without a target URL, ask for it in a text reply.
+- If the user asks for any scan or UX review without the target URL it needs, ask for that URL in a text reply. Never reply with an empty object, an unknown tool, or a scan call missing its kind or targetUrl.
 - get_findings {"ticketId": "..."} - findings of the latest finished run.
 - list_schedules {} - autopilot schedules and last results.
 - repo_status {"repoId": "..."} - one connected repo and latest build; omit repoId for all.
@@ -157,6 +159,31 @@ export function heuristicTurn(history: ChatTurn[]): ChatTurnResult {
   if (ticketId) {
     return { kind: "tool", tool: "ticket_status", args: { ticketId }, model: "heuristic" };
   }
+  // UX / redesign is an investigation ticket (the /ux flow), never a scan kind.
+  const uxIntent = /(\bux\b|user experience|redesign)/.test(low);
+  if (uxIntent && url) {
+    let host = url;
+    try { host = new URL(url).host; } catch { /* keep raw url */ }
+    return {
+      kind: "tool", tool: "file_ticket",
+      args: {
+        subject: `UX review of ${host}`,
+        body: `Review the user experience of ${url}: walk the core journey as a new user and flag every usability issue with evidence. Draft redesign directions for the findings.`,
+        targetUrl: url,
+      },
+      model: "heuristic",
+    };
+  }
+  // Scan or UX intent with no target URL: ask for it, naming the real options.
+  // Falling through here used to land on help or a parse dead-end.
+  const scanIntent = /(a11y|accessibility|first.?run|new user|onboarding|pentest|security scan|\bscan\b|\brun\b|\btest\b|\baudit\b)/.test(low);
+  if ((uxIntent || scanIntent) && !url && /(a11y|accessibility|first.?run|pentest|security|\bux\b|user experience|redesign|scan|audit)/.test(low)) {
+    return {
+      kind: "text",
+      text: "Yes - I can run a first-run scan, an accessibility scan, a security scan, and a UX & redesign review (that one files an investigation ticket). Share the app URL and say which you want, or name more than one and I will line them up one at a time.",
+      model: "heuristic",
+    };
+  }
   if (/(a11y|accessibility)/.test(low) && url) {
     return { kind: "tool", tool: "start_scan", args: { kind: "a11y", targetUrl: url }, model: "heuristic" };
   }
@@ -238,6 +265,10 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
       const meetCall = typeof input.snapshot === "object" && input.snapshot !== null && (input.snapshot as { surface?: string }).surface === "meet-call";
       const out = await sparkOpenChat(messages, { maxTokens: meetCall ? 1200 : effortBudget("baseten", input.effort), temperature: 0.4, fetchImpl: input.fetchImpl });
       const parsed = parseTurnReply(out);
+      // An unparseable model reply is a provider failure, not an answer:
+      // route the actual user message through the heuristic instead of
+      // surfacing the parse dead-end.
+      if (parsed.model === "heuristic") return heuristicTurn(input.history);
       const label = `${sparkOpenModelId()} (baseten)`;
       return { ...parsed, model: parsed.model === "spark" ? label : parsed.model };
     } catch (e) {
@@ -248,6 +279,7 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   try {
     const out = await chat(messages, { model: modelId("spark"), maxTokens: effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
+    if (parsed.model === "heuristic") return heuristicTurn(input.history);
     return { ...parsed, model: parsed.model === "spark" ? modelId("spark") : parsed.model };
   } catch (e) {
     console.warn(`[chat-agent] spark unavailable, heuristic fallback: ${(e as Error).message}`);

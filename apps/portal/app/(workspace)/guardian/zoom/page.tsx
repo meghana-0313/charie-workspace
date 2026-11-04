@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MeetPage() {
   const myUid = scopeUid(await identity());
-  const [rooms, status] = await Promise.all([store.listMeetRooms(myUid), zoomStatus()]);
+  const [rooms, status] = await Promise.all([store.listMeetRooms(myUid), zoomStatus(myUid)]);
   const openRooms = rooms.filter((r) => meetRoomStatus(r) === "Open");
   return (
     <>

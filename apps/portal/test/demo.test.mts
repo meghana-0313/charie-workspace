@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { buildDemoSeed, DEMO_UID } from "../lib/demo";
+import { isDemoAccount, sampleA11yReports, sampleBriefs, sampleClusters, sampleDigests, sampleFindings, sampleFirstRunReports, sampleLogWatch, samplePentestReports, sampleSweeps, sampleWorkOrders, sampleZoom } from "../lib/demo-samples";
 
 // Demo seed must be internally consistent: judges click through it.
 const seed = buildDemoSeed(Date.parse("2026-11-04T10:00:00.000Z"));
@@ -20,5 +21,24 @@ const subjects = seed.tickets.map((t) => t.subject).join(" ");
 for (const project of ["ShopFlow", "TravelMate", "WorkBoard"]) assert.match(subjects, new RegExp(project), `project ${project} present`);
 assert.ok(seed.incidents.every((i) => i.simulated === true), "sample incidents are labelled simulated");
 assert.ok(seed.builds.every((b) => /simulated/i.test(b.detail ?? "")), "sample builds are labelled simulated");
+assert.ok(seed.schedules.length >= 4, "autopilot has sample schedules for every kind");
+assert.ok(seed.connectors.length >= 2 && seed.syncRules.every((r) => seed.connectors.some((c) => c.id === r.connectorId)), "integrations have sample connectors and a rule that points at one");
+assert.ok(seed.contextDocs.length >= 2, "integrations have sample context docs");
+assert.ok(seed.chatThread.messages.length >= 2 && seed.chatThread.uid === DEMO_UID, "chat has a sample thread");
+
+// Engine-backed surfaces: every page that reads from the engine must have
+// a labelled demo fallback, so no demo page renders empty.
+assert.ok(isDemoAccount(DEMO_UID) && !isDemoAccount("someone-else"), "demo fallback is scoped to the demo account only");
+for (const [name, list] of [["a11y", sampleA11yReports()], ["firstrun", sampleFirstRunReports()], ["pentest", samplePentestReports()], ["sweeps", sampleSweeps()], ["workorders", sampleWorkOrders()], ["digests", sampleDigests()]] as const) {
+  assert.ok(list.length >= 1, `demo ${name} sample is non-empty`);
+  assert.match(JSON.stringify(list), /[Ss]ample/, `demo ${name} sample is labelled as sample data`);
+}
+assert.ok(sampleClusters().clusters.length >= 1, "signals page has sample clusters");
+assert.ok(sampleLogWatch().groups.length >= 1, "guardian page has a sample logwatch");
+assert.match(sampleZoom().provider, /[Ss]imulated/, "zoom sample is labelled simulated");
+for (const run of seed.runs) {
+  assert.ok((sampleFindings(run.id) ?? []).length >= 1, `demo run ${run.id} has sample findings`);
+}
+assert.ok(sampleBriefs("demo-run-shopflow-checkout").length >= 1, "UX page has a sample redesign brief");
 
 console.log("demo: all assertions passed");

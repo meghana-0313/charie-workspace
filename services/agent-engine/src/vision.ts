@@ -86,13 +86,17 @@ export async function describeScreenDetailed(
     try {
       return await visionCall(base, key, model, image, question, fetchImpl, fast);
     } catch (e) {
-      if (fast && /empty|leaked/.test((e as Error).message)) {
-        // Reasoning models were still finishing empty at 900 tokens
-        // (finish_reason=length on both providers): give the retry real
-        // headroom to finish thinking AND answer.
-        return visionCall(base, key, model, image, question, fetchImpl, false, 2200);
+      if (!/empty|leaked/.test((e as Error).message)) throw e;
+      // Reasoning models spend the budget thinking and finish with
+      // finish_reason=length and no visible answer - on the fast lane
+      // AND on a manual look. Retry with real headroom, then once more
+      // with more, before giving up and naming the failure.
+      try {
+        return await visionCall(base, key, model, image, question, fetchImpl, false, 2200);
+      } catch (e2) {
+        if (!/empty|leaked/.test((e2 as Error).message)) throw e2;
+        return visionCall(base, key, model, image, question, fetchImpl, false, 4000);
       }
-      throw e;
     }
   };
   const meta = secret("META_API_KEY");

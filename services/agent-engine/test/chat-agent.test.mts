@@ -41,6 +41,12 @@ ok(heuristicTurn([u("list my tickets")]).tool === "list_tickets", "tickets route
 ok(heuristicTurn([u("what schedules do I have")]).tool === "list_schedules", "schedules routes");
 ok(heuristicTurn([u("how is my repo build doing")]).tool === "repo_status", "repos routes");
 ok(heuristicTurn([u("scan https://x.test for security issues")]).tool === "start_scan", "security scan routes");
+const noUrlScans = heuristicTurn([u("can you do a first run or accessibility run or ux & redesign run?")]);
+ok(noUrlScans.kind === "text" && /URL/.test(noUrlScans.text ?? "") && /accessibility/i.test(noUrlScans.text ?? "") && /first-run/i.test(noUrlScans.text ?? "") && /UX/i.test(noUrlScans.text ?? "") && !(noUrlScans.text ?? "").includes("could not parse"), "scan/UX question without a URL asks for the URL and names all three options");
+const noUrlA11y = heuristicTurn([u("can you do an accessibility run?")]);
+ok(noUrlA11y.kind === "text" && /URL/.test(noUrlA11y.text ?? ""), "accessibility run without a URL asks for the URL instead of scanning");
+const uxWithUrl = heuristicTurn([u("do a ux & redesign run on https://x.test/app")]);
+ok(uxWithUrl.kind === "tool" && uxWithUrl.tool === "file_ticket" && String((uxWithUrl.args as Record<string, unknown>).targetUrl) === "https://x.test/app" && /UX review/i.test(String((uxWithUrl.args as Record<string, unknown>).subject)), "UX run with a URL files a UX review ticket, not a scan kind");
 const seen = heuristicTurn([u("status?"), { role: "tool", content: "2 open tickets" }]);
 ok(seen.kind === "text", "post-tool turn summarizes");
 
@@ -54,6 +60,9 @@ process.env.META_API_KEY = "fake-test-key";
 const sparkReply = async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"tool": "list_schedules", "args": {}}' } }] }), { status: 200 });
 const s = await chatTurn({ history: [u("any schedules?")], fetchImpl: sparkReply as typeof fetch });
 ok(s.kind === "tool" && s.tool === "list_schedules" && s.model.includes("muse-spark"), "scripted Spark reply drives a tool");
+const garbled = async () => new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), { status: 200 });
+const g = await chatTurn({ history: [u("can you do a first run or accessibility run or ux & redesign run?")], fetchImpl: garbled as typeof fetch });
+ok(g.kind === "text" && /URL/.test(g.text ?? "") && !(g.text ?? "").includes("could not parse"), "unparseable model reply falls back to the heuristic answer, never a parse dead-end");
 const boom = async () => { throw new Error("network down"); };
 const f = await chatTurn({ history: [u("list my tickets")], fetchImpl: boom as typeof fetch });
 ok(f.kind === "tool" && f.model === "heuristic", "Spark failure falls back to heuristic");

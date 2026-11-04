@@ -2,6 +2,7 @@
 // Same bridge pattern as lib/engine.ts: null on any failure, pages degrade.
 
 import { readArtifact } from "./engine";
+import { isDemoAccount, sampleA11yReports, sampleBriefs as demoBriefs, sampleClusters, sampleDigests, sampleFirstRunReports, sampleLogWatch, samplePentestReports, sampleSweeps, sampleWorkOrders, sampleZoom } from "./demo-samples";
 import type {
   A11yView, BriefView, DigestView, FirstRunView, LogWatchView, PentestView, SignalClusterView, SweepView, WorkOrderStepView, WorkOrderView, ZoomView,
 } from "./types";
@@ -50,7 +51,7 @@ async function post<T>(path: string, body: unknown, timeout = 120000, account?: 
 /** Redesign briefs for a run, from the briefs.json artifact. */
 export async function readBriefs(runId: string): Promise<BriefView[]> {
   const f = await readArtifact(runId, ["briefs.json"]);
-  if (!f) return [];
+  if (!f) return demoBriefs(runId);
   try {
     return JSON.parse(f.data.toString("utf8")) as BriefView[];
   } catch {
@@ -60,11 +61,14 @@ export async function readBriefs(runId: string): Promise<BriefView[]> {
 
 export async function listWorkOrders(account?: string): Promise<WorkOrderView[]> {
   const r = await get<{ workorders: WorkOrderView[] }>("/workorders", 30000, account);
-  return r?.workorders ?? [];
+  const orders = r?.workorders ?? [];
+  return orders.length === 0 && isDemoAccount(account) ? sampleWorkOrders() : orders;
 }
 
 export async function getWorkOrder(id: string, account?: string): Promise<WorkOrderView | null> {
-  return get<WorkOrderView>(`/workorders/${encodeURIComponent(id)}`, 30000, account);
+  const real = await get<WorkOrderView>(`/workorders/${encodeURIComponent(id)}`, 30000, account);
+  if (real) return real;
+  return isDemoAccount(account) ? (sampleWorkOrders().find((o) => o.id === id) ?? null) : null;
 }
 
 export async function createWorkOrder(input: {
@@ -87,12 +91,14 @@ export async function runNightShift(orderIds?: string[], account?: string): Prom
 
 export async function listDigests(account?: string): Promise<DigestView[]> {
   const r = await get<{ digests: DigestView[] }>("/nightshift/digests", 30000, account);
-  return r?.digests ?? [];
+  const digests = r?.digests ?? [];
+  return digests.length === 0 && isDemoAccount(account) ? sampleDigests() : digests;
 }
 
 export async function listClusters(account?: string): Promise<{ total: number; clusters: SignalClusterView[] }> {
   const r = await get<{ total: number; clusters: SignalClusterView[] }>("/signals/clusters", 30000, account);
-  return r ?? { total: 0, clusters: [] };
+  const out = r ?? { total: 0, clusters: [] };
+  return out.clusters.length === 0 && isDemoAccount(account) ? sampleClusters() : out;
 }
 
 export async function ingestSignals(messages: Array<{ channel?: string; author?: string; text: string }>, account?: string): Promise<{
@@ -130,20 +136,24 @@ export async function runPentest(account?: string): Promise<PentestView | null> 
 
 export async function listPentestReports(account?: string): Promise<PentestView[]> {
   const r = await get<{ reports: PentestView[] }>("/pentest/reports", 30000, account);
-  return r?.reports ?? [];
+  const reports = r?.reports ?? [];
+  return reports.length === 0 && isDemoAccount(account) ? samplePentestReports() : reports;
 }
 
 export async function listSweeps(account?: string): Promise<SweepView[]> {
   const r = await get<{ sweeps: SweepView[] }>("/guardian/sweeps", 30000, account);
-  return r?.sweeps ?? [];
+  const sweeps = r?.sweeps ?? [];
+  return sweeps.length === 0 && isDemoAccount(account) ? sampleSweeps() : sweeps;
 }
 
 export async function runSweep(account?: string): Promise<SweepView | null> {
   return post<SweepView>("/guardian/sweep", {}, 120000, account);
 }
 
-export async function zoomStatus(): Promise<ZoomView | null> {
-  return get<ZoomView>("/zoom/status");
+export async function zoomStatus(account?: string): Promise<ZoomView | null> {
+  const real = await get<ZoomView>("/zoom/status");
+  if (real) return real;
+  return isDemoAccount(account) ? sampleZoom() : null;
 }
 
 export async function zoomJoin(meetingUrl: string): Promise<{ id: string } | null> {
@@ -156,7 +166,8 @@ export async function runA11y(targetUrl: string, account?: string): Promise<A11y
 
 export async function listA11yReports(account?: string): Promise<A11yView[]> {
   const r = await get<{ reports: A11yView[] }>("/a11y/reports", 30000, account);
-  return r?.reports ?? [];
+  const reports = r?.reports ?? [];
+  return reports.length === 0 && isDemoAccount(account) ? sampleA11yReports() : reports;
 }
 
 export async function runFirstRun(targetUrl: string, account?: string): Promise<FirstRunView | null> {
@@ -165,7 +176,8 @@ export async function runFirstRun(targetUrl: string, account?: string): Promise<
 
 export async function listFirstRunReports(account?: string): Promise<FirstRunView[]> {
   const r = await get<{ reports: FirstRunView[] }>("/firstrun/reports", 30000, account);
-  return r?.reports ?? [];
+  const reports = r?.reports ?? [];
+  return reports.length === 0 && isDemoAccount(account) ? sampleFirstRunReports() : reports;
 }
 
 export async function runLogWatch(projectId: string, account?: string): Promise<LogWatchView | null> {
@@ -174,5 +186,6 @@ export async function runLogWatch(projectId: string, account?: string): Promise<
 
 export async function lastLogWatch(account?: string): Promise<LogWatchView | null> {
   const r = await get<{ report: LogWatchView | null }>("/guardian/logwatch", 30000, account);
-  return r?.report ?? null;
+  if (r?.report) return r.report;
+  return isDemoAccount(account) ? sampleLogWatch() : null;
 }
