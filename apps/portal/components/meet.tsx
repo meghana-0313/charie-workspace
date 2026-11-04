@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
@@ -689,7 +690,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         <div className="meet-controls">
           <button type="button" className={`meet-ctrl${muted ? " off" : ""}`} aria-pressed={muted} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={toggleMute}><span className="meet-ctrl-dot"><Icon name={muted ? "mic-off" : "mic"} size={20} /></span>{muted ? "Unmute" : "Mute"}</button>
           <button type="button" className={`meet-ctrl${camOff ? " off" : ""}`} aria-pressed={camOff} aria-label={camOff ? "Turn camera on" : "Turn camera off"} title={camOff ? "Camera on" : "Camera off"} onClick={toggleCam}><span className="meet-ctrl-dot"><Icon name={camOff ? "video-off" : "video"} size={20} /></span>{camOff ? "Camera on" : "Camera off"}</button>
-          <button type="button" className="meet-ctrl" aria-label={sharing ? "Stop sharing" : "Share screen"} title={sharing ? "Stop sharing" : "Share screen"} onClick={sharing ? stopSharing : shareScreen}><span className="meet-ctrl-dot"><Icon name="screen" size={20} /></span>{sharing ? "Stop" : "Share"}</button>
+          <button type="button" className="meet-ctrl" aria-label={sharing ? "Stop sharing" : "Share screen"} title={sharing ? "Stop sharing (the light floating bar is Chrome's own UI and follows Chrome's theme, not Charie's)" : "Share screen"} onClick={sharing ? stopSharing : shareScreen}><span className="meet-ctrl-dot"><Icon name="screen" size={20} /></span>{sharing ? "Stop" : "Share"}</button>
           {!token && <InviteButton roomId={roomId} />}
           <button type="button" className="meet-ctrl leave" aria-label="Leave call" title="Leave call" onClick={leave}><span className="meet-ctrl-dot"><Icon name="phone" size={20} /></span>Leave</button>
           {!token && <button type="button" className="danger" onClick={endForEveryone} disabled={ending}>{ending ? "Ending…" : "End for everyone"}</button>}
@@ -914,6 +915,7 @@ export function MeetSwitch({ checked, onChange, label, disabled }: { checked: bo
 // in-call speaker all await the SAME promise, so a cold voice service is
 // only ever paid once and never raced by duplicate requests.
 const ttsInflight = new Map<string, Promise<Blob>>();
+let lastTtsProvider = "";
 function fetchTts(roomId: string, qp: string, text: string): Promise<Blob> {
   const key = `${roomId}|${text}`;
   const existing = ttsInflight.get(key);
@@ -924,6 +926,7 @@ function fetchTts(roomId: string, qp: string, text: string): Promise<Blob> {
       body: JSON.stringify({ text }),
     });
     if (!res.ok) throw new Error(`voice ${res.status}`);
+    lastTtsProvider = res.headers.get("x-charie-tts") ?? "";
     return res.blob();
   })();
   ttsInflight.set(key, p);
@@ -970,7 +973,7 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
       URL.revokeObjectURL(url);
       if (played) onNote(readyMs > 4000
         ? `Voice test OK, but the voice service took ${Math.round(readyMs / 1000)}s to answer - that is a cold start on the Modal TTS side, not your browser. It stays warm while the call is open; if every first line is this slow, keep one container warm in Modal.`
-        : `Voice test OK: voice ready in ${readyMs}ms and played end to end. She will sound like this in the call.`);
+        : `Voice test OK: voice ready in ${readyMs}ms and played end to end (served by ${lastTtsProvider || "the configured voice provider"}). She will sound like this in the call.`);
       else onNote("Voice test failed: audio could not play in this browser. Click once anywhere, check your output device and volume, then retry.");
     } catch {
       onNote("Voice test failed: the voice service is unreachable. Check CHARIE_TTS_URL, then retry.");
@@ -1017,6 +1020,99 @@ export function AskCharie({ roomId, qp, name, onBeforePost }: { roomId: string; 
 
 /** War-room side panel: Transcript | Charie (thinking + consent cards) |
  *  Notes & Actions. Charie only acts after a human approves a card. */
+/**
+ * Movable, resizable Charie widget: floats over the call (drag its header anywhere, corner to resize, - to minimize, Max to maximize, Pop out for an always-on-top window)
+ * and shows her replies as text the moment they are posted - before the
+ * voice finishes - plus her latest visible thought. Replies are the same
+ * transcript lines everyone sees, so the widget can never show words she
+ * did not actually say.
+ */
+function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Array<{ at: string; text: string }> }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [open, setOpen] = useState(true);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const [maxed, setMaxed] = useState(false);
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const [pip, setPip] = useState<Window | null>(null);
+  const replies = lines.filter((l) => l.role === "agent").slice(-3);
+  const pipSupported = typeof window !== "undefined" && "documentPictureInPicture" in window;
+  useEffect(() => () => { pip?.close(); }, [pip]);
+  if (replies.length === 0 && !pip) return null;
+  const openPip = async () => {
+    try {
+      const dpip = (window as unknown as { documentPictureInPicture?: { requestWindow: (opts?: { width?: number; height?: number }) => Promise<Window> } }).documentPictureInPicture;
+      if (!dpip) return;
+      const win = await dpip.requestWindow({ width: 360, height: 300 });
+      win.document.documentElement.dataset.theme = document.documentElement.dataset.theme ?? "";
+      document.querySelectorAll('link[rel="stylesheet"], style').forEach((n) => win.document.head.appendChild(n.cloneNode(true)));
+      win.document.body.style.margin = "0";
+      win.document.body.style.background = "var(--surface)";
+      win.addEventListener("pagehide", () => setPip(null));
+      setPip(win);
+    } catch { /* user closed it or browser refused: stay inline */ }
+  };
+  const onDown = (e: React.PointerEvent) => {
+    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    const move = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      setPos({ x: Math.max(4, Math.min(window.innerWidth - 120, ev.clientX - dragRef.current.dx)), y: Math.max(4, Math.min(window.innerHeight - 60, ev.clientY - dragRef.current.dy)) });
+    };
+    const up = () => { dragRef.current = null; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  // Drag the corner handle: width and height follow the pointer, clamped
+  // so the widget can never leave the viewport or shrink to nothing.
+  const onResizeDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const root = (e.currentTarget as HTMLElement).parentElement;
+    if (!root) return;
+    const rect = root.getBoundingClientRect();
+    const start = { x: e.clientX, y: e.clientY, w: rect.width, h: rect.height };
+    setMaxed(false);
+    const move = (ev: PointerEvent) => {
+      setSize({
+        w: Math.max(260, Math.min(760, window.innerWidth - 16, start.w + ev.clientX - start.x)),
+        h: Math.max(130, Math.min(680, window.innerHeight - 16, start.h + ev.clientY - start.y)),
+      });
+    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  const inner = (
+    <>
+      <div onPointerDown={pip ? undefined : onDown} style={{ cursor: pip ? "default" : "move", touchAction: "none", padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface-overlay)" }}>
+        <strong className="small">Charie</strong>
+        <span>
+          {!pip && pipSupported && <button type="button" className="ghost sm" onClick={() => void openPip()} aria-label="Pop Charie out into a floating window" title="Pop out: floats over other tabs and apps (Chrome/Edge)">Pop out</button>}
+          {pip && <button type="button" className="ghost sm" onClick={() => { pip.close(); setPip(null); }} aria-label="Dock Charie back into the room">Dock</button>}
+          {!pip && <button type="button" className="ghost sm" onClick={() => setMaxed((v) => !v)} aria-label={maxed ? "Restore Charie widget size" : "Maximize Charie widget"} title={maxed ? "Restore size" : "Maximize"}>{maxed ? "Restore" : "Max"}</button>}
+          <button type="button" className="ghost sm" onClick={() => setOpen((v) => !v)} aria-label={open ? "Minimize Charie widget" : "Expand Charie widget"} title={open ? "Minimize" : "Expand"}>{open ? "-" : "+"}</button>
+        </span>
+      </div>
+      {open && (
+        <div style={{ padding: "8px 10px", overflowY: "auto", ...(size || maxed ? { flex: 1 } : { maxHeight: pip ? undefined : 260 }) }}>
+          {replies.map((l, i) => (
+            <p key={i} className="small" style={{ margin: "0 0 6px" }}><span className="muted">{transcriptStamp(l.at)}</span> {l.text}</p>
+          ))}
+          {thoughts.length > 0 && <p className="small muted" style={{ margin: 0 }}>Thinking: {thoughts[thoughts.length - 1].text}</p>}
+          <p className="small muted" style={{ margin: "6px 0 0" }}>{pip ? "I am floating over your other tabs and apps. Drag my window edges to resize me, or Dock me to return to the room." : "Drag the header to move me, the corner to resize, - to minimize, Max for full size, or Pop out to float over other tabs and apps while you share."}</p>
+          {!pip && <div onPointerDown={onResizeDown} role="separator" aria-label="Resize Charie widget" aria-orientation="horizontal" title="Drag to resize" style={{ position: "absolute", right: 3, bottom: 3, width: 18, height: 18, cursor: "nwse-resize", touchAction: "none", borderRight: "2px solid var(--line-strong)", borderBottom: "2px solid var(--line-strong)", borderBottomRightRadius: 10 }} />}
+        </div>
+      )}
+    </>
+  );
+  if (pip) return createPortal(<div role="complementary" aria-label="Charie replies" style={{ minHeight: "100%", background: "var(--surface)", color: "var(--ink)" }}>{inner}</div>, pip.document.body);
+  return (
+    <div role="complementary" aria-label="Charie replies" style={{ position: "fixed", zIndex: 80, display: "flex", flexDirection: "column", width: maxed ? "min(680px, 94vw)" : size ? size.w : "min(340px, 92vw)", height: maxed ? "72vh" : size ? size.h : undefined, ...(pos && !maxed ? { left: pos.x, top: pos.y } : maxed ? { right: 16, top: 72 } : { right: 16, bottom: 108 }), background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 16px 40px rgba(0,0,0,.4)", overflow: "hidden" }}>
+      {inner}
+    </div>
+  );
+}
+
 export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange, getScreenFrame }: {
   roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string;
   onAgentChange?: (on: boolean) => void; onAgentSpeak?: (speaking: boolean) => void; onRequestShare?: () => void;
@@ -1518,6 +1614,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         </>
       )}
       {msg && <p className="small" style={{ color: "var(--accent-ink)", marginTop: 8 }}>{msg}</p>}
+      <CharieWidget lines={lines} thoughts={agent.thoughts} />
     </div>
   );
 }

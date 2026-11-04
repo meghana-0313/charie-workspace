@@ -3,7 +3,8 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { LiveProbe } from "@/lib/live-monitor";
 
 async function post(path: string, body?: unknown): Promise<{ ok: boolean; data: Record<string, unknown>; status: number }> {
   const res = await fetch(path, {
@@ -431,6 +432,108 @@ export function RollbackButton({ incidentId, actionId }: { incidentId: string; a
 }
 
 /** Log file ingestion: JSON array or JSONL of security events. */
+const LIVE_LEVEL_COLOR: Record<string, string> = { critical: "var(--danger)", warn: "var(--amber, #d97706)", info: "var(--ink-muted)", ok: "var(--ok)" };
+
+/**
+ * Live site monitor panel: polls /api/guardian/live-monitor every 3
+ * seconds and plots the measured home-page latency. Every point on the
+ * graph is a real fetch against the watched site made seconds ago -
+ * start or stop the demo site and this panel shows it within one poll.
+ */
+export function LiveMonitorPanel() {
+  const [probe, setProbe] = useState<LiveProbe | null>(null);
+  const [samples, setSamples] = useState<Array<{ at: string; ms: number; ok: boolean }>>([]);
+  const [events, setEvents] = useState<Array<{ at: string; level: string; text: string }>>([]);
+  const [failed, setFailed] = useState(false);
+  const lastSignalKey = useRef("");
+
+  useEffect(() => {
+    let stop = false;
+    const tick = async () => {
+      try {
+        const res = await fetch("/api/guardian/live-monitor", { cache: "no-store" });
+        if (!res.ok) throw new Error("probe failed");
+        const p = (await res.json()) as LiveProbe;
+        if (stop) return;
+        setFailed(false);
+        setProbe(p);
+        const home = p.checks.find((c) => c.name === "Home page");
+        setSamples((s) => [...s, { at: p.at, ms: home?.ms ?? 0, ok: Boolean(home?.ok) }].slice(-24));
+        const key = p.signals.map((s) => `${s.level}:${s.text}`).join("|");
+        if (key !== lastSignalKey.current) {
+          lastSignalKey.current = key;
+          setEvents((e) => [...p.signals.map((s) => ({ at: p.at, level: s.level, text: s.text })), ...e].slice(0, 8));
+        }
+      } catch {
+        if (!stop) setFailed(true);
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 3000);
+    return () => { stop = true; clearInterval(id); };
+  }, []);
+
+  const maxMs = Math.max(200, ...samples.map((s) => s.ms));
+  const points = samples.map((s, i) => `${(i / Math.max(1, samples.length - 1)) * 100},${36 - (s.ms / maxMs) * 32}`).join(" ");
+  const home = probe?.checks.find((c) => c.name === "Home page");
+  const stamp = (iso: string) => iso.slice(11, 19);
+
+  return (
+    <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+      <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", background: failed || (probe && !probe.reachable) ? "var(--danger)" : "var(--ok)", animation: "skelPulse 1.6s ease-in-out infinite" }} />
+        Live site monitor
+        <span className="spacer" />
+        <span className="small muted" style={{ fontWeight: 400 }}>
+          {probe ? <>Watching <a href={probe.target} target="_blank" rel="noreferrer">{probe.target}</a> - real probe every 3s, last at {stamp(probe.at)}</> : "Starting probes..."}
+        </span>
+      </div>
+      {!probe && !failed && <p className="muted">First probe running against the site now...</p>}
+      {failed && <p style={{ color: "var(--danger)" }}>Monitor probe failed to run. Retrying every 3 seconds.</p>}
+      {probe && (
+        <>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1 }}>{home ? `${home.ms} ms` : "-"}</div>
+              <div className="small muted">Home page, measured just now</div>
+            </div>
+            <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: 320, maxWidth: "60vw", height: 64, background: "var(--surface-overlay)", borderRadius: 8 }} role="img" aria-label="Live latency graph, one point per probe every 3 seconds">
+              {samples.length > 1 && <polyline points={points} fill="none" stroke="var(--accent-ink, var(--accent))" strokeWidth="1.6" />}
+              {samples.map((s, i) => (
+                <circle key={i} cx={(i / Math.max(1, samples.length - 1)) * 100} cy={36 - (s.ms / maxMs) * 32} r="1.4" fill={s.ok ? "var(--ok)" : "var(--danger)"} />
+              ))}
+            </svg>
+            <div className="small muted" style={{ maxWidth: 220 }}>
+              One dot per real probe (3s apart). Green answers, red failures. Start or stop the demo site and watch this react.
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10, marginBottom: 12 }}>
+            {probe.checks.map((c) => (
+              <div key={c.name} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong className="small">{c.name}</strong>
+                  <span className="small" style={{ color: c.ok ? "var(--ok)" : "var(--danger)", fontWeight: 700 }}>{c.ok ? "OK" : c.status ? `HTTP ${c.status}` : "DOWN"}</span>
+                </div>
+                <div className="small muted" style={{ marginTop: 4 }}>{c.ms} ms - {c.detail}</div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <strong className="small">Signals as they happen</strong>
+            {events.length === 0 ? <p className="small muted">Waiting for the first probe...</p> : events.map((e, i) => (
+              <p key={i} className="small" style={{ margin: "6px 0 0", lineHeight: 1.5 }}>
+                <span className="muted">{stamp(e.at)}</span>{" "}
+                <span style={{ color: LIVE_LEVEL_COLOR[e.level] ?? "inherit", fontWeight: 700 }}>{e.level.toUpperCase()}</span>{" "}
+                {e.text}
+              </p>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function UploadLogsForm() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");

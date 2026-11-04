@@ -46,6 +46,22 @@ export function speakableText(text: string): string {
     .slice(0, 300);
 }
 
+/**
+ * Spoken replies in a live call answer only what was asked: at most two
+ * sentences and about 260 characters, however verbose the model was. A
+ * call is a conversation, not a report - extra narration is cut, the
+ * direct answer is never reworded.
+ */
+export function clampCallReply(text: string): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  const sentences = clean.match(/[^.!?]+[.!?]+|\S[^.!?]*$/g) ?? [clean];
+  const kept = sentences.map((s) => s.trim()).filter(Boolean).slice(0, 2).join(" ");
+  if (kept.length <= 260) return kept;
+  const cut = kept.lastIndexOf(" ", 260);
+  return (cut > 80 ? kept.slice(0, cut) : kept.slice(0, 260)).trim() + "...";
+}
+
 /** A participant is asking whether Charie can see their screen. These get a
  *  deterministic answer from real vision state, never a model guess. */
 export function isScreenSeeQuestion(text: string): boolean {

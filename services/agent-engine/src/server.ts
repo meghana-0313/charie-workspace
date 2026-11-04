@@ -40,6 +40,9 @@ import { ensureRunLocal, fetchVoiceNote } from "./storage.js";
 import { loadSweeps, runSweep } from "./sweep.js";
 import { extractGoal, glimmerTriage, preGrade } from "./triage.js";
 import { chatTurn } from "./chat-agent.js";
+import { hasMetaKey } from "./meta-client.js";
+import { loadSecrets } from "./secrets.js";
+import { hasBasetenKey } from "./baseten.js";
 import { describeScreenDetailed } from "./vision.js";
 import { transcribe } from "./voice.js";
 import {
@@ -119,6 +122,7 @@ export function createApp(opts: ServerOpts): RequestListener {
     return a === "shared" ? dataRoot : join(dataRoot, "acct", a);
   }
   let warnedNoAuth = false;
+  let lastSecretRetry = 0;
   let activeRuns = 0;
   let shiftRunning = false;
 
@@ -175,7 +179,17 @@ export function createApp(opts: ServerOpts): RequestListener {
       try {
         const url = new URL(req.url ?? "/", "http://x");
         if (req.method === "GET" && url.pathname === "/health") {
-          send(res, 200, { ok: true, time: new Date().toISOString() });
+          // Booleans and names only, never values: this is the first
+          // place to look when chat says no live model is configured.
+          // meta/baseten say whether a usable key reached THIS process
+          // (env or Secret Manager at startup); secretProject says
+          // whether Secret Manager was even reachable for loading.
+          send(res, 200, {
+            ok: true,
+            time: new Date().toISOString(),
+            models: { meta: hasMetaKey(), baseten: hasBasetenKey() },
+            secretProject: Boolean(process.env.GCP_PROJECT_ID ?? process.env.GOOGLE_CLOUD_PROJECT),
+          });
           return;
         }
         if (!authorized(req)) {
@@ -259,6 +273,13 @@ export function createApp(opts: ServerOpts): RequestListener {
           if (clean.length === 0) {
             send(res, 400, { error: "history with at least one turn required" });
             return;
+          }
+          // Keys created (or fixed) in Secret Manager after this process
+          // started must not need a redeploy to take effect: retry the
+          // load, throttled, only while no live model key is present.
+          if (!hasMetaKey() && !hasBasetenKey() && Date.now() - lastSecretRetry > 60000) {
+            lastSecretRetry = Date.now();
+            await loadSecrets().catch(() => null);
           }
           const out = await chatTurn({
             history: clean, snapshot: body.snapshot, contextNotes: body.contextNotes,

@@ -236,7 +236,7 @@ export async function answerMessage(opts: {
     let repeatWarned = false;
     // In a live call, latency is the product: cap the tool loop so a
     // spoken reply cannot chain five sequential model calls.
-    const maxTurns = opts.surface === "meet-call" ? 3 : 5;
+    const maxTurns = opts.surface === "meet-call" ? 2 : 5;
     for (let i = 0; i < maxTurns; i++) {
       const turn = await engineTurn(convo, snapshot, contextNotes, { model: opts.model, effort: opts.effort });
       if (!turn) {

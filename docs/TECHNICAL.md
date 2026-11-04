@@ -76,7 +76,7 @@ Charie is described in product language as an AI support engineer (customer-faci
 | Guard and night-shift loop | Logs, SDK signals, hourly sweeps, pentest results | Deterministic detectors, Glimmer pre-filter, Spark verdict, Spark Open adversarial challenge | Approved responses and work orders execute; push alerts on blockers | Containment and fix verification; morning digest built only from executed records | `src/guardian.ts`, `src/nightshift.ts`, `src/sweep.ts`, `src/logwatch.ts`, `src/workorders.ts` |
 | Repo loop | GitHub push webhook | Build and test outcome | Deploy, status back to commit, self-filed ticket on failure | Re-test on the next push closes or reopens the ticket | `apps/portal/lib/github.ts`, `apps/portal/lib/gcp.ts`, `/api/github/webhook` |
 
-Core technical features built on Meta Muse intelligence are mapped lane by lane in section 21: Spark Open (Baseten) as the default tool-using brain and adversarial second opinion, Spark 1.3 direct for investigation prose and first-lane screen vision, Wonder for deep dives, Image for redesigns, SAM 3.1 for grounding, Voice Transcribe for voice tickets, Glimmer for triage, and Muse Code consuming MCP fix packets with a proof check. Modal Kokoro voice and browser speech recognition are deliberately not labelled as Meta intelligence.
+Core technical features built on Meta Muse intelligence are mapped lane by lane in section 21: Spark Open (Baseten) as the default tool-using brain and adversarial second opinion, Spark 1.3 direct for investigation prose and first-lane screen vision, Wonder for deep dives, Image for redesigns, SAM 3.1 for grounding, Voice Transcribe for voice tickets, Glimmer for triage, and Muse Code consuming MCP fix packets with a proof check. Cartesia Sonic voice (Kokoro on Modal as fallback) and browser speech recognition are deliberately not labelled as Meta intelligence.
 
 ## 2. System architecture
 
@@ -95,7 +95,7 @@ Reports on disk or GCS, findings, verification diffs
 
 Meet media: browser to browser mesh WebRTC (STUN only)
 Meet signaling, live notes, screen frames, TTS: portal APIs
-Charie voice synthesis: Modal Kokoro endpoint (CHARIE_TTS_URL)
+Charie voice synthesis: Cartesia Sonic (CARTESIA_API_KEY, portal) -> Modal Kokoro endpoint (CHARIE_TTS_URL) -> browser voice
 Data: Firestore in prod (PORTAL_STORE=firestore), JSON files locally
 ```
 
@@ -107,7 +107,7 @@ Components:
 | Agent engine | `services/agent-engine/` | Node, TypeScript, Playwright | Investigation loop, scans, Guardian brain, vision, chat agent, pentest |
 | Demo target | `apps/demo-target/` | Next.js | Demo Site, an intentionally buggy store plus a fixed build for verification |
 | MCP server | `services/mcp-server/` | Node stdio | Lets coding agents pull findings and fix packets locally |
-| Modal TTS | `services/modal-tts/modal_app.py` | Modal, Kokoro-82M | Warm text-to-speech for Meet |
+| TTS | portal `api/meet/rooms/[id]/tts` + `services/modal-tts/modal_app.py` | Cartesia Sonic, then Modal Kokoro-82M, then browser voice | Charie's spoken voice in Meet (section 10) |
 | Web SDK | `apps/portal/public/charie.js` | Browser script | Drop-in production error and signal reporting |
 | Deploy | `deploy/` | Docker, Cloud Build | Images for the three Cloud Run services |
 
@@ -152,6 +152,8 @@ Every product runs the same loop:
 7. **Proof and close.** The ticket closes with the proof package; the same evidence is reachable from Reports, the ticket, and Chat.
 
 Finding lifecycle: `open -> fix_proposed -> verified | regressed`. A regression reopens the conversation instead of hiding.
+
+Tickets page sections (`apps/portal/app/(workspace)/tickets/page.tsx`): tickets tagged `meet:` (filed from live calls) render in an **On-call tickets** section first, pre-digested for a fast decision - call summary (the ticket body), the investigation's top finding, its root cause (`suspectedCause`), the proposed fix (`suggestedFix`), the approval state (approved instruction on file, or ticket verified/closed, versus waiting), and links to the ticket and the investigation report. Everything else renders as **Engineering tickets** in the full table. Approving still happens on the ticket page itself; the section is a decision surface, not a second approval path.
 
 ## 6. Investigation engine (Playwright loop)
 
@@ -214,6 +216,8 @@ How a turn works:
 
 Consent: tools that change state (filing, scanning, dispatching) follow the same approval rules as the rest of the product. In Meet, proposed actions appear as consent cards in the room and run only after a participant approves.
 
+Live-call latency discipline (the Meet surface of this same loop): a call cannot wait for a five-turn agent loop, so `surface: "meet-call"` caps the loop at 2 tool turns (`apps/portal/lib/charie-chat.ts`), the call adapter sends only the last 6 transcript lines as history (`apps/portal/lib/call-agent.ts`), the Meta lane's meet-call token budget is 500 (Baseten stays 1200 because its reasoning spends tokens before words), and every spoken reply passes a deterministic clamp - at most two sentences, about 260 characters - however verbose the model was (`clampCallReply` in `apps/portal/lib/room-status.ts`, unit-tested). The prompt demands answer-only responses (yes/no questions get yes/no first); if the engine is unreachable the spoken fallback is one honest short line, never filler. Fine-tuning was evaluated and rejected for this: the latency was loop depth and token budget, not model knowledge.
+
 ## 8. Meet: live calls with Charie inside
 
 Meet is a native video product in the portal, not an embedded third-party call.
@@ -239,6 +243,8 @@ Charie in the call:
 - The Charie panel sits before the Transcript panel in the room layout, because she is the headline feature.
 - She answers from the same chat-agent brain as Chat, with call context: transcript so far, live notes, screen memory (section 9).
 - She proposes investigations and fix actions as consent cards. She states in her greeting that she will not run anything without approval, and the code enforces it.
+- A floating Charie widget (`CharieWidget` in `apps/portal/components/meet.tsx`) shows her replies as text the moment they post, before the voice finishes. It drags by its header, resizes by a corner handle (width and height clamped to the viewport), minimizes to the header bar, and maximizes/restores. **Pop out** moves it into a Document Picture-in-Picture window (Chrome/Edge): an always-on-top floating window that stays visible over other tabs and apps, carries the room theme, updates live through a React portal, and docks back on request. A web page cannot draw over other desktop apps by itself; PiP is the no-install mechanism that achieves it, and it is visible in a screen share only when the entire screen is shared.
+- Tickets filed from a call are tagged `sourceRepo: meet:<roomId>` at filing time (`apps/portal/lib/call-agent.ts`), which is what the Tickets page On-call section and the call-to-ticket lookup both key on.
 - Live notes and the transcript save to the room and its linked ticket when opted in. A summary can be generated at the end (`summarize`), and the room exports (`export`).
 
 Room lifecycle and reopening:
@@ -285,15 +291,16 @@ Speech recognition (hearing humans):
 
 Speech synthesis (Charie speaking):
 
-- Primary: Kokoro-82M on Modal, `services/modal-tts/modal_app.py`. Warm American male voice `am_michael`, CPU container, pipeline loaded once per container and reused. `min_containers=1` keeps one container always warm so the first line in a call does not pay a 20 second cold start; `scaledown_window=1200` keeps it warm through a call. Deploy: `modal deploy services/modal-tts/modal_app.py`, then set `CHARIE_TTS_URL` on the portal.
-- Portal route: `api/meet/rooms/[id]/tts`. Requests are deduplicated (one shared in-flight request per line) and cached briefly, so a line is never synthesized twice.
+- Primary when configured: Cartesia Sonic (third-party TTS; the hackathon rules allow it since Meta ships no TTS, and Muse Spark remains the brain). Set `CARTESIA_API_KEY` (and optionally `CARTESIA_VOICE_ID`, `CARTESIA_MODEL=sonic-2`) on the portal. Per-clause synthesis returns first audio in well under a second; a 12s timeout drops to the next provider instead of stacking latency. The `x-charie-tts` response header names the provider that served each line, and Test voice reports it.
+- Fallback: Kokoro-82M on Modal, `services/modal-tts/modal_app.py`. Warm American male voice `am_michael`, CPU container, pipeline loaded once per container and reused. `min_containers=1` keeps one container always warm so the first line in a call does not pay a 20 second cold start; `scaledown_window=1200` keeps it warm through a call. Deploy: `modal deploy services/modal-tts/modal_app.py`, then set `CHARIE_TTS_URL` on the portal.
+- Portal route: `api/meet/rooms/[id]/tts`. Requests are deduplicated (one shared in-flight request per line) and cached briefly per provider, so a line is never synthesized twice.
 - Playback is sequential sentence chunks, first chunk short (about 70 characters) so speech starts on the first clause while the rest synthesizes. Only the next chunk's first part is prefetched. Parallel chunk playback (which queued and overlapped) is deliberately not used.
 - Ending the call or leaving the page pauses the audio element and clears the queue. Charie's voice cannot follow the user to the home page.
-- Fallback: with no `CHARIE_TTS_URL`, the portal uses the best local browser voice. It is more robotic; the product does not hide that.
+- Fallback: with neither Cartesia nor `CHARIE_TTS_URL` configured, the portal uses the best local browser voice. It is more robotic; the product does not hide that.
 - Speakable text: everything spoken passes a cleaning pass that strips markdown, links, ticket ids, and meta-commentary, and Charie's replies are prompted to be brief - one short sentence by default, like a person on a call, not a paragraph.
 - Test path: "Test Charie's voice" in the room synthesizes the real greeting through the same pipeline and reports end-to-end time, and names a cold start as a Modal-side cold start when that is what happened.
 
-Voice cloning status: not shipped. A fine-tune of an open TTS model on the founder's voice, hosted on Modal the same way, was scoped (recording script, training run, endpoint swap behind `CHARIE_TTS_URL`) but deliberately deferred during the hackathon. Kokoro remains the call voice. Any future clone ships only with the voice owner's recorded consent.
+Voice cloning status: not shipped. A fine-tune of an open TTS model on the founder's voice, hosted on Modal the same way, was scoped (recording script, training run, endpoint swap behind `CHARIE_TTS_URL`) but deliberately deferred during the hackathon. The call voice is Cartesia Sonic when configured, Kokoro otherwise. Any future clone ships only with the voice owner's recorded consent.
 
 ## 11. Charie Guard: threats, incidents, night shift
 
@@ -319,7 +326,7 @@ Response loop:
 1. Incident opens with verdict first: what happened, how bad, what to do. Detail is one click deeper, never the landing view.
 2. A human approves a response. Fix tasks (work orders) are proposed from the incident with concrete steps.
 3. Approved work orders execute through the engine (`/workorders` APIs) and attach proof: what ran, what changed, what the re-check showed (`/guardian/verify`).
-4. Night shift (`src/nightshift.ts`, portal Night shift page) runs approved autonomous work overnight: sweeps, re-scans, queued fix tasks, log watch. The morning digest lists executed work, proofs, failures, and items waiting on a human. Nothing in the digest is invented: entries come from executed run records.
+4. Night shift (`src/nightshift.ts`, portal Night shift page) runs approved autonomous work overnight: sweeps, re-scans, queued fix tasks, log watch. The morning digest lists executed work, proofs, failures, and items waiting on a human. Nothing in the digest is invented: entries come from executed run records. The portal renders the digest text as a visual report, not a raw text block: a summary lead, one icon row per result with PASSED/SCHEDULED/FAILED status chips, the security row linking to the full re-scan report with grade and pass count, log-watch rows linking to Live Signals, and a work-done card listing each executed order with proof counts and links (`digestRows` in the Night shift page).
 5. Push alerts (web-push, portal `/api/push/subscribe`) notify on new blocker incidents.
 
 ## 12. Security tests (pentest suite)
@@ -389,6 +396,7 @@ Both are graded, screenshot-backed, and honest about being simulations (design r
 - The web SDK is one script tag (`public/charie.js`) plus an app key from the Team page. It reports errors and custom signals to `/api/guardian/events`.
 - Mobile apps follow [MOBILE_SDK.md](MOBILE_SDK.md): same ingest payload, native wrappers are roadmap, the contract is live today.
 - Signals cluster into incidents (`/signals/clusters`); a cluster converts to a ticket in one click, entering the spine.
+- Live site monitor (Live Signals page, `LiveMonitorPanel` in `apps/portal/components/suite.tsx`): the browser polls `GET /api/guardian/live-monitor` every 3 seconds. Each poll is a real probe round measured at request time (`runLiveProbe` in `apps/portal/lib/live-monitor.ts`): home page, `/api/products`, `/api/build` flavor, and a 3-item checkout POST that exercises the demo site's seeded failure. The panel plots measured home-page latency (one point per probe, green/red by success), per-check status and milliseconds, and timestamped signals derived from the responses (`deriveSignals`, unit-tested for buggy, fixed, down, and slow sites). Nothing is simulated or cached: stop the target and the panel goes red within one poll; run the fixed build and the checkout signal turns green. Target resolution: `DEMO_TARGET_URL` env, then the account's configured default target, then the demo site (hosted Cloud Run demo when the portal is hosted, `http://localhost:3101` locally).
 
 ## 20. Autopilot, schedules, cron, and push alerts
 
@@ -421,7 +429,8 @@ Guardian model choreography is summarized in [META_STACK.md](META_STACK.md): Spa
 
 | Service | Used for | Notes |
 |---|---|---|
-| Modal | Kokoro-82M TTS hosting (`services/modal-tts/modal_app.py`) | CPU, `min_containers=1`, `scaledown_window=1200`, voice `am_michael`. Not a Meta model; named honestly wherever voice is described |
+| Cartesia | Sonic TTS, primary call voice when `CARTESIA_API_KEY` is set on the portal | Third-party TTS (Meta ships none; allowed under hackathon rules with Muse as the brain). Per-clause first audio well under a second; portal mounts the secret from Secret Manager |
+| Modal | Kokoro-82M TTS hosting (`services/modal-tts/modal_app.py`) | CPU, `min_containers=1`, `scaledown_window=1200`, voice `am_michael`. Voice fallback behind Cartesia. Not a Meta model; named honestly wherever voice is described |
 | Baseten | Muse Spark Open inference | The account key works with `meta-models/muse-spark-open-1026`; that slug is the default in `src/baseten.ts` |
 | Firebase Auth | Google and email login, password reset | ID token verified at `POST /api/session`; no Firebase Hosting (engine needs Chromium) |
 | Cloud Run | `charie-portal`, `charie-engine` (4Gi, 2 CPU, concurrency 1, 3600s timeout), `charie-demo` | Preview service `charie-preview` |
@@ -454,7 +463,7 @@ Engine APIs are listed in section 6. Portal APIs (all session-gated except guest
 | Tickets and rooms | `/api/tickets`, `/api/rooms/[id]/messages`, `/api/approvals`, `/api/approvals/[id]/dispatch`, `/api/runs`, `/api/artifacts/*`, `/api/uploads/*` |
 | Chat | `/api/chat/turn`, `/api/chat/threads`, `/api/chat/threads/[id]`, `/api/chat/consent`, `/api/chat/upload` |
 | Meet | `/api/meet/rooms`, `/api/meet/rooms/[id]/{signal,live,snapshot,vision,tts,agent,guest,invite,memory,summarize,export,settings,save,end,reopen}` |
-| Guardian | `/api/guardian/{incidents,analyze,respond,events,events/upload,simulate,signals,signals/seed,signals/ticket,logwatch,pentest,sweep,workorders,a11y,firstrun}`, `/api/guardian/incidents/[id]/voice`, `/api/guardian/workorders/[id]/{approve,schedule}`, `/api/guardian/zoom/join` |
+| Guardian | `/api/guardian/{incidents,analyze,respond,events,events/upload,simulate,signals,signals/seed,signals/ticket,logwatch,live-monitor,pentest,sweep,workorders,a11y,firstrun}`, `/api/guardian/incidents/[id]/voice`, `/api/guardian/workorders/[id]/{approve,schedule}`, `/api/guardian/zoom/join` |
 | Repos and GitHub | `/api/repos`, `/api/repos/[id]`, `/api/repos/[id]/build`, `/api/builds/[id]`, `/api/github/{oauth/start,oauth/callback,repos,status,disconnect,webhook}` |
 | Platform | `/api/mcp` (cloud MCP), `/api/connectors`, `/api/connectors/[id]/test`, `/api/context-docs`, `/api/sync-rules`, `/api/team/{keys,seats}`, `/api/autopilot/{schedules,tick}`, `/api/cron/tick`, `/api/push/subscribe` |
 
@@ -469,7 +478,7 @@ Engine APIs are listed in section 6. Portal APIs (all session-gated except guest
 
 ## 26. Configuration and secrets
 
-Secret names (values live in the environment or Secret Manager, never in code): `META_API_KEY`, `META_API_BASE_URL` (`https://api.meta.ai/v1`), `META_SPARK_MODEL`, `META_WONDER_MODEL`, `META_IMAGE_MODEL`, `META_VOICE_MODEL`, `META_SAM_MODEL`, `BASETEN_API_KEY`, `SPARK_OPEN_MODEL_ID`, `SPARK_OPEN_ENDPOINT`, `GLIMMER_ENDPOINT`, `GLIMMER_MODEL`, `GLIMMER_API_KEY`, `ENGINE_TOKEN`, `FIREBASE_WEB_CONFIG`, `AUTOMATION_KEY`, `CRON_KEY`, `SESSION_KEY`, `CHARIE_TTS_URL` (portal), optional `CHARIE_TTS_MODAL_KEY` and `CHARIE_TTS_MODAL_SECRET`.
+Secret names (values live in the environment or Secret Manager, never in code): `META_API_KEY`, `META_API_BASE_URL` (`https://api.meta.ai/v1`), `META_SPARK_MODEL`, `META_WONDER_MODEL`, `META_IMAGE_MODEL`, `META_VOICE_MODEL`, `META_SAM_MODEL`, `BASETEN_API_KEY`, `SPARK_OPEN_MODEL_ID`, `SPARK_OPEN_ENDPOINT`, `GLIMMER_ENDPOINT`, `GLIMMER_MODEL`, `GLIMMER_API_KEY`, `ENGINE_TOKEN`, `FIREBASE_WEB_CONFIG`, `AUTOMATION_KEY`, `CRON_KEY`, `SESSION_KEY`, `CHARIE_TTS_URL` (portal), optional `CHARIE_TTS_MODAL_KEY` and `CHARIE_TTS_MODAL_SECRET`, `CARTESIA_API_KEY` (portal, primary call voice when set; create the secret before the first deploy that mounts it or Cloud Run rejects the revision).
 
 Behaviour matrix:
 
@@ -510,7 +519,7 @@ Windows sandbox note for this repo's own development (in [AGENTS.md](../AGENTS.m
 | Chat agent | same command (fifth file) | Tool loop with a fake model, prose salvage parsing |
 | Vision | same command (sixth file) | Content parsing, leaked-reasoning rejection, empty-answer handling |
 | MCP smoke | `npm run smoke --workspace services/mcp-server` | Findings and fix packet serving |
-| Portal | `npm test --workspace apps/portal` | Sessions, CSP, keys, meet rooms, presence, middleware, room status and screen replies |
+| Portal | `npm test --workspace apps/portal` | Sessions, CSP, keys, meet rooms, presence, middleware, room status and screen replies, spoken-reply clamp, live-monitor signal logic and target resolution, demo seed consistency (incl. on-call tickets) |
 | Typecheck | `npm run typecheck --workspace services/agent-engine` and `--workspace apps/portal` | Full TypeScript, both workspaces |
 | Build | `npm run portal:build` | Production Next.js build |
 
@@ -525,9 +534,10 @@ Tests are offline-safe: model calls are stubbed with fake fetch implementations,
 
 ## 30. Performance and latency engineering
 
-- Call voice: Kokoro pipeline cached per container, one warm container minimum, sequential short-first chunks, deduplicated synthesis requests, prefetch of only the next chunk. The slow path users hear is a cold container or a cold model endpoint; both are named in the UI when detected.
+- Call voice: Cartesia per-clause synthesis when configured (first audio well under a second), Kokoro pipeline cached per warm container behind it, sequential short-first chunks, deduplicated synthesis requests, prefetch of only the next chunk. The slow path users hear is a cold container or a cold model endpoint; both are named in the UI when detected.
 - Vision: fast lane with a tight sentence budget, fresh-frame capture only on question or change, local pixel-diff gating so static screens cost nothing, out-of-order drop so slow answers never rewind memory.
 - Chat and Meet share one brain and one transcript poll (350ms in call), so spoken replies track the transcript instead of lagging a poll cycle behind it.
+- Live-call replies are engineered for conversational latency: 2-turn loop cap, 6-line history, 500-token Meta budget, and a two-sentence spoken clamp (section 7), so the wait is one short model call plus first-clause TTS, not a chained agent loop.
 - Engine: one Chromium investigation at a time by design in prod; the busy state is surfaced rather than queued silently.
 - Portal: server-rendered theme (no flash), viewport-fit layouts with inner-pane scrolling, real-data charts with no decorative series.
 
@@ -535,6 +545,7 @@ Tests are offline-safe: model calls are stubbed with fake fetch implementations,
 
 - `analysisSource: heuristic` until a real model call succeeds. Chat and Meet replies carry their model label. Vision failures name the provider and reason.
 - Meet has no TURN relay: mesh plus STUN only. Strict corporate NATs can fail; the room says so instead of spinning forever.
+- The popped-out Charie widget needs Chrome/Edge (Document Picture-in-Picture) and shows over a screen share only when the entire screen is shared, not a single tab or window. Inside other browsers the widget stays in the room, fully functional. Chrome's own screen-sharing bar is browser UI and follows Chrome's theme; no web page can restyle it, so the room's themed Stop button is the in-product control.
 - Screen vision is frame-based, not a video model. Watch mode sees changed frames within seconds; a sub-second transient between changed frames can be missed, and the screen log shows exactly what was captured so the gap is auditable.
 - Voice latency target (about 2-3 seconds warm) is a design target, not a guarantee; cold endpoints exceed it and the UI names cold starts.
 - Browser speech recognition quality varies by browser; server transcription (Muse Voice) covers voice tickets, not live calls.
@@ -549,7 +560,7 @@ Tests are offline-safe: model calls are stubbed with fake fetch implementations,
 | Build for Your World (problem statement) | Built for the world of support engineers and solo builders: joins their live customer calls, sees screens, investigates, verifies, and guards overnight in one loop (README wow moments and founder story) |
 | Real problem, real user | Built from 4.5 years of support pain and a solo developer's night-shift risk (README story) |
 | Meta model usage, depth not logos | Eight Meta technologies, each at the job it is best at, file-traced in section 21 and [META_STACK.md](META_STACK.md) |
-| Open-weight build | Muse Spark Open on Baseten as chat brain, second opinion, and vision lane 2; Muse Glimmer triage; Kokoro voice on Modal |
+| Open-weight build | Muse Spark Open on Baseten as chat brain, second opinion, and vision lane 2; Muse Glimmer triage; Kokoro voice fallback on Modal |
 | Agentic behaviour | Tool-using chat with receipts, consent cards in calls, autopilot schedules, night shift execution with digests, MCP fix packets with proof checks |
 | Verification and rigour | Verifier re-runs, before/after diffs, adversarial second model on verdicts, offline-safe test suites (section 28) |
 | Honesty | Labelled heuristics, named failures, skipped checks shown as skipped, limitations in section 31 |
@@ -573,7 +584,7 @@ Tests are offline-safe: model calls are stubbed with fake fetch implementations,
 Requirement source: the hackathon Demo Mode specification (sample data, zero-login, real Meta models, labelled simulations). Implementation:
 
 - **Entry:** the login page offers "Explore Charie Demo - no login needed". `POST /api/session` with `{demo: true}` mints a normal HMAC session for the reserved uid `demo-workspace` (`apps/portal/lib/demo.ts`). Production authentication is untouched; this is a separate restricted path, not an auth bypass - the session can only ever read and write records owned by the demo uid, which is exactly how per-account scoping already isolates every customer.
-- **Seed:** `ensureDemoWorkspace()` runs on demo entry and tops up: it inserts only records whose ids are missing and never overwrites records a demo visitor already has or edited, so workspaces seeded by older builds gain new sample data on the next entry. `buildDemoSeed()` (pure, unit-tested in `apps/portal/test/demo.test.mts`) creates three projects as ticket groups (Demo Site against the real local demo target http://localhost:3101, TravelMate and WorkBoard as labelled simulated targets), 8 tickets with rooms and agent summaries, 4 investigation runs, 2 incidents with `simulated: true`, one simulated GitHub repo (`circle-back/demo-site`) with builds whose detail text says simulated, 4 autopilot schedules, sample Jira and GitHub connectors with a sync rule, 3 context docs (including an uploaded sample brief), a sample chat thread, and 1 ended Meet room with a transcript and screen log. Store additions used: `saveTicket`, `saveRoom`, `clearDemoData` in both adapters.
+- **Seed:** `ensureDemoWorkspace()` runs on demo entry and tops up: it inserts only records whose ids are missing and never overwrites records a demo visitor already has or edited, so workspaces seeded by older builds gain new sample data on the next entry. `buildDemoSeed()` (pure, unit-tested in `apps/portal/test/demo.test.mts`) creates three projects as ticket groups (Demo Site against the real local demo target http://localhost:3101, TravelMate and WorkBoard as labelled simulated targets), 9 tickets with rooms and agent summaries (two tagged `meet:` as on-call tickets from sample calls, one waiting at fix-proposed with a seeded root cause and proposed fix for the approval demo), 5 investigation runs, 2 incidents with `simulated: true`, one simulated GitHub repo (`circle-back/demo-site`) with builds whose detail text says simulated, 4 autopilot schedules, sample Jira and GitHub connectors with a sync rule, 3 context docs (including an uploaded sample brief), a sample chat thread, and 1 ended Meet room with a transcript and screen log. Store additions used: `saveTicket`, `saveRoom`, `clearDemoData` in both adapters.
 - **Engine-backed sample fallbacks:** a11y, first-run, pentest, sweep, work-order, digest, signal-cluster, logwatch, and Zoom data lives on the engine per account, outside the portal seed. When the demo account has no real reports, `apps/portal/lib/demo-samples.ts` supplies labelled sample records (every evidence string says Sample) so no demo page renders empty; real engine results always win when present. Seeded demo runs also get sample findings and redesign briefs there when the engine has none. The Night Shift sample digest is substantive content (verified checkout work order, scheduled accessibility fix, grade B security re-scan), not a placeholder line.
 - **Demo scan target:** the intentionally buggy demo site is the default target in Demo Mode. The Accessibility, First run, and UX forms are prefilled with it, banners name it, the chat snapshot carries `demo.targetUrl` so "run a sample test" executes live against it (portal also fills a missing scan target for the demo account before the consent card), and an unparseable model reply falls back to the heuristic router instead of a parse dead-end.
 - **Executor attribution:** every engine scan report carries an `executor` string, and after each scan the portal shows an auto-appearing tooltip naming who ran it. Accessibility, first-run, and security scans are deterministic Playwright and probe checks, so they name the Charie engine; they are never relabelled as Meta model runs. Where a Meta model did the work, the report names it. The chat footer follows the Baseten/Meta/heuristic picker immediately and shows the actually-served model separately.

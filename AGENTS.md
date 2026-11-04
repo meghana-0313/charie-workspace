@@ -20,7 +20,7 @@ See README.md for the product story; this file is working notes for the agent.
 - `services/mcp-server/` - MCP adapter over engine reports. Smoke: `npm run smoke`.
 - `apps/demo-target/` - buggy Demo Site store (port 3101) + `--fixed` build.
 - `deploy/` - Dockerfiles (portal, engine, demo) for Cloud Run.
-- `docs/` - ARCHITECTURE, DEMO_SCRIPT, META_STACK, FIRESTORE_SCHEMA, ROADMAP.
+- `docs/` - ARCHITECTURE, META_STACK, FIRESTORE_SCHEMA, ROADMAP. (Demo script is kept outside the repo.)
 
 ## Golden rules
 

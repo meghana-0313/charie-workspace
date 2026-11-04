@@ -10,9 +10,11 @@
 
 **Vision:** a world where no customer ever has to describe a screen over the phone, no solo developer ever wakes up to an attack that ran for six hours, and no bug is called "fixed" until software itself has proved it.
 
-Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (Google or email sign-in)
+Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (email sign-in, or Explore Charie Demo - no login needed)
 
-Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md). Three-minute demo: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md).
+
+**Built during the hackathon:** everything in this repository - product, engine, demo store, docs, and tests - was designed, built, and shipped during the Meta Global AI Developer Hackathon 2026. Nothing predates it.
 
 ---
 
@@ -66,18 +68,18 @@ This is the honest definition used everywhere in the product: **autonomous withi
 - **SAM 3.1 `sam-3-1`** grounds failure screenshots in named UI regions, so evidence points at the actual control.
 - **Muse Voice Transcribe `muse-voice-transcribe-1.0`** turns spoken bug reports into structured tickets; **Muse Glimmer** (open weights) does fast ticket triage and Guard noise filtering.
 - **Muse Code** built this repo and, at runtime, consumes Charie's MCP fix packets and must check verification proof before calling a fix done.
-- Voice and hearing stay honest: speaking is Kokoro on Modal (not a Meta model), live-call hearing is the browser recognizer. Full lane-by-lane detail: [docs/TECHNICAL.md](docs/TECHNICAL.md).
+- Voice and hearing stay honest: speaking is Cartesia Sonic when `CARTESIA_API_KEY` is configured on the portal, with Kokoro on Modal and then the browser voice as fallbacks (none of them a Meta model; the hackathon allows third-party TTS because Meta ships none, and Muse Spark remains the brain). Live-call hearing is the browser recognizer. Full lane-by-lane detail: [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
-## Why this is a real B2B business, not a demo
+## A real business, built to outlast the hackathon
 
 - **Who buys it:** SaaS support and solutions teams drowning in "can you send a screenshot" calls; small product teams with no night coverage; solo builders who are their own on-call. One workspace replaces a meeting bot, a QA runner, a pentest scanner, a monitoring pager, and half the ticket busywork - with proof attached for compliance-minded buyers.
 - **Why they stay:** every call, investigation, incident, and fix becomes account-scoped evidence history. Switching away means losing the audit trail.
-- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, Google sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
+- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, email sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
 - **Why it is safe to buy:** autonomy is guardrailed (approvals, consent cards, labelled heuristic fallbacks, no remote control, no call recording), so a business can adopt it without handing an agent the keys.
 
 ## The wow moments
 
-1. **She joins the call and actually sees - so screenshots die here.** Open a Meet room, send the guest link to a customer (no account needed on their side, consent first), share a screen, and ask out loud: "Charie, what is wrong here?" Nobody takes a screenshot, uploads anything, or describes the screen. She captures a fresh frame herself, analyses it, answers in one short spoken sentence, tells the customer what to click or try, then looks again: did it work, what error appeared, what is the next step. That see - guide - see the result - debug loop repeats live until it is fixed in the call, and her timestamped screen memory means "what did it show two minutes ago?" also has a real answer. And when you leave or end the call, the camera and mic are released on the spot - no light left on, no refresh needed.
+1. **She joins the call and actually sees - so screenshots die here.** Open a Meet room, send the guest link to a customer (no account needed on their side, consent first), share a screen, and ask out loud: "Charie, what is wrong here?" Nobody takes a screenshot, uploads anything, or describes the screen. She captures a fresh frame herself, analyses it, answers in one short spoken sentence, tells the customer what to click or try, then looks again: did it work, what error appeared, what is the next step. That see - guide - see the result - debug loop repeats live until it is fixed in the call, and her timestamped screen memory means "what did it show two minutes ago?" also has a real answer. And when you leave or end the call, the camera and mic are released on the spot - no light left on, no refresh needed. Her spoken replies are deliberately short - one or two sentences, only what was asked - and they appear as text in a floating Charie widget you can drag, resize by the corner, minimize, or maximize. Pop the widget out and it floats over the customer's app like a call toolbar, even while you share your whole screen.
 2. **She watches like a person, not a poller.** In watch mode the browser samples the shared screen locally, compares pixels, and only sends changed frames. She stays silent unless something real breaks, never repeats the same observation, and stops talking the moment a human starts speaking.
 3. **A bug becomes proof, not opinion.** File a ticket and Charie drives the real app with Playwright like a first-time user, records screenshots, repro steps, console and network evidence, proposes a fix, and after your approval re-runs the exact same journey and diffs before and after.
 4. **The night shift is real work, not a cron label.** Threats from log watch, the drop-in SDK, sweeps, and a security test suite become triaged incidents. Approved fix tasks execute overnight and the morning digest shows what ran, what passed, and what still needs a human.
@@ -123,14 +125,15 @@ Zero keys changes only polish, and the UI says so: finding prose is labelled `he
 
 ## Demo Mode (no login, sample data, real AI)
 
-On the login page, press **Explore Charie Demo - no login needed**. No account, no email, no OAuth, no keys to configure. You land in a seeded Demo Workspace (a banner says so on every page) with three sample projects - Demo Site, TravelMate, WorkBoard - 8 tickets, 4 investigation runs whose reports open with findings, 2 labelled simulated Guard incidents, a simulated GitHub repo (`circle-back/demo-site`, builds labelled simulated), 4 autopilot schedules, sample Jira and GitHub connectors with a sync rule, context docs including an uploaded sample brief, a sample chat thread, and a sample Meet call Charie assisted. Everything is internally consistent: the runs belong to the tickets, the reports belong to the runs, and another account cannot see any of it.
+On the login page, press **Explore Charie Demo - no login needed**. No account, no email, no OAuth, no keys to configure. You land in a seeded Demo Workspace (a banner says so on every page) with three sample projects - Demo Site, TravelMate, WorkBoard - 9 tickets (two of them filed from live calls, waiting in the On-call tickets section with summary, findings, root cause, and proposed fix ready for approval), 5 investigation runs whose reports open with findings, 2 labelled simulated Guard incidents, a simulated GitHub repo (`circle-back/demo-site`, builds labelled simulated), 4 autopilot schedules, sample Jira and GitHub connectors with a sync rule, context docs including an uploaded sample brief, a sample chat thread, and a sample Meet call Charie assisted. Everything is internally consistent: the runs belong to the tickets, the reports belong to the runs, and another account cannot see any of it.
 
 - **Try everything:** file tickets, approve, chat, open reports, explore Guard, start a Meet room. Against the local demo site (http://localhost:3101) investigations run for real with Playwright.
-- **No empty pages:** the demo seed now tops up on every entry (older demo workspaces gain new sample data without losing edits), and the engine-backed pages - Accessibility, First run, Security, Night shift, Signals, Fix tasks, UX, Reports - fall back to labelled sample reports scoped to the demo account only. The Night Shift digest reads as real overnight work: a verified checkout fix, a scheduled accessibility fix, and a grade B security re-scan.
+- **No empty pages:** the demo seed now tops up on every entry (older demo workspaces gain new sample data without losing edits), and the engine-backed pages - Accessibility, First run, Security, Night shift, Signals, Fix tasks, UX, Reports - fall back to labelled sample reports scoped to the demo account only. The Night Shift digest reads as real overnight work - a verified checkout fix, a scheduled accessibility fix, and a grade B security re-scan - rendered as a visual report with status chips and direct report links, not a text dump. Live Signals also carries a real site monitor: it probes the demo site every 3 seconds (home page, products, build flavor, and a 3-item checkout probe), plots the measured latency live, and flags the seeded checkout failure the moment it answers 500 - start or stop the site and the panel reacts within one probe.
 - **Sample scans run live by default:** in Demo Mode the Accessibility, First run, and UX forms are prefilled with the intentionally buggy demo site, and asking Charie to "run a sample test" in Chat executes against it. After every scan an on-screen tooltip names who executed it - the Meta model for AI work, or the deterministic Charie engine for browser and security checks, never relabelled.
 - **The chat footer tells the truth live:** switch the model picker to Baseten or Meta and the label changes immediately, with the model that actually served the last answer shown separately.
 - **Your progress is saved** in the same store as real data (local files on your machine, Firestore on the hosted demo) under the demo account only. **Reset Demo Workspace** in the banner restores the seed and removes only demo changes - never real user data.
 - **Simulated vs live is labelled:** sample builds and incidents say "simulated"; seeded findings say SAMPLE DEMO DATA. Nothing simulated is presented as a live result.
+- **The demo video is the primary artifact; this live link is a bonus.** Everything in the 3-minute video is reproducible here, but if the hosted instance is slow, cold, or out of model quota on the day, the video is the canonical demo. Hosted AI answers spend the host's configured keys, which is exactly why the video carries the full story on its own.
 
 **About AI in Demo Mode - the honest version.** Demo Mode never fakes AI. Live AI actions (Chat answers, investigation analysis, test plans, call vision) call the real models: Baseten Muse Spark Open first for chat, Meta Muse Spark 1.3 direct, the lanes in the model table below. Those calls need a key on the host that runs the engine:
 
@@ -191,7 +194,7 @@ Customer / teammate / production signal
         ticket closed with evidence
 ```
 
-The portal (`apps/portal`, Next.js) owns identity, rooms, approvals, and reports. The engine (`services/agent-engine`, Playwright plus Meta models) does the driving, seeing, and reasoning. The demo target (`apps/demo-target`) is the intentionally buggy store the loop is proven against. Modal hosts the warm Kokoro voice. Firestore or local JSON files store everything per account. The complete component, API, data, and model reference is [docs/TECHNICAL.md](docs/TECHNICAL.md).
+The portal (`apps/portal`, Next.js) owns identity, rooms, approvals, and reports. The engine (`services/agent-engine`, Playwright plus Meta models) does the driving, seeing, and reasoning. The demo target (`apps/demo-target`) is the intentionally buggy store the loop is proven against. Calls speak through Cartesia Sonic when its key is configured, with Modal Kokoro and the browser voice as fallbacks. Firestore or local JSON files store everything per account. The complete component, API, data, and model reference is [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
 ## Meta models, honestly
 
@@ -206,14 +209,15 @@ A model counts as used only when a real request succeeds. Every surface degrades
 | SAM 3.1 `sam-3-1` | Grounding boxes on failure screenshots, shown as "Grounded by SAM 3.1" |
 | Muse Spark Open `meta-models/muse-spark-open-1026` (open weights, hosted on Baseten - a different model from `muse-spark-1.3`) | Default Chat and Meet brain in Auto mode, independent second opinion that re-grades findings, adversarial check on Guard verdicts, second vision lane |
 | Muse Glimmer (open weights, Ollama by default) | Fast ticket triage: goal extraction, severity pre-grade, dedup |
-| Kokoro-82M on Modal (not a Meta model) | Charie's warm spoken voice in calls, one always-warm container |
+| Cartesia Sonic (third-party TTS, not a Meta model) | Charie's spoken voice in calls when `CARTESIA_API_KEY` is configured on the portal; first audio per clause in well under a second |
+| Kokoro-82M on Modal (not a Meta model) | Voice fallback behind Cartesia, one always-warm container, then the browser voice |
 | Muse Code | Built this repo, and at runtime consumes MCP fix packets |
 
 **Which model actually answers you in Chat and Meet (read this carefully):**
 
-- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten, Meta, or Heuristic with the model pill; every reply labels which lane answered.
+- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten or Meta with the model picker; forcing one never falls back silently - with no live model it says so. Auto alone keeps the labelled heuristic as a last resort. Every reply labels which lane answered, and the footer updates the moment you switch.
 - Seeing the screen (vision): the order flips. **Meta Muse Spark `muse-spark-1.3` direct first**, Baseten Muse Spark Open second.
-- Speaking (voice out): **not a Meta model and not Baseten.** Charie's voice is Kokoro-82M hosted on **Modal** (`CHARIE_TTS_URL`), falling back to the browser voice.
+- Speaking (voice out): **not a Meta model and not Baseten.** Charie's voice is Cartesia Sonic when `CARTESIA_API_KEY` is set on the portal, then Kokoro-82M hosted on **Modal** (`CHARIE_TTS_URL`), then the browser voice. Spoken replies are clamped to two short sentences so she answers only what was asked, at conversational speed.
 - Hearing (voice in): the browser Web Speech API in calls. **Muse Voice Transcribe `muse-voice-transcribe-1.0`** is used only for voice bug-report tickets, not live-call listening.
 
 File-by-file mapping, secret names, and fallbacks: [docs/META_STACK.md](docs/META_STACK.md) and [docs/TECHNICAL.md](docs/TECHNICAL.md).
@@ -222,9 +226,9 @@ File-by-file mapping, secret names, and fallbacks: [docs/META_STACK.md](docs/MET
 
 - **Home:** real-data analytics (activity, outcomes, severity) with hover values, a compact side checklist, priority queue.
 - **Chat:** a tool-using operator with receipts for every action, compact model and effort controls, report-aware conversations.
-- **Tickets and rooms:** evidence, approvals, fix dispatch, verification, per-account history.
-- **Meet:** mesh WebRTC rooms, guest links with consent, live transcript, Charie panel before the transcript, screen watch with timestamped memory, rooms that reopen with their history.
-- **Guard:** threats, incidents, fix tasks, security tests, night shift, autopilot schedules, push alerts.
+- **Tickets and rooms:** two sections - On-call tickets filed from live calls, pre-digested with call summary, findings, root cause, and proposed fix waiting for approval; and Engineering tickets with evidence, approvals, fix dispatch, verification, per-account history.
+- **Meet:** mesh WebRTC rooms, guest links with consent, live transcript, Charie panel before the transcript, a floating Charie widget (drag, corner-resize, minimize, maximize, or pop out over other apps), screen watch with timestamped memory, rooms that reopen with their history.
+- **Guard:** threats, incidents, fix tasks, security tests, night shift with a visual morning digest, a live site monitor probing the watched product every 3 seconds, autopilot schedules, push alerts.
 - **Build quality:** UX redesigns, accessibility grades, first-run scores, connected GitHub repos that build, deploy, and report back.
 - **Reports:** every investigation, scan, pentest, verification, and digest, verdict first, with Ask Charie attached.
 - **Marketplace and Integrations:** Jira and GitHub sync, MCP configs for coding agents, drop-in web SDK, documented mobile contract.
@@ -251,7 +255,6 @@ Production runs on one Google Cloud project: Cloud Run services `charie-portal`,
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) - every feature, flow, API, model, data store, and limitation
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - system design and agent roles
 - [docs/META_STACK.md](docs/META_STACK.md) - Meta model mapping and secrets
-- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) - the three-minute demo, beat by beat
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - collections and records
 - [docs/MOBILE_SDK.md](docs/MOBILE_SDK.md) - production signal contract for mobile apps
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately not in this build, and why

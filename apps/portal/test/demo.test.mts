@@ -55,4 +55,13 @@ assert.equal(localTargets.engineUrl, "http://localhost:3103", "local pentest/nig
 assert.match(localTargets.portalUrl ?? "", /3102/, "local runs get the portal target they need");
 assert.deepEqual(localRunTargets("https://engine.example.run.app"), {}, "hosted engines keep their configured environment targets");
 
+// On-call tickets: seeded from calls, tagged meet:, ready to demo the
+// call summary -> findings -> root cause -> proposed fix approval flow.
+const onCall = seed.tickets.filter((t) => (t.sourceRepo ?? "").startsWith("meet:"));
+assert.ok(onCall.length >= 2, "tickets page has an on-call section with sample call tickets");
+const refund = onCall.find((t) => t.id === "demo-tkt-call-refund");
+assert.ok(refund && refund.status === "fix-proposed", "one on-call ticket waits at fix-proposed, ready for approval on camera");
+const refundFindings = sampleFindings("demo-run-shopflow-refund") ?? [];
+assert.ok(refundFindings.length >= 1 && refundFindings[0].suspectedCause.length > 20 && refundFindings[0].suggestedFix.length > 20, "on-call ticket carries a root cause and a proposed fix");
+
 console.log("demo: all assertions passed");

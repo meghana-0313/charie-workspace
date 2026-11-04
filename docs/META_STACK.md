@@ -18,7 +18,7 @@ never from a stub.** Judges can trace each one to a file.
 
 | Meta model | Real job in the product | Runtime | Status |
 |---|---|---|---|
-| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Default Chat and Meet brain in Auto mode (Baseten first, different model from `muse-spark-1.3`); second-opinion analyst: independently re-grades Spark findings, disagreement lowers confidence; vision lane 2. Speaking voice is not this model - it is Kokoro on Modal, and hearing in calls is the browser recognizer | Baseten Model API (`src/baseten.ts`) | Live (slug verified 200); disagreement lowers confidence (M7) |
+| **Muse Spark Open** (`meta-models/muse-spark-open-1026`) | Default Chat and Meet brain in Auto mode (Baseten first, different model from `muse-spark-1.3`); second-opinion analyst: independently re-grades Spark findings, disagreement lowers confidence; vision lane 2. Speaking voice is not this model - it is Cartesia Sonic when configured (Kokoro on Modal, then browser voice, as fallbacks), and hearing in calls is the browser recognizer | Baseten Model API (`src/baseten.ts`) | Live (slug verified 200); disagreement lowers confidence (M7) |
 | **Muse Glimmer** | Lightweight triage: ticket → goal extraction, severity pre-grade, finding dedup | Ollama-local default (`muse-glimmer:30b`), any OpenAI-compatible endpoint | Live when reachable via engine `/triage`, heuristic fallback (M6) |
 
 > No giant weight downloads on the Windows laptop without a hardware check first.
@@ -57,6 +57,7 @@ GLIMMER_MODEL                # default muse-glimmer:30b
 GLIMMER_API_KEY              # only for hosted endpoints (omit for Ollama)
 BASETEN_API_KEY              # Baseten Model API key (open weights)
 MODAL_CREDENTIALS            # (backup for open weights)
+CARTESIA_API_KEY             # portal only: Cartesia Sonic TTS, primary call voice (not a Meta model; Meta ships no TTS)
 ```
 
 Local access needs the Secret Manager Secret Accessor role

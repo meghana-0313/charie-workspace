@@ -14,7 +14,7 @@ Meet Charie - AI support agent on the call, autonomous engineering on the loop, 
 
 4/ It pentests itself like a bug bounty hunter: 35 checks, recon, OWASP. Customers shouting in support? It clusters the themes and files the hot one as a ticket in one click.
 
-5/ Customers join support calls from a link. No account, consent first, nothing recorded. Charie takes live notes, tells the customer from the teammate, and saves the summary to the ticket.
+5/ Customers join support calls from a link. No account, consent first, nothing recorded. Charie joins the call, sees the shared screen, answers out loud in short sentences, and her replies float in a widget you can pop out over the customer's app. After the call, the ticket she filed is waiting with summary, root cause, and proposed fix - ready for your approval.
 
 6/ Built on Meta Muse: Spark chats and reasons, Wonder goes deep, Image redesigns screens, Voice transcribes bug reports, SAM grounds every claim. Open weights Glimmer and Spark Open run triage and second opinions.
 
@@ -26,7 +26,7 @@ Charie: your software's autonomous companion. [portal link]
 
 Every team knows the loop: a customer reports a bug, support triages, engineering reproduces, weeks pass, nobody proves the fix. Charie closes that loop autonomously. File a ticket and Charie drives your real app like a first-time user, collects screenshot-grounded evidence, drafts the fix as an MCP packet for your coding agent, then re-runs the journey and publishes before/after proof.
 
-Around that spine sits a full workspace: a 35-check bug bounty grade security suite, live production monitoring from your GCP logs and app SDKs, customer theme clustering that files tickets in one click, overnight night-shift digests, and video support calls where customers join by link with consent and Charie takes speaker-aware live notes.
+Around that spine sits a full workspace: a 35-check bug bounty grade security suite, live production monitoring from your GCP logs and app SDKs plus a site monitor that probes your product every 3 seconds and plots what it really measures, customer theme clustering that files tickets in one click, overnight night-shift digests rendered as visual reports, and video support calls where customers join by link with consent and Charie sees the screen, speaks, and files the on-call ticket herself.
 
 Under the hood it is Meta Muse end to end: Muse Spark for chat and analysis, Muse Wonder for deep dives, Muse Image for redesigns, Muse Voice for transcription, SAM 3.1 for grounding, and the open weights Muse Glimmer and Muse Spark Open for triage and second opinions, all orchestrated by an agent loop that never calls a fix done without verification.
 
