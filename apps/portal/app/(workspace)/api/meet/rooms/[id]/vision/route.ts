@@ -43,7 +43,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     recordVision(roomId, j.text, j.model, typeof capturedAt === "string" ? capturedAt : undefined);
     // Watch mode: remember silently; only speak up when the frame shows a
     // problem, so near-continuous watching never floods the transcript.
-    const isProblem = /(error|fail|blocked|broken|crash|denied|invalid|warning|exception)/i.test(j.text);
+    // "No error visible" is NOT a problem - the old test matched the word
+    // error inside negations and spoke every routine frame aloud.
+    const cleanText = j.text.replace(/no (visible |clear )?error(s)?[^.]*|not an error|isn'?t an error|no blocker[^.]*/gi, "");
+    const isProblem = /(error|fail|blocked|broken|crash|denied|invalid|warning|exception)/i.test(cleanText);
     const shouldSpeak = mode !== "watch" || (isProblem && claimVisionSpeech(roomId, j.text));
     if (shouldSpeak) speak(roomId, j.text);
     return NextResponse.json({ text: j.text, model: j.model ?? "vision", spoke: shouldSpeak, ms: j.ms });

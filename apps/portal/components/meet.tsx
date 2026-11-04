@@ -225,7 +225,20 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
         /* retry next tick */
       }
     };
-    void poll();
+    void (async () => {
+      // Prime the cursor past ALL prior signals before handling any: a
+      // reopened room must not replay the previous session's "end" (which
+      // instantly ended rejoined calls) or its stale peer joins (ghost
+      // "teammate" tiles from people who left hours ago).
+      try {
+        const res = await fetch(`/api/meet/rooms/${roomId}/signal${sq(0)}`, { cache: "no-store" });
+        if (res.ok) {
+          const j = (await res.json()) as { signals: MeetSignal[] };
+          for (const s of j.signals) since.current = Math.max(since.current, s.seq);
+        }
+      } catch { /* poll below still works from 0 */ }
+      await poll();
+    })();
     timer = setInterval(poll, 1500);
     // Presence heartbeat + ghost sweep: peers who stop pinging (closed tab,
     // crashed browser, lost leave signal) lose their tile automatically.
@@ -595,9 +608,10 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
           </div>
         )}
         {startCamOff && !audioOnly && <div className="meet-preview-card"><div className="meet-wait" style={{ height: "100%" }}>Camera is off. Nobody can see you. Switch Camera off to preview.</div></div>}
-        <div className="row">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 160 }} />
-          <button onClick={join}>{audioOnly ? "Join audio only" : "Join call"}</button>
+        <label className="small muted" htmlFor="meet-name" style={{ display: "block", margin: "10px 0 4px" }}>Your name</label>
+        <div className="row" style={{ flexWrap: "nowrap", maxWidth: 430 }}>
+          <input id="meet-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Meghana" aria-label="Your name" autoFocus style={{ flex: 1, minWidth: 0 }} />
+          <button onClick={join} style={{ flex: "none" }}>{audioOnly ? "Join audio only" : "Join call"}</button>
         </div>
         <div className="stack" style={{ marginTop: 8 }}>
           <MeetSwitch checked={startMuted} onChange={setStartMuted} label="Start muted" />
