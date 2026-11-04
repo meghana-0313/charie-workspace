@@ -1,4 +1,6 @@
-# No more screenshots. No more back-and-forth. Charie joins the call, sees the screen, and fixes it live - then guards your product all night.
+# Charie - AI support on the call, autonomous engineering on the loop, on standby all night.
+
+**Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts.**
 
 [![Built with Muse Code](https://img.shields.io/badge/Built%20with-Muse%20Code-0668E1?logo=meta)](https://dev.meta.ai/lp/muse-code)
 
