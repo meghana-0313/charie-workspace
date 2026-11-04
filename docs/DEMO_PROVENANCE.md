@@ -20,7 +20,7 @@ Use the demo script beats (kept outside this repo). For each beat, capture:
 | Beat and timestamp in video | e.g. "Beat 2, 0:45" |
 | Input | The exact ticket text, chat message, or spoken question used |
 | Model identifier | The label the app itself shows (for example `meta-models/muse-spark-open-1026 (baseten)`, `muse-spark-1.3`, `heuristic`) - screenshot the label, do not retype it from memory |
-| Model provider | Baseten, Meta Model API, Ollama (Glimmer), Modal (voice), or none (deterministic) |
+| Model provider | Baseten, Meta Model API, Ollama (Glimmer), Cartesia (voice, primary) / Modal (voice fallback), or none (deterministic) |
 | Raw output | The report page, transcript lines, or findings exactly as rendered; export or screenshot before editing |
 | Execution record | Run id (`/reports/<kind>/<id>`), engine report folder, or Meet room id |
 | Live or simulated | One of: live model call, real Playwright execution, seeded sample data, simulated integration - as labelled in the product |
@@ -31,6 +31,7 @@ Use the demo script beats (kept outside this repo). For each beat, capture:
 - The Meet room transcript export for the call segment, including the screen-log timestamps Charie answered from.
 - The chat thread showing receipts for tool actions in the chat segment.
 - The morning digest for the night-shift segment (generated from executed records only).
+- For the Live Signals segment: the probe target and start/stop times of the demo site, so the graph's reaction on camera is traceable to a real service state change. For the widget pop-out segment: browser name and version (Document Picture-in-Picture needs Chrome/Edge) and whether the share was entire-screen.
 - This file, filled in, plus `git log --oneline -5` output at record time.
 
 ## Honesty rules for the recording

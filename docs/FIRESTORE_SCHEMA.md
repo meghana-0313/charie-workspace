@@ -11,11 +11,13 @@ signed in account; legacy records without a `uid` stay shared.
 
 ```text
 tickets/{ticketId}
-  customerName, subject, body, source: "portal"|"email"|"call-sim",
+  uid, subject, body,
   status: "new"|"investigating"|"in-room"|"fix-proposed"|"verified"|"closed",
   goal: string,                 # extracted user task ("buy 3 items and check out")
-  targetUrl, buildId,
-  createdAt, updatedAt
+  targetUrl, voiceNotePath?,
+  sourceRepo?,                  # owner/repo, or "meet:<roomId>" for tickets filed
+                                # from a live call (drives the On-call section)
+  roomId?, createdAt, updatedAt
 
 rooms/{roomId}                  # 1:1 with significant tickets
   ticketId, title, status, createdAt
