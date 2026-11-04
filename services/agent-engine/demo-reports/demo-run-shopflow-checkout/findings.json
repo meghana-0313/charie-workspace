@@ -1,0 +1,32 @@
+[
+  {
+    "id": "functional-checkout-total-mismatch",
+    "category": "functional",
+    "severity": "blocker",
+    "title": "Checkout total does not match cart total",
+    "goal": "Complete a checkout with the correct cart total",
+    "reproSteps": ["Add any product to the cart", "Note the cart total", "Proceed to checkout", "Compare the checkout total with the cart total"],
+    "evidence": { "screenshots": [], "trace": "sample-demo-trace", "logs": ["SAMPLE DEMO DATA: seeded finding for judging. Live runs capture real screenshots and traces."] },
+    "suspectedCause": "Shipping fee is added twice when a coupon is present in the sample scenario.",
+    "confidence": "high",
+    "suggestedFix": "Compute the order total once in the cart service and reuse it at checkout instead of recomputing with fees.",
+    "regressionCheck": "Re-run checkout with a coupon and assert cart total equals checkout total.",
+    "status": "verified",
+    "analysisSource": "heuristic"
+  },
+  {
+    "id": "functional-payment-rejected",
+    "category": "functional",
+    "severity": "major",
+    "title": "Valid test card is rejected at payment",
+    "goal": "Pay with a valid card",
+    "reproSteps": ["Reach checkout", "Enter the standard valid test card", "Submit payment", "Observe the rejection message"],
+    "evidence": { "screenshots": [], "trace": "sample-demo-trace", "logs": ["SAMPLE DEMO DATA: seeded finding for judging."] },
+    "suspectedCause": "Payment validation rejects cards when the total was recomputed, in the sample scenario.",
+    "confidence": "medium",
+    "suggestedFix": "Validate the card against the payment provider rules independently of total recomputation.",
+    "regressionCheck": "Pay with the valid test card and assert the order is created.",
+    "status": "verified",
+    "analysisSource": "heuristic"
+  }
+]

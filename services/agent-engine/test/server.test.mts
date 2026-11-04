@@ -73,6 +73,13 @@ const doneBody = done.json() as { status: string; findings: unknown[]; report: s
 ok(done.code === 200 && doneBody.status === "done", "done run status");
 ok(doneBody.findings.length === 1 && doneBody.report === "# R", "done run payload");
 
+// Seeded Demo Mode fixture: served even though reports/ has no such dir.
+const demoRun = await call("GET", "/runs/demo-run-shopflow-checkout", H);
+const demoBody = demoRun.json() as { status: string; findings: Array<{ title: string }>; report: string };
+ok(demoRun.code === 200 && demoBody.status === "done", "demo fixture run is done");
+ok(demoBody.findings.length >= 1 && demoBody.report.includes("SAMPLE DEMO DATA"), "demo fixture carries findings and its sample label");
+ok((await call("GET", "/runs/demo-run-does-not-exist", H)).code === 404, "unknown demo-style run still 404");
+
 const art = await call("GET", "/runs/done1/artifacts/mcp-packets/a.md", H);
 ok(art.code === 200 && art.text === "packet", "artifact served");
 ok((await call("GET", "/runs/done1/artifacts/../../x", H)).code === 404, "artifact traversal blocked");

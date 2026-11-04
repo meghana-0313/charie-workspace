@@ -2,6 +2,8 @@ import "../globals.css";
 import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
 import { Sidebar, Topbar } from "@/components/shell";
+import { DemoBanner } from "@/components/demo-banner";
+import { DEMO_UID } from "@/lib/demo";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const env = process.env.PORTAL_STORE === "firestore" ? "Production" : "Development";
@@ -25,6 +27,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       <Sidebar env={env} workspaceName={workspaceName} ticketsOpen={ticketsOpen} incidentsOpen={incidentsOpen} />
       <div className="main">
         <Topbar workspaceName={workspaceName} repoName={repoName} repos={repos.map((r) => ({ id: r.id, name: `${r.owner}/${r.repo}` }))} env={env} userLabel={me?.name ?? me?.email ?? undefined} alerts={alerts} />
+        {me?.uid === DEMO_UID && <DemoBanner />}
         <main className="content">{children}</main>
       </div>
     </div>

@@ -23,7 +23,8 @@ import type { IncomingMessage, RequestListener, ServerResponse } from "node:http
 import { timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, normalize, sep } from "node:path";
+import { dirname, join, normalize, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { GOAL } from "./explorer.js";
 import { runA11y } from "./a11y.js";
 import { runFirstRun } from "./firstrun.js";
@@ -151,11 +152,20 @@ export function createApp(opts: ServerOpts): RequestListener {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
+  // Seeded Demo Mode runs ship as fixtures in demo-reports/ (reports/ is
+  // gitignored). They are sample data and are labelled as such inside.
+  function demoDir(runId: string): string | null {
+    if (!/^demo-run-[a-z0-9-]+$/.test(runId)) return null;
+    const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "demo-reports", runId);
+    return existsSync(join(dir, "findings.json")) ? dir : null;
+  }
+
   function runStatus(runId: string): "running" | "done" | "failed" {
     const seen = jobs.get(runId);
     if (seen && seen.status !== "running") return seen.status;
     const dir = join(root, runId);
     if (existsSync(join(dir, "findings.json"))) return "done";
+    if (demoDir(runId)) return "done";
     if (seen || existsSync(dir)) return "running";
     return "failed";
   }
@@ -741,12 +751,13 @@ export function createApp(opts: ServerOpts): RequestListener {
             send(res, 404, { error: "unknown run" });
             return;
           }
+          const runDir = existsSync(join(root, runId, "findings.json")) ? join(root, runId) : (demoDir(runId) ?? join(root, runId));
           const out: Record<string, unknown> = { runId, status };
           if (status === "done") {
-            out.findings = JSON.parse(readFileSync(join(root, runId, "findings.json"), "utf8"));
-            const vpath = join(root, runId, "verification.json");
+            out.findings = JSON.parse(readFileSync(join(runDir, "findings.json"), "utf8"));
+            const vpath = join(runDir, "verification.json");
             if (existsSync(vpath)) out.verification = JSON.parse(readFileSync(vpath, "utf8"));
-            const rpath = join(root, runId, "report.md");
+            const rpath = join(runDir, "report.md");
             if (existsSync(rpath)) out.report = readFileSync(rpath, "utf8");
           }
           if (status === "failed") out.error = jobs.get(runId)?.error ?? "run failed";

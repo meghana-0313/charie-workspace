@@ -15,7 +15,7 @@ interface Config {
   setupUrl: string;
 }
 
-type Busy = "local" | "email" | "reset" | null;
+type Busy = "local" | "email" | "reset" | "demo" | null;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -132,6 +132,20 @@ export default function LoginPage() {
     setBusy(null);
   }
 
+  async function demo() {
+    if (busy) return;
+    setBusy("demo");
+    setError("");
+    const res = await fetch("/api/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ demo: true }),
+    });
+    if (res.ok) router.push("/");
+    else setError("Demo Mode could not start. Try again.");
+    setBusy(null);
+  }
+
   return (
     <div className="login-wrap">
       <div className="login-shell">
@@ -158,6 +172,10 @@ export default function LoginPage() {
           <p className="muted small" style={{ marginTop: 4 }}>{mode === "signup" ? "Start with Charie in about a minute." : mode === "reset" ? "We will email you a reset link." : "Sign in to your workspace."}</p>
         </div>
         <div className="stack" style={{ marginTop: 14 }}>
+          <button onClick={demo} disabled={busy !== null}>
+            {busy === "demo" ? "Opening demo…" : "Explore Charie Demo - no login needed"}
+          </button>
+          <p className="small muted" style={{ margin: 0 }}>Sample workspace with three demo projects. No account, no keys, nothing leaves the demo data.</p>
           {cfg?.devLogin && (
             <button onClick={local} disabled={busy !== null}>
               {busy === "local" ? "Signing in…" : "Continue as local owner (dev only)"}

@@ -78,6 +78,7 @@
 
 /* ============ Page headers ============ */
 
+.demo-banner { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: 8px var(--space-4); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--ink); border-bottom: 1px solid var(--line); font-size: 13px; }
 .page-head { margin: 0 0 var(--space-4); }
 .page-crumbs { font-size: var(--text-xs); color: var(--ink-faint); margin-bottom: var(--space-1); }
 .page-crumbs a { color: var(--ink-faint); }
