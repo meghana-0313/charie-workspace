@@ -161,7 +161,11 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
   const [error, setError] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [modelChoice, setModelChoice] = useState<ChatModelChoice>(() => (typeof localStorage !== "undefined" && localStorage.getItem("charie-chat-model") as ChatModelChoice) || "auto");
+  const [modelChoice, setModelChoice] = useState<ChatModelChoice>(() => {
+    const saved = typeof localStorage !== "undefined" ? (localStorage.getItem("charie-chat-model") as ChatModelChoice) : null;
+    // Saved choices from when the heuristic was pickable land on Auto.
+    return saved && (CHAT_MODELS as Array<{ id: string }>).some((m) => m.id === saved) ? saved : "auto";
+  });
   const [effort, setEffort] = useState<ChatEffort>(() => (typeof localStorage !== "undefined" && localStorage.getItem("charie-chat-effort") as ChatEffort) || "medium");
   const servedModel = [...msgs].reverse().find((m) => m.role === "assistant" && m.model)?.model;
   // The footer follows the picker immediately: switching to Baseten or

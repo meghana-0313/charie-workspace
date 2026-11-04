@@ -68,6 +68,15 @@ delete process.env.META_API_KEY;
 _clearSecretCache();
 const h = await chatTurn({ history: [u("list my tickets")] });
 ok(h.kind === "tool" && h.model === "heuristic", "no key means heuristic");
+const forcedMeta = await chatTurn({ history: [u("list my tickets")], model: "meta" });
+ok(forcedMeta.kind === "text" && forcedMeta.model === "none" && /META_API_KEY/.test(forcedMeta.text ?? ""), "forcing Meta with no key says unavailable, never silently heuristic");
+const whereReport = heuristicTurn([
+  u("hey can you run a pen test suite?"),
+  { role: "assistant", content: "Done. Security re-scan: grade C, 33/35 checks. Details on /guardian/security." },
+  u("where can i find its report?"),
+]);
+ok(whereReport.kind === "text" && /guardian\/security/.test(whereReport.text ?? "") && whereReport.tool !== "repo_status", "where-is-the-pentest-report answers from the product map, not the repo lookup");
+ok(heuristicTurn([u("where can i find its report?")]).kind === "text", "report location question without context still answers with the reports index");
 
 process.env.META_API_KEY = "fake-test-key";
 const sparkReply = async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"tool": "list_schedules", "args": {}}' } }] }), { status: 200 });
@@ -79,6 +88,8 @@ ok(g.kind === "text" && /URL/.test(g.text ?? "") && !(g.text ?? "").includes("co
 const boom = async () => { throw new Error("network down"); };
 const f = await chatTurn({ history: [u("list my tickets")], fetchImpl: boom as typeof fetch });
 ok(f.kind === "tool" && f.model === "heuristic", "Spark failure falls back to heuristic");
+const forcedBaseten = await chatTurn({ history: [u("list my tickets")], model: "baseten", fetchImpl: boom as typeof fetch });
+ok(forcedBaseten.kind === "text" && forcedBaseten.model === "none" && /BASETEN_API_KEY/.test(forcedBaseten.text ?? ""), "forcing Baseten with no Baseten key says unavailable, never silently heuristic");
 delete process.env.META_API_KEY;
 
 

@@ -70,6 +70,23 @@ Tools:
 - repo_status {"repoId": "..."} - one connected repo and latest build; omit repoId for all.
 - help {} - what you can do.
 
+Product map - where things live in this workspace (Charie is the product; answer "where do I find X" from this map directly, no tool needed):
+- Pentest / security scan reports: /guardian/security, and every report is also listed at /reports
+- Accessibility scan reports: /a11y and /reports
+- First-run test reports: /firstrun and /reports
+- All reports of every kind: /reports
+- Tickets and findings: /tickets and /tickets/<id>
+- UX and redesign briefs: /ux
+- Autopilot schedules: /autopilot
+- Night shift digests: /guardian/night
+- Support signal clusters: /guardian/signals
+- Fix tasks / work orders: /guardian/work
+- Meet rooms: /guardian/zoom
+- Connected repos and builds: /repos
+- Integrations and workspace context docs (where users teach Charie about their product): /marketplace
+- Team seats and API keys: /team
+- Workspace settings: /settings
+
 Rules:
 - One tool per turn. After a tool result arrives, use it or call the next tool.
 - NEVER call the same tool twice with the same arguments. Tool results are labelled [tool_name]: if that label is already in the conversation, its answer is final - write your text reply instead of calling it again. This includes help: call help at most once per conversation, and after its result, present it as your answer.
@@ -179,6 +196,23 @@ export function heuristicTurn(history: ChatTurn[], demoTargetUrl?: string): Chat
       }
     }
   }
+  // "Where do I find its/the report?" is a navigation question about
+  // Charie itself. Answer from the product map (checking what the
+  // conversation just ran), never by hunting through workspace tools -
+  // and never via the repo lookup, which the word "report" used to trip.
+  if (/\breport\b/.test(low) && /(where|find|locate|open|see|view|is it|is the)/.test(low)) {
+    const prior = [...history].reverse().map((t) => t.content.toLowerCase()).join("\n");
+    if (/(pentest|security|grade [a-f])/.test(low) || /(pentest|security re-scan|security scan)/.test(prior)) {
+      return { kind: "text", text: "That security scan report is on the Security page at /guardian/security - the latest scan is at the top with every check. It is also listed with all reports at /reports (filter: Security scan).", model: "heuristic" };
+    }
+    if (/(a11y|accessib)/.test(low) || /(accessibility)/.test(prior)) {
+      return { kind: "text", text: "That accessibility report is at /a11y - the latest scan is at the top, with history below. It is also listed at /reports (filter: Accessibility).", model: "heuristic" };
+    }
+    if (/(first.?run)/.test(low) || /(first run)/.test(prior)) {
+      return { kind: "text", text: "That first-run report is at /firstrun - the latest test is at the top, with history below. It is also listed at /reports (filter: First run).", model: "heuristic" };
+    }
+    return { kind: "text", text: "All reports live at /reports - pentest, accessibility, first-run, agent runs, and incidents in one list. The latest security scan is also at /guardian/security.", model: "heuristic" };
+  }
   // UX / redesign is an investigation ticket (the /ux flow), never a scan kind.
   const uxIntent = /(\bux\b|user experience|redesign)/.test(low);
   if (uxIntent && scanUrl) {
@@ -238,7 +272,7 @@ export function heuristicTurn(history: ChatTurn[], demoTargetUrl?: string): Chat
   if (/(schedul|autopilot|nightly|cron)/.test(low)) {
     return { kind: "tool", tool: "list_schedules", args: {}, model: "heuristic" };
   }
-  if (/(repo|build|deploy)/.test(low)) {
+  if (/(\brepos?\b|\bbuilds?\b|\bdeploy)/.test(low)) {
     return { kind: "tool", tool: "repo_status", args: {}, model: "heuristic" };
   }
   if (url) {
@@ -280,10 +314,20 @@ function demoTargetOf(snapshot: unknown): string | undefined {
   return typeof demo?.targetUrl === "string" && /^https?:\/\//.test(demo.targetUrl) ? demo.targetUrl : undefined;
 }
 
+const UNAVAILABLE = (what: string, key: string): ChatTurnResult => ({
+  kind: "text",
+  text: `${what} is not available right now - no live model answered. Configure ${key} on the engine, or switch the model picker back to Auto. I will not silently answer with the offline heuristic when you asked for a specific Meta model.`,
+  model: "none",
+});
+
 export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   const demoTarget = demoTargetOf(input.snapshot);
   if (input.model === "heuristic") return heuristicTurn(input.history, demoTarget);
-  if (!hasBasetenKey() && !hasMetaKey()) return heuristicTurn(input.history, demoTarget);
+  if (!hasBasetenKey() && !hasMetaKey()) {
+    if (input.model === "baseten") return UNAVAILABLE("Muse Spark Open on Baseten", "BASETEN_API_KEY");
+    if (input.model === "meta") return UNAVAILABLE("Muse Spark 1.3 on the Meta Model API", "META_API_KEY");
+    return heuristicTurn(input.history, demoTarget);
+  }
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: `${SYSTEM}\n\n${snapshotBlock(input.snapshot)}${contextBlock(input.contextNotes)}` },
   ];
@@ -306,9 +350,14 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
       return { ...parsed, model: parsed.model === "spark" ? label : parsed.model };
     } catch (e) {
       console.warn(`[chat-agent] Baseten Muse Spark Open unavailable, trying Meta: ${(e as Error).message}`);
+      if (input.model === "baseten") return UNAVAILABLE("Muse Spark Open on Baseten", "BASETEN_API_KEY");
     }
   }
-  if (!hasMetaKey()) return heuristicTurn(input.history, demoTarget);
+  if (input.model === "baseten") return UNAVAILABLE("Muse Spark Open on Baseten", "BASETEN_API_KEY");
+  if (!hasMetaKey()) {
+    if (input.model === "meta") return UNAVAILABLE("Muse Spark 1.3 on the Meta Model API", "META_API_KEY");
+    return heuristicTurn(input.history, demoTarget);
+  }
   try {
     const out = await chat(messages, { model: modelId("spark"), maxTokens: effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
@@ -316,6 +365,7 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     return { ...parsed, model: parsed.model === "spark" ? modelId("spark") : parsed.model };
   } catch (e) {
     console.warn(`[chat-agent] spark unavailable, heuristic fallback: ${(e as Error).message}`);
+    if (input.model === "meta") return UNAVAILABLE("Muse Spark 1.3 on the Meta Model API", "META_API_KEY");
     return heuristicTurn(input.history, demoTarget);
   }
 }
