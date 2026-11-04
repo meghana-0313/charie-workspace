@@ -49,7 +49,7 @@ assert.match(sampleZoom().provider, /[Ss]imulated/, "zoom sample is labelled sim
 for (const run of seed.runs) {
   assert.ok((sampleFindings(run.id) ?? []).length >= 1, `demo run ${run.id} has sample findings`);
 }
-assert.ok(sampleBriefs("demo-run-shopflow-checkout").length >= 1, "UX page has a sample redesign brief");
+assert.ok(sampleBriefs("demo-run-demo-checkout").length >= 1, "UX page has a sample redesign brief");
 const localTargets = localRunTargets("http://localhost:3103") as { portalUrl?: string; engineUrl?: string };
 assert.equal(localTargets.engineUrl, "http://localhost:3103", "local pentest/night-shift runs get the engine target they need");
 assert.match(localTargets.portalUrl ?? "", /3102/, "local runs get the portal target they need");
@@ -61,7 +61,7 @@ const onCall = seed.tickets.filter((t) => (t.sourceRepo ?? "").startsWith("meet:
 assert.ok(onCall.length >= 2, "tickets page has an on-call section with sample call tickets");
 const refund = onCall.find((t) => t.id === "demo-tkt-call-refund");
 assert.ok(refund && refund.status === "fix-proposed", "one on-call ticket waits at fix-proposed, ready for approval on camera");
-const refundFindings = sampleFindings("demo-run-shopflow-refund") ?? [];
+const refundFindings = sampleFindings("demo-run-demo-refund") ?? [];
 assert.ok(refundFindings.length >= 1 && refundFindings[0].suspectedCause.length > 20 && refundFindings[0].suggestedFix.length > 20, "on-call ticket carries a root cause and a proposed fix");
 
 console.log("demo: all assertions passed");

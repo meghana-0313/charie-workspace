@@ -115,8 +115,8 @@ export function sampleWorkOrders(): WorkOrderView[] {
       id: "demo-wo-checkout", title: "Verify the Demo Site checkout total fix", source: "ticket", sourceRef: "demo-tkt-checkout",
       status: "done", risk: "medium",
       plan: [
-        { kind: "verify-fix", label: "Re-run the checkout journey", ref: "demo-run-shopflow-checkout", targetUrl: TARGET },
-        { kind: "evidence-pack", label: "Attach before/after totals", ref: "demo-run-shopflow-checkout" },
+        { kind: "verify-fix", label: "Re-run the checkout journey", ref: "demo-run-demo-checkout", targetUrl: TARGET },
+        { kind: "evidence-pack", label: "Attach before/after totals", ref: "demo-run-demo-checkout" },
       ],
       approvals: [{ by: "Demo Guest (sample)", at: at(2) }],
       proofs: [{ at: at(2), step: "verify-fix", ok: true, detail: `${SAMPLE} Cart and checkout totals matched at 2,499.` }],

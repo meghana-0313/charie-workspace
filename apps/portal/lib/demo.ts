@@ -42,16 +42,16 @@ export interface DemoSeed {
 export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
   const t = (days: number) => daysAgo(nowMs, days);
   const projects = {
-    shopflow: "http://localhost:3101",
+    demoSite: "http://localhost:3101",
     travelmate: "https://demo.charie.local/travelmate",
     workboard: "https://demo.charie.local/workboard",
   };
   const defs: Array<{ key: string; project: string; target: string; subject: string; body: string; status: Ticket["status"]; runId?: string; days: number; sourceRepo?: string }> = [
-    { key: "checkout", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout cart total is wrong and payment fails", body: "Customers report the cart total changes at checkout and valid cards are rejected. Project: Demo Site (demo target, runs locally at http://localhost:3101).", status: "verified", runId: "demo-run-shopflow-checkout", days: 6, sourceRepo: "meet:sample-call-checkout" },
-    { key: "call-refund", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: refund button spins forever (reported on a live call)", body: "On a Meet support call the customer showed Charie the refund button spinning forever after one click. Charie captured the frame, confirmed no refund was created, and filed this from the call. Call summary: customer clicked Refund once, the spinner never stopped, and order ORD-1042 still shows no refund.", status: "fix-proposed", runId: "demo-run-shopflow-refund", days: 1, sourceRepo: "meet:sample-call-refund" },
-    { key: "registration", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: registration form rejects valid email addresses", body: "New users with valid emails see a validation error and cannot register. Project: Demo Site.", status: "fix-proposed", runId: "demo-run-shopflow-registration", days: 5 },
-    { key: "search", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: search filters return unrelated products", body: "Filtering by category shows products from other categories. Project: Demo Site.", status: "in-room", runId: "demo-run-shopflow-search", days: 4 },
-    { key: "a11y", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout button unreachable by keyboard", body: "Keyboard users cannot reach the checkout button. Project: Demo Site.", status: "verified", days: 3 },
+    { key: "checkout", project: "Demo Site", target: projects.demoSite, subject: "Demo Site: checkout cart total is wrong and payment fails", body: "Customers report the cart total changes at checkout and valid cards are rejected. Project: Demo Site (demo target, runs locally at http://localhost:3101).", status: "verified", runId: "demo-run-demo-checkout", days: 6, sourceRepo: "meet:sample-call-checkout" },
+    { key: "call-refund", project: "Demo Site", target: projects.demoSite, subject: "Demo Site: refund button spins forever (reported on a live call)", body: "On a Meet support call the customer showed Charie the refund button spinning forever after one click. Charie captured the frame, confirmed no refund was created, and filed this from the call. Call summary: customer clicked Refund once, the spinner never stopped, and order ORD-1042 still shows no refund.", status: "fix-proposed", runId: "demo-run-demo-refund", days: 1, sourceRepo: "meet:sample-call-refund" },
+    { key: "registration", project: "Demo Site", target: projects.demoSite, subject: "Demo Site: registration form rejects valid email addresses", body: "New users with valid emails see a validation error and cannot register. Project: Demo Site.", status: "fix-proposed", runId: "demo-run-demo-registration", days: 5 },
+    { key: "search", project: "Demo Site", target: projects.demoSite, subject: "Demo Site: search filters return unrelated products", body: "Filtering by category shows products from other categories. Project: Demo Site.", status: "in-room", runId: "demo-run-demo-search", days: 4 },
+    { key: "a11y", project: "Demo Site", target: projects.demoSite, subject: "Demo Site: checkout button unreachable by keyboard", body: "Keyboard users cannot reach the checkout button. Project: Demo Site.", status: "verified", days: 3 },
     { key: "booking", project: "TravelMate", target: projects.travelmate, subject: "TravelMate: booking flow loses the selected hotel", body: "After payment simulation the trip shows a different hotel. Simulated target (demo adapter). Project: TravelMate.", status: "closed", runId: "demo-run-travelmate-booking", days: 8 },
     { key: "session", project: "TravelMate", target: projects.travelmate, subject: "TravelMate: session times out during payment", body: "Users are logged out mid-payment. Simulated target (demo adapter). Project: TravelMate.", status: "verified", days: 7 },
     { key: "notify", project: "WorkBoard", target: projects.workboard, subject: "WorkBoard: task assignment sends no notification", body: "Assignees never learn they got a task. Simulated target (demo adapter). Project: WorkBoard.", status: "new", days: 1 },
@@ -90,13 +90,13 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     },
   ];
   const repos: RepoConnection[] = [{
-    id: "demo-repo-shopflow", uid: DEMO_UID, owner: "circle-back", repo: "demo-site", branch: "main", subdir: "", startCommand: "npm run dev",
+    id: "demo-repo-demo-site", uid: DEMO_UID, owner: "circle-back", repo: "demo-site", branch: "main", subdir: "", startCommand: "npm run dev",
     visibility: "public", hasToken: false, status: "live", lastSha: "demo5eed", appUrl: "http://localhost:3101",
     createdAt: t(9), updatedAt: t(1),
   }];
   const builds: RepoBuild[] = [
-    { id: "demo-build-2", repoId: "demo-repo-shopflow", sha: "demo5eed", cloudBuildId: "simulated", strategy: "node", status: "deployed", appUrl: "http://localhost:3101", detail: "Demo integration - simulated build record. Production Mode uses real Cloud Build.", createdAt: t(1), updatedAt: t(1) },
-    { id: "demo-build-1", repoId: "demo-repo-shopflow", sha: "demo01d", cloudBuildId: "simulated", strategy: "node", status: "failure", detail: "Demo integration - simulated build record: checkout test failed, ticket auto-filed.", createdAt: t(3), updatedAt: t(3) },
+    { id: "demo-build-2", repoId: "demo-repo-demo-site", sha: "demo5eed", cloudBuildId: "simulated", strategy: "node", status: "deployed", appUrl: "http://localhost:3101", detail: "Demo integration - simulated build record. Production Mode uses real Cloud Build.", createdAt: t(1), updatedAt: t(1) },
+    { id: "demo-build-1", repoId: "demo-repo-demo-site", sha: "demo01d", cloudBuildId: "simulated", strategy: "node", status: "failure", detail: "Demo integration - simulated build record: checkout test failed, ticket auto-filed.", createdAt: t(3), updatedAt: t(3) },
   ];
   const schedules: Schedule[] = [
     { id: "demo-sched-sweep", uid: DEMO_UID, kind: "sweep", preset: "daily", enabled: true, lastRunAt: t(1), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
@@ -109,7 +109,7 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     { id: "demo-conn-github", uid: DEMO_UID, kind: "github", name: "GitHub (simulated sample)", status: "connected", detail: "Simulated connector for Demo Mode - builds are sample records.", config: {}, lastSyncAt: t(1), lastSyncStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
   ];
   const syncRules: SyncRule[] = [
-    { id: "demo-rule-jira-shopflow", uid: DEMO_UID, connectorId: "demo-conn-jira", kind: "jira-pull", project: "SHOP", targetUrl: projects.shopflow, preset: "daily", enabled: true, importedKeys: ["SHOP-101 (sample)", "SHOP-102 (sample)"], lastRunAt: t(1), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
+    { id: "demo-rule-jira-demo", uid: DEMO_UID, connectorId: "demo-conn-jira", kind: "jira-pull", project: "DEMO", targetUrl: projects.demoSite, preset: "daily", enabled: true, importedKeys: ["DEMO-101 (sample)", "DEMO-102 (sample)"], lastRunAt: t(1), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
   ];
   const contextDocs: ContextDoc[] = [
     { id: "demo-doc-runbook", uid: DEMO_UID, title: "Demo site runbook (sample)", source: "note", body: "Sample context doc. Checkout totals must match the cart after coupons; keyboard users must reach checkout; uploads over 5 MB need a clear error. Demo Mode data - edit or delete freely.", createdAt: t(8), updatedAt: t(2) },
