@@ -17,7 +17,10 @@ export function isDemoAccount(account?: string | null): boolean {
 }
 
 const SAMPLE = "Sample demo data - run a live scan to replace this with real results.";
-const TARGET = "http://localhost:3101";
+/** The intentionally buggy ShopFast demo store every sample scan targets. */
+export const DEMO_TARGET_URL = process.env.DEMO_TARGET_URL ?? "http://localhost:3101";
+export const DEMO_TARGET_NAME = "ShopFast demo store (intentional bugs: checkout fails with 3+ items, keyboard and label defects, missing security headers)";
+const TARGET = DEMO_TARGET_URL;
 
 function at(daysAgo: number): string {
   return new Date(Date.now() - daysAgo * 24 * 3600 * 1000).toISOString();
@@ -26,7 +29,7 @@ function at(daysAgo: number): string {
 export function sampleA11yReports(): A11yView[] {
   return [
     {
-      id: "demo-a11y-2", at: at(1), targetUrl: TARGET, grade: "B", passed: 6, failed: 2,
+      id: "demo-a11y-2", at: at(1), targetUrl: TARGET, grade: "B", passed: 6, failed: 2, executor: "Sample demo data (seeded) - a live run is executed by the Charie engine in a real browser",
       checks: [
         { id: "img-alt", name: "Image alt text", severity: "major", pass: true, evidence: `${SAMPLE} All product images carry alt text.` },
         { id: "form-labels", name: "Form labels", severity: "blocker", pass: false, evidence: `${SAMPLE} Checkout email field has no associated label.` },
@@ -39,7 +42,7 @@ export function sampleA11yReports(): A11yView[] {
       ],
     },
     {
-      id: "demo-a11y-1", at: at(5), targetUrl: TARGET, grade: "C", passed: 5, failed: 3,
+      id: "demo-a11y-1", at: at(5), targetUrl: TARGET, grade: "C", passed: 5, failed: 3, executor: "Sample demo data (seeded) - a live run is executed by the Charie engine in a real browser",
       checks: [
         { id: "img-alt", name: "Image alt text", severity: "major", pass: false, evidence: `${SAMPLE} Two product images had empty alt text.` },
         { id: "form-labels", name: "Form labels", severity: "blocker", pass: false, evidence: `${SAMPLE} Email and password fields had no labels.` },
@@ -53,7 +56,7 @@ export function sampleA11yReports(): A11yView[] {
 export function sampleFirstRunReports(): FirstRunView[] {
   return [
     {
-      id: "demo-firstrun-2", at: at(1), targetUrl: TARGET, score: 82, passed: 5, failed: 1,
+      id: "demo-firstrun-2", at: at(1), targetUrl: TARGET, score: 82, passed: 5, failed: 1, executor: "Sample demo data (seeded) - a live run is executed by the Charie engine as a first-time visitor",
       steps: [
         { id: "loads", name: "Page loads", pass: true, evidence: `${SAMPLE} First paint in 1.1s on desktop.` },
         { id: "headline", name: "Headline explains the product", pass: true, evidence: `${SAMPLE} "ShopFlow - groceries in minutes" names the offer.` },
@@ -64,7 +67,7 @@ export function sampleFirstRunReports(): FirstRunView[] {
       ],
     },
     {
-      id: "demo-firstrun-1", at: at(6), targetUrl: TARGET, score: 64, passed: 4, failed: 2,
+      id: "demo-firstrun-1", at: at(6), targetUrl: TARGET, score: 64, passed: 4, failed: 2, executor: "Sample demo data (seeded) - a live run is executed by the Charie engine as a first-time visitor",
       steps: [
         { id: "loads", name: "Page loads", pass: true, evidence: `${SAMPLE} First paint in 1.8s.` },
         { id: "headline", name: "Headline explains the product", pass: false, evidence: `${SAMPLE} Headline was a slogan with no product mention.` },
@@ -77,7 +80,7 @@ export function sampleFirstRunReports(): FirstRunView[] {
 
 export function samplePentestReports(): PentestView[] {
   return [{
-    id: "demo-pentest-1", at: at(2), targets: [TARGET], grade: "B", passed: 7, failed: 2,
+    id: "demo-pentest-1", at: at(2), targets: [TARGET], grade: "B", passed: 7, failed: 2, executor: "Sample demo data (seeded) - a live run is executed by the Charie engine security probes",
     checks: [
       { id: "tls", name: "TLS configuration", severity: "major", pass: true, evidence: `${SAMPLE} TLS 1.2+ only.` },
       { id: "headers", name: "Security headers", severity: "major", pass: false, evidence: `${SAMPLE} Content-Security-Policy header missing.` },
@@ -86,6 +89,8 @@ export function samplePentestReports(): PentestView[] {
       { id: "sqli", name: "SQL injection probes", severity: "blocker", pass: true, evidence: `${SAMPLE} Parameterised responses to all probes.` },
       { id: "auth", name: "Auth rate limiting", severity: "major", pass: false, evidence: `${SAMPLE} No throttling observed after 20 failed logins.` },
       { id: "disclosure", name: "Error disclosure", severity: "minor", pass: true, evidence: `${SAMPLE} Errors return generic messages.` },
+      { id: "methods", name: "HTTP method restrictions", severity: "minor", pass: true, evidence: `${SAMPLE} Write methods rejected on read-only endpoints.` },
+      { id: "cors", name: "CORS policy", severity: "major", pass: true, evidence: `${SAMPLE} No wildcard origin on authenticated routes.` },
     ],
     recon: { server: "sample (simulated)", poweredBy: "sample (simulated)", tech: ["Next.js (sample)"], endpoints: ["/", "/api/cart (sample)"] },
   }];
@@ -135,7 +140,14 @@ export function sampleDigests(): DigestView[] {
     id: "demo-digest-1", at: at(1), durationMs: 42000,
     orders: orders.map((o) => ({ id: o.id, title: o.title, status: o.status, proofs: o.proofs })),
     pentest: samplePentestReports()[0],
-    digest: `${SAMPLE} Overnight: checkout verification passed, a11y fix scheduled, security re-scan grade B.`,
+    digest: [
+      "Night shift completed 2 work orders against the ShopFast demo store.",
+      "1. Checkout verification PASSED: cart and checkout totals matched at 2,499 after the coupon fix, with before/after proof attached to the ticket.",
+      "2. Keyboard accessibility fix SCHEDULED for tonight: the checkout button becomes reachable in tab order, then gets a keyboard-only retest.",
+      "Security re-scan finished at grade B: 7 of 9 checks passed. Still open: missing Content-Security-Policy header and no throttling after 20 failed logins.",
+      "Log watch grouped 23 production errors into 2 signatures; the cart-total TypeError is already covered by the verified checkout fix.",
+      "Nothing is waiting on approval. The next sweep runs at 09:00.",
+    ].join("\n"),
   }];
 }
 

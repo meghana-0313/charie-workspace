@@ -36,6 +36,8 @@ export interface FirstRunReport {
   passed: number;
   failed: number;
   score: number;
+  /** Who executed this run, shown to the user right after the scan. */
+  executor: string;
 }
 
 function scrapeDesktop(): { heroText: string | null; primaryCta: string | null; authReachable: boolean } {
@@ -101,6 +103,7 @@ export function gradeFirstRunSnapshot(targetUrl: string, snap: FirstRunSnapshot)
   return {
     id: `fr_${Date.now().toString(36)}`, at: new Date().toISOString(), targetUrl,
     steps, passed, failed: steps.length - passed, score: Math.round((passed / steps.length) * 100),
+    executor: "Charie engine - Playwright first-visit checks (deterministic, no AI grading)",
   };
 }
 

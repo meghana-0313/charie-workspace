@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { listFirstRunReports } from "@/lib/guardian";
+import { DEMO_TARGET_NAME, DEMO_TARGET_URL, isDemoAccount } from "@/lib/demo-samples";
 import { identity, scopeUid } from "@/lib/who";
-import { FirstRunForm } from "@/components/scans";
+import { ExecutorTip, FirstRunForm } from "@/components/scans";
 import { Icon } from "@/components/icons";
 import { EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function FirstRunPage() {
-  const reports = await listFirstRunReports(scopeUid(await identity()));
+  const uid = scopeUid(await identity());
+  const demo = isDemoAccount(uid);
+  const reports = await listFirstRunReports(uid);
   const latest = reports.at(-1);
   return (
     <>
@@ -18,6 +21,13 @@ export default async function FirstRunPage() {
         sub="See your product the way a new user does: load speed, headline clarity, one clear next step, console health, mobile layout, sign in reach."
         actions={<Link className="btn secondary" href="/reports">All reports</Link>}
       />
+      {demo && (
+        <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+          <div className="card-title">Sample target ready</div>
+          <p className="small muted" style={{ margin: 0 }}>Tests in this demo run against the <strong>{DEMO_TARGET_NAME}</strong> at <code>{DEMO_TARGET_URL}</code> (start it with <code>npm run demo:target</code>). The form on the right is prefilled with it - press run and Charie visits it live as a first-time user.</p>
+        </div>
+      )}
+      {latest && <ExecutorTip executor={latest.executor} target={latest.targetUrl} />}
       {latest && (
         <div className="stats">
           <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="spark" size={20} /></span><div><div className="stat-num">{latest.score}/100</div><div className="stat-label">Latest score</div></div></div></div>
@@ -73,7 +83,7 @@ export default async function FirstRunPage() {
         <div className="card">
           <div className="card-title"><span className="icon-orb violet"><Icon name="play" /></span> New test</div>
           <p className="small muted">Opens the page like a first time visitor and grades the first sixty seconds.</p>
-          <FirstRunForm />
+          <FirstRunForm defaultTarget={demo ? DEMO_TARGET_URL : ""} />
         </div>
       </div>
     </>

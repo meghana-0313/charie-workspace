@@ -188,6 +188,7 @@ export interface SweepView {
 export interface PentestView {
   id: string;
   at: string;
+  executor?: string;
   targets: string[];
   checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string; owasp?: string }>;
   passed: number;
@@ -225,6 +226,7 @@ export interface ZoomView {
 export interface A11yView {
   id: string;
   at: string;
+  executor?: string;
   targetUrl: string;
   checks: Array<{ id: string; name: string; severity: string; pass: boolean; evidence: string; owasp?: string }>;
   passed: number;
@@ -241,6 +243,7 @@ export interface FirstRunView {
   passed: number;
   failed: number;
   score: number;
+  executor?: string;
 }
 
 export interface MeetRoom {
