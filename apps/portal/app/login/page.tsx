@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CharieMark } from "@/components/mark";
 import { ThemeToggle } from "@/components/theme";
-import { sendReset, signInWithEmail, signUpWithEmail } from "@/lib/firebase-client";
+import { sendReset, signInWithEmail } from "@/lib/firebase-client";
 
 interface Config {
   configured: boolean;
@@ -24,8 +24,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [setupNeeded, setSetupNeeded] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
-  const [userName, setUserName] = useState("");
+  // Sign-in only: there is deliberately no sign-up on this page.
+  // Workspaces are invite-only (the session route rejects uninvited
+  // accounts), and judges should land in the demo, not create accounts.
+  const [mode, setMode] = useState<"signin" | "reset">("signin");
+  const [userName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -72,10 +75,6 @@ export default function LoginPage() {
       setSetupNeeded(true);
     } else if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
       setError("Wrong email or password.");
-    } else if (code.includes("email-already-in-use")) {
-      setError("This email already has an account. Sign in instead.");
-    } else if (code.includes("weak-password")) {
-      setError("Password needs at least 6 characters.");
     } else if (code.includes("invalid-email")) {
       setError("That email address looks wrong.");
     } else if ((e as Error)?.message === "auth-not-configured") {
@@ -92,9 +91,7 @@ export default function LoginPage() {
     setError("");
     setInfo("");
     try {
-      const idToken = mode === "signup"
-        ? await signUpWithEmail(email.trim(), password, userName)
-        : await signInWithEmail(email.trim(), password);
+      const idToken = await signInWithEmail(email.trim(), password);
       await exchange(idToken);
     } catch (err) {
       firebaseError(err);
@@ -168,14 +165,14 @@ export default function LoginPage() {
         <div className="login-card">
         <div style={{ display: "flex", justifyContent: "flex-end" }}><ThemeToggle /></div>
         <div className="login-brand">
-          <div className="login-name" style={{ fontSize: 22 }}>{mode === "signup" ? "Create your workspace" : mode === "reset" ? "Reset your password" : "Welcome back"}</div>
-          <p className="muted small" style={{ marginTop: 4 }}>{mode === "signup" ? "Start with Charie in about a minute." : mode === "reset" ? "We will email you a reset link." : "Sign in to your workspace."}</p>
+          <div className="login-name" style={{ fontSize: 22 }}>{mode === "reset" ? "Reset your password" : "Welcome back"}</div>
+          <p className="muted small" style={{ marginTop: 4 }}>{mode === "reset" ? "We will email you a reset link." : "Sign in to your workspace. New here? Explore the demo - workspaces are invite-only."}</p>
         </div>
         <div className="stack" style={{ marginTop: 14 }}>
           <button onClick={demo} disabled={busy !== null}>
             {busy === "demo" ? "Opening demo…" : "Explore Charie Demo - no login needed"}
           </button>
-          <p className="small muted" style={{ margin: 0 }}>Sample workspace with three demo projects. No account, no keys, nothing leaves the demo data.</p>
+          <p className="small muted" style={{ margin: 0 }}>Sample workspace with three demo projects. No account needed; AI answers run on the host's configured Meta models.</p>
           {cfg?.devLogin && (
             <button onClick={local} disabled={busy !== null}>
               {busy === "local" ? "Signing in…" : "Continue as local owner (dev only)"}
@@ -192,27 +189,16 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={emailAuth}>
-                            {mode === "signup" && (
-                <>
-                  <label htmlFor="login-name">User name</label>
-                  <input id="login-name" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="e.g. Meghana" autoComplete="name" maxLength={60} />
-                </>
-              )}
-<label htmlFor="login-email">Email</label>
+              <label htmlFor="login-email">Email</label>
               <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required autoComplete="email" />
               <label htmlFor="login-password">Password</label>
-              <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === "signup" ? "6+ characters" : "Your password"} required autoComplete={mode === "signup" ? "new-password" : "current-password"} />
+              <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" required autoComplete="current-password" />
               <div className="row" style={{ marginTop: 10 }}>
-                <button disabled={busy !== null}>{busy === "email" ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}</button>
-                <button type="button" className="ghost sm" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); }}>
-                  {mode === "signup" ? "Have an account? Sign in" : "New here? Create account"}
-                </button>
+                <button disabled={busy !== null}>{busy === "email" ? "Working…" : "Sign in"}</button>
               </div>
-              {mode === "signin" && (
-                <p className="small" style={{ marginTop: 8 }}>
-                  <button type="button" className="ghost sm" onClick={() => { setMode("reset"); setError(""); }}>Forgot password?</button>
-                </p>
-              )}
+              <p className="small" style={{ marginTop: 8 }}>
+                <button type="button" className="ghost sm" onClick={() => { setMode("reset"); setError(""); }}>Forgot password?</button>
+              </p>
             </form>
           )}
           {cfgFailed && (

@@ -63,6 +63,8 @@ const H = { "x-engine-token": "t0k" };
 
 const health = await call("GET", "/health");
 ok(health.code === 200 && (health.json() as { ok: boolean }).ok === true, "health ok");
+const hj = health.json() as { models?: { meta: boolean; baseten: boolean }; secretProject?: boolean };
+ok(hj.models !== undefined && typeof hj.models.meta === "boolean" && typeof hj.models.baseten === "boolean" && typeof hj.secretProject === "boolean", "health reports model availability as booleans only (diagnoses hosted no-key chat)");
 
 ok((await call("GET", "/runs/nope")).code === 401, "missing token rejected");
 ok((await call("GET", "/runs/nope", { "x-engine-token": "wrong" })).code === 401, "wrong token rejected");

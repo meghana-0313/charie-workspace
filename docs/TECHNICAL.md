@@ -285,11 +285,12 @@ Speech recognition (hearing humans):
 
 Speech synthesis (Charie speaking):
 
-- Primary: Kokoro-82M on Modal, `services/modal-tts/modal_app.py`. Warm American male voice `am_michael`, CPU container, pipeline loaded once per container and reused. `min_containers=1` keeps one container always warm so the first line in a call does not pay a 20 second cold start; `scaledown_window=1200` keeps it warm through a call. Deploy: `modal deploy services/modal-tts/modal_app.py`, then set `CHARIE_TTS_URL` on the portal.
-- Portal route: `api/meet/rooms/[id]/tts`. Requests are deduplicated (one shared in-flight request per line) and cached briefly, so a line is never synthesized twice.
+- Primary when configured: Cartesia Sonic (third-party TTS; the hackathon rules allow it since Meta ships no TTS, and Muse Spark remains the brain). Set `CARTESIA_API_KEY` (and optionally `CARTESIA_VOICE_ID`, `CARTESIA_MODEL=sonic-2`) on the portal. Per-clause synthesis returns first audio in well under a second; a 12s timeout drops to the next provider instead of stacking latency. The `x-charie-tts` response header names the provider that served each line, and Test voice reports it.
+- Fallback: Kokoro-82M on Modal, `services/modal-tts/modal_app.py`. Warm American male voice `am_michael`, CPU container, pipeline loaded once per container and reused. `min_containers=1` keeps one container always warm so the first line in a call does not pay a 20 second cold start; `scaledown_window=1200` keeps it warm through a call. Deploy: `modal deploy services/modal-tts/modal_app.py`, then set `CHARIE_TTS_URL` on the portal.
+- Portal route: `api/meet/rooms/[id]/tts`. Requests are deduplicated (one shared in-flight request per line) and cached briefly per provider, so a line is never synthesized twice.
 - Playback is sequential sentence chunks, first chunk short (about 70 characters) so speech starts on the first clause while the rest synthesizes. Only the next chunk's first part is prefetched. Parallel chunk playback (which queued and overlapped) is deliberately not used.
 - Ending the call or leaving the page pauses the audio element and clears the queue. Charie's voice cannot follow the user to the home page.
-- Fallback: with no `CHARIE_TTS_URL`, the portal uses the best local browser voice. It is more robotic; the product does not hide that.
+- Fallback: with neither Cartesia nor `CHARIE_TTS_URL` configured, the portal uses the best local browser voice. It is more robotic; the product does not hide that.
 - Speakable text: everything spoken passes a cleaning pass that strips markdown, links, ticket ids, and meta-commentary, and Charie's replies are prompted to be brief - one short sentence by default, like a person on a call, not a paragraph.
 - Test path: "Test Charie's voice" in the room synthesizes the real greeting through the same pipeline and reports end-to-end time, and names a cold start as a Modal-side cold start when that is what happened.
 

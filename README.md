@@ -10,9 +10,11 @@
 
 **Vision:** a world where no customer ever has to describe a screen over the phone, no solo developer ever wakes up to an attack that ran for six hours, and no bug is called "fixed" until software itself has proved it.
 
-Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (Google or email sign-in)
+Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (email sign-in, or Explore Charie Demo - no login needed)
 
-Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md). Three-minute demo: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md).
+
+**Built during the hackathon:** everything in this repository - product, engine, demo store, docs, and tests - was designed, built, and shipped during the Meta Global AI Developer Hackathon 2026. Nothing predates it.
 
 ---
 
@@ -72,7 +74,7 @@ This is the honest definition used everywhere in the product: **autonomous withi
 
 - **Who buys it:** SaaS support and solutions teams drowning in "can you send a screenshot" calls; small product teams with no night coverage; solo builders who are their own on-call. One workspace replaces a meeting bot, a QA runner, a pentest scanner, a monitoring pager, and half the ticket busywork - with proof attached for compliance-minded buyers.
 - **Why they stay:** every call, investigation, incident, and fix becomes account-scoped evidence history. Switching away means losing the audit trail.
-- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, Google sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
+- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, email sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
 - **Why it is safe to buy:** autonomy is guardrailed (approvals, consent cards, labelled heuristic fallbacks, no remote control, no call recording), so a business can adopt it without handing an agent the keys.
 
 ## The wow moments
@@ -131,6 +133,7 @@ On the login page, press **Explore Charie Demo - no login needed**. No account, 
 - **The chat footer tells the truth live:** switch the model picker to Baseten or Meta and the label changes immediately, with the model that actually served the last answer shown separately.
 - **Your progress is saved** in the same store as real data (local files on your machine, Firestore on the hosted demo) under the demo account only. **Reset Demo Workspace** in the banner restores the seed and removes only demo changes - never real user data.
 - **Simulated vs live is labelled:** sample builds and incidents say "simulated"; seeded findings say SAMPLE DEMO DATA. Nothing simulated is presented as a live result.
+- **The demo video is the primary artifact; this live link is a bonus.** Everything in the 3-minute video is reproducible here, but if the hosted instance is slow, cold, or out of model quota on the day, the video is the canonical demo. Hosted AI answers spend the host's configured keys, which is exactly why the video carries the full story on its own.
 
 **About AI in Demo Mode - the honest version.** Demo Mode never fakes AI. Live AI actions (Chat answers, investigation analysis, test plans, call vision) call the real models: Baseten Muse Spark Open first for chat, Meta Muse Spark 1.3 direct, the lanes in the model table below. Those calls need a key on the host that runs the engine:
 
@@ -191,7 +194,7 @@ Customer / teammate / production signal
         ticket closed with evidence
 ```
 
-The portal (`apps/portal`, Next.js) owns identity, rooms, approvals, and reports. The engine (`services/agent-engine`, Playwright plus Meta models) does the driving, seeing, and reasoning. The demo target (`apps/demo-target`) is the intentionally buggy store the loop is proven against. Modal hosts the warm Kokoro voice. Firestore or local JSON files store everything per account. The complete component, API, data, and model reference is [docs/TECHNICAL.md](docs/TECHNICAL.md).
+The portal (`apps/portal`, Next.js) owns identity, rooms, approvals, and reports. The engine (`services/agent-engine`, Playwright plus Meta models) does the driving, seeing, and reasoning. The demo target (`apps/demo-target`) is the intentionally buggy store the loop is proven against. Calls speak through Cartesia Sonic when its key is configured, with Modal Kokoro and the browser voice as fallbacks. Firestore or local JSON files store everything per account. The complete component, API, data, and model reference is [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
 ## Meta models, honestly
 
@@ -211,7 +214,7 @@ A model counts as used only when a real request succeeds. Every surface degrades
 
 **Which model actually answers you in Chat and Meet (read this carefully):**
 
-- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten, Meta, or Heuristic with the model pill; every reply labels which lane answered.
+- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten or Meta with the model picker; forcing one never falls back silently - with no live model it says so. Auto alone keeps the labelled heuristic as a last resort. Every reply labels which lane answered, and the footer updates the moment you switch.
 - Seeing the screen (vision): the order flips. **Meta Muse Spark `muse-spark-1.3` direct first**, Baseten Muse Spark Open second.
 - Speaking (voice out): **not a Meta model and not Baseten.** Charie's voice is Kokoro-82M hosted on **Modal** (`CHARIE_TTS_URL`), falling back to the browser voice.
 - Hearing (voice in): the browser Web Speech API in calls. **Muse Voice Transcribe `muse-voice-transcribe-1.0`** is used only for voice bug-report tickets, not live-call listening.
@@ -251,7 +254,6 @@ Production runs on one Google Cloud project: Cloud Run services `charie-portal`,
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) - every feature, flow, API, model, data store, and limitation
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - system design and agent roles
 - [docs/META_STACK.md](docs/META_STACK.md) - Meta model mapping and secrets
-- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) - the three-minute demo, beat by beat
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - collections and records
 - [docs/MOBILE_SDK.md](docs/MOBILE_SDK.md) - production signal contract for mobile apps
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately not in this build, and why

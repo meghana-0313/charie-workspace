@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CHARIE_SPEECH_RATE, charieAskLine, charieShouldReply, meetRoomStatus, speakableText, transcriptStamp } from "../lib/room-status.ts";
 import { consentCard, needsConsent } from "../lib/consent.ts";
+import { isRepeatSpeech, type LiveLine } from "../lib/livecall.ts";
 
 test("transcript stamp shows full date and time per line", () => {
   const s = transcriptStamp("2026-11-04T17:22:31.000Z");
@@ -9,6 +10,19 @@ test("transcript stamp shows full date and time per line", () => {
   assert.match(s, /Nov/);
   assert.match(s, /\d{2}:\d{2}:\d{2}/);
   assert.equal(transcriptStamp("not-a-date"), "");
+});
+
+test("Charie never repeats a line she already said in the call", () => {
+  const now = Date.parse("2026-11-04T21:26:00.000Z");
+  const agent = (text: string, at: string): LiveLine => ({ speaker: "Charie", role: "agent", text, at });
+  const prior = [
+    agent("I see the Meta Model API Usage page with current usage, weekly limit and a spend graph showing around 1.1K rupees.", "2026-11-04T21:25:40.000Z"),
+    agent("Doing well, thanks for asking - how can I help today?", "2026-11-04T21:25:10.000Z"),
+  ];
+  assert.equal(isRepeatSpeech(prior, "I see the Meta Model API Usage page with current usage, weekly limit and a spend graph showing around 1.1K rupees.", 180000, now), true, "verbatim repeat dropped");
+  assert.equal(isRepeatSpeech(prior, "I see your Meta Model API Usage page showing current usage and about 1.1K rupees in pay as you go spend.", 180000, now), true, "same-lead re-description dropped");
+  assert.equal(isRepeatSpeech(prior, "That spike looks like normal usage volume on November 3rd, not an error.", 180000, now), false, "a genuinely new answer is allowed");
+  assert.equal(isRepeatSpeech(prior, "Doing well, thanks for asking - how can I help today?", 180000, Date.parse("2026-11-04T21:35:00.000Z")), false, "outside the window it may be said again");
 });
 
 test("Charie speaks at a brisk conversational pace on every voice path", () => {

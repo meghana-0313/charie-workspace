@@ -13,7 +13,7 @@ The organizers accept recorded demonstrations where judges cannot access the sam
 
 ## Per-segment provenance (one row per video beat)
 
-Use [DEMO_SCRIPT.md](DEMO_SCRIPT.md) beats. For each beat, capture:
+Use the demo script beats (kept outside this repo). For each beat, capture:
 
 | Field | What to save |
 |---|---|
