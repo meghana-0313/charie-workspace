@@ -1042,11 +1042,16 @@ function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Ar
     try {
       const dpip = (window as unknown as { documentPictureInPicture?: { requestWindow: (opts?: { width?: number; height?: number }) => Promise<Window> } }).documentPictureInPicture;
       if (!dpip) return;
-      const win = await dpip.requestWindow({ width: 360, height: 300 });
+      const win = await dpip.requestWindow({ width: 400, height: 360 });
+      win.document.title = "Charie";
+      win.document.documentElement.className = document.documentElement.className;
       win.document.documentElement.dataset.theme = document.documentElement.dataset.theme ?? "";
+      win.document.body.className = document.body.className;
       document.querySelectorAll('link[rel="stylesheet"], style').forEach((n) => win.document.head.appendChild(n.cloneNode(true)));
       win.document.body.style.margin = "0";
       win.document.body.style.background = "var(--surface)";
+      win.document.body.style.color = "var(--ink)";
+      win.document.body.style.fontFamily = "var(--font-sans)";
       win.addEventListener("pagehide", () => setPip(null));
       setPip(win);
     } catch { /* user closed it or browser refused: stay inline */ }
@@ -1085,12 +1090,12 @@ function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Ar
   const inner = (
     <>
       <div onPointerDown={pip ? undefined : onDown} style={{ cursor: pip ? "default" : "move", touchAction: "none", padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface-overlay)" }}>
-        <strong className="small">Charie</strong>
+        <strong style={{ fontSize: 14 }}>Charie</strong>{pip && <span className="small muted" style={{ marginLeft: 8 }}>on your call</span>}
         <span>
           {!pip && pipSupported && <button type="button" className="ghost sm" onClick={() => void openPip()} aria-label="Pop Charie out into a floating window" title="Pop out: floats over other tabs and apps (Chrome/Edge)">Pop out</button>}
           {pip && <button type="button" className="ghost sm" onClick={() => { pip.close(); setPip(null); }} aria-label="Dock Charie back into the room">Dock</button>}
           {!pip && <button type="button" className="ghost sm" onClick={() => setMaxed((v) => !v)} aria-label={maxed ? "Restore Charie widget size" : "Maximize Charie widget"} title={maxed ? "Restore size" : "Maximize"}>{maxed ? "Restore" : "Max"}</button>}
-          <button type="button" className="ghost sm" onClick={() => setOpen((v) => !v)} aria-label={open ? "Minimize Charie widget" : "Expand Charie widget"} title={open ? "Minimize" : "Expand"}>{open ? "-" : "+"}</button>
+          {!pip && <button type="button" className="ghost sm" onClick={() => setOpen((v) => !v)} aria-label={open ? "Minimize Charie widget" : "Expand Charie widget"} title={open ? "Minimize" : "Expand"}>{open ? "-" : "+"}</button>}
         </span>
       </div>
       {open && (
