@@ -45,6 +45,10 @@ const noUrlScans = heuristicTurn([u("can you do a first run or accessibility run
 ok(noUrlScans.kind === "text" && /URL/.test(noUrlScans.text ?? "") && /accessibility/i.test(noUrlScans.text ?? "") && /first-run/i.test(noUrlScans.text ?? "") && /UX/i.test(noUrlScans.text ?? "") && !(noUrlScans.text ?? "").includes("could not parse"), "scan/UX question without a URL asks for the URL and names all three options");
 const noUrlA11y = heuristicTurn([u("can you do an accessibility run?")]);
 ok(noUrlA11y.kind === "text" && /URL/.test(noUrlA11y.text ?? ""), "accessibility run without a URL asks for the URL instead of scanning");
+const demoScan = heuristicTurn([u("run a sample test")], "http://localhost:3101");
+ok(demoScan.kind === "tool" && demoScan.tool === "start_scan" && String((demoScan.args as Record<string, unknown>).targetUrl) === "http://localhost:3101", "demo sample test without a URL runs against the demo target");
+const demoA11y = heuristicTurn([u("can you do an accessibility run?")], "http://localhost:3101");
+ok(demoA11y.kind === "tool" && demoA11y.tool === "start_scan" && (demoA11y.args as Record<string, unknown>).kind === "a11y", "demo accessibility ask without a URL scans the demo target, not ask for one");
 const uxWithUrl = heuristicTurn([u("do a ux & redesign run on https://x.test/app")]);
 ok(uxWithUrl.kind === "tool" && uxWithUrl.tool === "file_ticket" && String((uxWithUrl.args as Record<string, unknown>).targetUrl) === "https://x.test/app" && /UX review/i.test(String((uxWithUrl.args as Record<string, unknown>).subject)), "UX run with a URL files a UX review ticket, not a scan kind");
 const seen = heuristicTurn([u("status?"), { role: "tool", content: "2 open tickets" }]);

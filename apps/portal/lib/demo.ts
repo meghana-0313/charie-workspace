@@ -112,6 +112,7 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
   const contextDocs: ContextDoc[] = [
     { id: "demo-doc-runbook", uid: DEMO_UID, title: "ShopFlow demo runbook (sample)", source: "note", body: "Sample context doc. Checkout totals must match the cart after coupons; keyboard users must reach checkout; uploads over 5 MB need a clear error. Demo Mode data - edit or delete freely.", createdAt: t(8), updatedAt: t(2) },
     { id: "demo-doc-release", uid: DEMO_UID, title: "Release notes (sample)", source: "note", body: "Sample context doc. TravelMate and WorkBoard are simulated targets in Demo Mode; ShopFlow runs against the local demo target.", createdAt: t(8), updatedAt: t(3) },
+    { id: "demo-doc-upload", uid: DEMO_UID, title: "ShopFast demo store - uploaded sample brief", source: "note", body: "Sample upload standing in for a user-provided brief or SDK doc. Target under test: the ShopFast demo store at http://localhost:3101 (npm run demo:target), seeded with intentional bugs: checkout returns 500 with 3 or more items, the Place order control is not keyboard reachable, three inputs are placeholder-only, and security headers are missing. Every sample scan and investigation in this workspace runs against that store until you point Charie at your own URL.", createdAt: t(8), updatedAt: t(1) },
   ];
   const chatThread: ChatThread = {
     id: "demo-thread-welcome", uid: DEMO_UID, title: "Demo workspace tour (sample)",

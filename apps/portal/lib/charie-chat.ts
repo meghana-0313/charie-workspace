@@ -9,6 +9,7 @@ import { runA11y, runFirstRun, runPentest } from "./guardian";
 import { fileTicketAndInvestigate } from "./tickets";
 import { isRepeatCall, summarizeToolResults, toolSignature, type ToolResultEntry } from "./chat-loop";
 import { DEMO_UID } from "./demo";
+import { DEMO_TARGET_NAME, DEMO_TARGET_URL } from "./demo-samples";
 
 export const DEMO_AI_OFFLINE = "Demo Mode uses real Meta models for AI answers, and no live model is configured on this host yet - so I will not fake a reply. The sample workspace (projects, runs, reports, findings) is fully browsable, and I can still answer from workspace tools. To make demo AI live here, start the engine with META_API_KEY and/or BASETEN_API_KEY set (environment, or Secret Manager via your Google Cloud login), then ask again.";
 
@@ -224,6 +225,9 @@ export async function answerMessage(opts: {
         callsCharieAssistedThisWeek: assistedThisWeek,
         totalCalls: meetRooms.length,
       },
+      // Demo Mode only: the sample scan target, so "run a sample test"
+      // executes live against the intentional-bug demo store.
+      ...(opts.uid === DEMO_UID ? { demo: { targetUrl: DEMO_TARGET_URL, targetName: DEMO_TARGET_NAME } } : {}),
     };
     const contextNotes = [...docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`), ...(opts.extraNotes ?? [])];
     const convo: LoopTurn[] = [...opts.history];
@@ -249,6 +253,12 @@ export async function answerMessage(opts: {
         return { text: turn.text ?? "Done.", model, actions };
       }
       const args = turn.args && typeof turn.args === "object" ? (turn.args as Record<string, unknown>) : {};
+      // Demo Mode: a scan asked without a URL runs against the sample
+      // ShopFast demo store (intentional bugs), so a first-time user can
+      // say "run a sample test" and get a real live scan.
+      if (opts.uid === DEMO_UID && turn.tool === "start_scan" && (args.kind === "a11y" || args.kind === "firstrun") && !validUrl(args.targetUrl)) {
+        args.targetUrl = DEMO_TARGET_URL;
+      }
       const toolName = turn.tool ?? "";
       // A repeated identical call adds nothing and once burned the whole
       // loop (help, help, help). Warn once, then stop and synthesize.

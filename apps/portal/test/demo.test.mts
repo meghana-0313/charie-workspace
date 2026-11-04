@@ -34,6 +34,14 @@ for (const [name, list] of [["a11y", sampleA11yReports()], ["firstrun", sampleFi
   assert.match(JSON.stringify(list), /[Ss]ample/, `demo ${name} sample is labelled as sample data`);
 }
 assert.ok(sampleClusters().clusters.length >= 1, "signals page has sample clusters");
+const digestText = sampleDigests()[0]?.digest ?? "";
+assert.match(digestText, /checkout/i, "night shift digest names the actual sample work");
+assert.match(digestText, /grade B/i, "night shift digest reports the sample security grade");
+assert.ok(!digestText.includes("run a live scan to replace this"), "night shift digest is real sample content, not a placeholder line");
+assert.ok(seed.contextDocs.some((d) => /uploaded sample/i.test(d.title)), "a sample upload stands in for user-provided docs and points scans at the demo store");
+for (const r of [...sampleA11yReports(), ...sampleFirstRunReports(), ...samplePentestReports()]) {
+  assert.ok(typeof r.executor === "string" && r.executor.length > 5, "every sample scan report names its executor for the after-scan tooltip");
+}
 assert.ok(sampleLogWatch().groups.length >= 1, "guardian page has a sample logwatch");
 assert.match(sampleZoom().provider, /[Ss]imulated/, "zoom sample is labelled simulated");
 for (const run of seed.runs) {

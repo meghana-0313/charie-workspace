@@ -43,6 +43,8 @@ export interface A11yReport {
   passed: number;
   failed: number;
   grade: "A" | "B" | "C" | "D" | "F";
+  /** Who executed this run, shown to the user right after the scan. */
+  executor: string;
 }
 
 function gradeOf(failedBlocker: number, failedMajor: number, failedMinor: number): A11yReport["grade"] {
@@ -108,6 +110,7 @@ export function gradeA11ySnapshot(targetUrl: string, snap: A11ySnapshot): A11yRe
   const passed = checks.filter((ch) => ch.pass).length;
   return {
     id: `a11y_${Date.now().toString(36)}`, at: new Date().toISOString(), targetUrl,
+    executor: "Charie engine - Playwright browser checks (deterministic, no AI grading)",
     checks, passed, failed: checks.length - passed,
     grade: gradeOf(
       checks.filter((ch) => !ch.pass && ch.severity === "blocker").length,

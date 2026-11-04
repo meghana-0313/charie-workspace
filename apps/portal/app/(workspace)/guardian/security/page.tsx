@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listPentestReports } from "@/lib/guardian";
 import { identity, scopeUid } from "@/lib/who";
 import { PentestButton, ProposeWorkOrderButton } from "@/components/suite";
+import { ExecutorTip } from "@/components/scans";
 import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
@@ -37,6 +38,7 @@ export default async function SecurityPage() {
         <div className="card"><EmptyState title="No scans yet" body="Run the suite to grade the deployment." /></div>
       ) : (
         <>
+          <ExecutorTip executor={latest.executor} target={latest.targets.join(", ")} />
           <div className="card" style={{ borderLeft: `4px solid ${failed.length === 0 ? "var(--ok)" : failed.some((c) => c.severity === "critical") ? "var(--danger)" : "var(--warn)"}` }}>
             <p style={{ margin: 0 }}>
               {failed.length === 0

@@ -92,6 +92,14 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
   const [modelChoice, setModelChoice] = useState<ChatModelChoice>(() => (typeof localStorage !== "undefined" && localStorage.getItem("charie-chat-model") as ChatModelChoice) || "auto");
   const [effort, setEffort] = useState<ChatEffort>(() => (typeof localStorage !== "undefined" && localStorage.getItem("charie-chat-effort") as ChatEffort) || "medium");
   const servedModel = [...msgs].reverse().find((m) => m.role === "assistant" && m.model)?.model;
+  // The footer follows the picker immediately: switching to Baseten or
+  // Meta changes the label right away, and the actual served model from
+  // the last answer is shown next to it once one exists. It never claims
+  // a provider served an answer it did not serve.
+  const selectedModel = CHAT_MODELS.find((m) => m.id === modelChoice);
+  const servedText = modelChoice === "auto"
+    ? (servedModel ? `Served by ${modelLabel(servedModel)}` : "Auto: Baseten first, then Meta")
+    : `Selected: ${selectedModel?.label ?? modelChoice} (${selectedModel?.provider ?? ""})${servedModel ? ` · last answer served by ${modelLabel(servedModel)}` : " · no answer yet"}`;
   const abort = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -288,7 +296,7 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
             {CHAT_EFFORTS.map((e2) => <option key={e2.id} value={e2.id}>{e2.label}</option>)}
           </select>
         </label>
-        <span className="served">{servedModel ? `Served by ${modelLabel(servedModel)}` : "Not answered yet"}</span>
+        <span className="served" aria-live="polite">{servedText}</span>
       </div>
       <form
         onSubmit={(e) => {
