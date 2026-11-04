@@ -1,4 +1,4 @@
-# Charie - AI support on the call, autonomous engineering on the loop, on standby all night.
+# Charie - AI support agent on the call, autonomous engineering on the loop, on standby all night.
 
 **Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts.**
 
