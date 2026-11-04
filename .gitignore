@@ -8,3 +8,7 @@ reports/
 .npm-cache/
 .tmp/
 .selftest/
+.data/
+.next/
+*.tsbuildinfo
+.gh-token

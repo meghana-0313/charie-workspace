@@ -1,0 +1,167 @@
+/* Charie design tokens v4: fixed brand kit "Teal Signal on Ink Navy".
+   One accent (teal), true-red danger, warm navy surfaces. No violet, no pink.
+   Fraunces (self-hosted, no network fetch) is the display face for headings
+   and the login wordmark; Inter/system is the UI face. */
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin.woff2") format("woff2");
+  unicode-range: u+0000-00ff, u+0131, u+0152-0153, u+02bb-02bc, u+02c6, u+02da, u+02dc, u+0304, u+0308, u+0329, u+2000-206f, u+20ac, u+2122, u+2191, u+2193, u+2212, u+2215, u+feff, u+fffd;
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin-ext.woff2") format("woff2");
+  unicode-range: u+0100-02ba, u+02bd-02c5, u+02c7-02cc, u+02ce-02d7, u+02dd-02ff, u+0304, u+0308, u+0329, u+1d00-1dbf, u+1e00-1e9f, u+1ef2-1eff, u+2020, u+20a0-20ab, u+20ad-20c0, u+2113, u+2c60-2c7f, u+a720-a7ff;
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("/fonts/fraunces-viet.woff2") format("woff2");
+  unicode-range: u+0102-0103, u+0110-0111, u+0128-0129, u+0168-0169, u+01a0-01a1, u+01af-01b0, u+0300-0301, u+0303-0304, u+0308-0309, u+0323, u+0329, u+1ea0-1ef9, u+20ab;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #0a0f14;
+  --bg-sunken: #070b0f;
+  --surface: #11181f;
+  --surface-raised: #16202a;
+  --surface-overlay: #1d2a36;
+  --line: #22303d;
+  --line-strong: #33465a;
+
+  --ink: #eef4f2;
+  --ink-muted: #aebfbb;
+  --ink-faint: #8aa39e;
+
+  --accent: #0fbfae;
+  --accent-hover: #0aa696;
+  --accent-strong: #0a7668;
+  --accent-strong-hover: #065f54;
+  --on-accent: #ffffff;
+  --accent-dim: rgba(15, 191, 174, 0.14);
+  --accent-ink: #6ee7d8;
+
+  --ok: #22c55e;
+  --ok-dim: rgba(34, 197, 94, 0.13);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245, 158, 11, 0.13);
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.13);
+  --info: #38bdf8;
+  --info-dim: rgba(56, 189, 248, 0.13);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 15px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --sidebar-w: 248px;
+  --content-w: 1680px;
+  --topbar-h: 64px;
+
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.32);
+
+  --topbar-bg: rgba(10, 15, 20, 0.92);
+  --row-hover: rgba(255, 255, 255, 0.03);
+  --scrollbar: #2c404d;
+  --dot: transparent;
+  --sidebar-bg: #0d141b;
+  --sev-high: #fb923c;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eceff7;
+  --bg-sunken: #dde3f0;
+  --surface: #ffffff;
+  --surface-raised: #f5f7fd;
+  --surface-overlay: #e6ebf7;
+  --line: #d3daec;
+  --line-strong: #b6c1dc;
+
+  --ink: #141a2e;
+  --ink-muted: #4c5878;
+  --ink-faint: #47557a;
+
+  --accent: #0f766e;
+  --accent-hover: #115e59;
+  --accent-dim: rgba(15, 118, 110, 0.1);
+  --accent-ink: #0f766e;
+  --accent-strong: #0f766e;
+  --accent-strong-hover: #115e59;
+  --on-accent: #ffffff;
+  --sidebar-bg: #ffffff;
+
+  --ok: #15803d;
+  --ok-dim: rgba(21, 128, 61, 0.12);
+  --warn: #b45309;
+  --warn-dim: rgba(180, 83, 9, 0.13);
+  --danger: #dc2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
+  --info: #0369a1;
+  --info-dim: rgba(3, 105, 161, 0.11);
+
+  --shadow-pop: 0 16px 40px rgba(21, 24, 54, 0.18);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 26px rgba(21, 24, 54, 0.08);
+  --topbar-bg: rgba(236, 239, 247, 0.92);
+  --row-hover: rgba(21, 24, 54, 0.035);
+  --scrollbar: #c0c9e0;
+  --dot: transparent;
+  --sev-high: #c2410c;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.1px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent-ink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::selection { background: rgba(15, 191, 174, 0.4); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; border: 2px solid var(--bg); }
+*::-webkit-scrollbar-track { background: transparent; }

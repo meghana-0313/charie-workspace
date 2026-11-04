@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShopFast - Cart</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header>
+  <a href="/">ShopFast</a>
+  <nav><a href="/cart">Cart (<span id="cart-count">0</span>)</a><a href="/checkout">Checkout</a></nav>
+</header>
+<main>
+  <h1>Your cart</h1>
+  <div id="cart-body"></div>
+  <div class="row">
+    <a class="btn secondary" href="/">Keep shopping</a>
+    <a class="btn" id="to-checkout" href="/checkout">Checkout</a>
+  </div>
+</main>
+<script type="module">
+import { loadProducts, getCart } from "/app.js";
+const products = Object.fromEntries((await loadProducts()).map((p) => [p.id, p]));
+const cart = getCart();
+const body = document.getElementById("cart-body");
+if (!cart.length) {
+  body.innerHTML = "<p class='muted'>Your cart is empty.</p>";
+  document.getElementById("to-checkout").style.display = "none";
+} else {
+  let total = 0;
+  body.innerHTML = "<table><tr><th>Item</th><th>Qty</th><th>Price</th></tr>" + cart.map((l) => {
+    const p = products[l.id];
+    total += p.price * l.qty;
+    return `<tr><td>${p.name}</td><td>${l.qty}</td><td>$${(p.price * l.qty).toFixed(2)}</td></tr>`;
+  }).join("") + `</table><p><strong>Total: $${total.toFixed(2)}</strong></p>`;
+}
+</script>
+</body>
+</html>

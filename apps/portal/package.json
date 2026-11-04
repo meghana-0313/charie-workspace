@@ -1,0 +1,30 @@
+{
+  "name": "@circle-back/portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Charie portal: tickets, issue rooms, runs, evidence viewer.",
+  "scripts": {
+    "dev": "next dev -p 3102",
+    "build": "next build",
+    "start": "next start -p 3102",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/csp.test.mts test/firestore-clean.test.mts test/keys.test.mts test/meet-rooms.test.mts test/middleware.test.mts test/presence.test.mts test/room-status.test.mts test/session.test.mts"
+  },
+  "dependencies": {
+    "firebase": "^13.1.0",
+    "firebase-admin": "^14.5.0",
+    "google-auth-library": "^11.3.2",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/web-push": "^3.6.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

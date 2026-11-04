@@ -1,8 +1,8 @@
 {
-  "name": "circle-back",
+  "name": "charie-workspace",
   "version": "0.1.0",
   "private": true,
-  "description": "GhostQA — autonomous product-quality engineer: ticket to verified fix in a closed loop.",
+  "description": "Charie - autonomous engineering intelligence: testing, security, production.",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -12,7 +12,10 @@
   "scripts": {
     "demo:target": "npm run dev --workspace apps/demo-target",
     "agent:run": "npm run run --workspace services/agent-engine",
-    "agent:build": "npm run build --workspace services/agent-engine"
+    "agent:build": "npm run build --workspace services/agent-engine",
+    "portal:dev": "npm run dev --workspace apps/portal",
+    "portal:build": "npm run build --workspace apps/portal",
+    "test": "npm run test --workspace services/agent-engine && npm run smoke --workspace services/mcp-server && npm run test --workspace apps/portal"
   },
   "engines": {
     "node": ">=20"

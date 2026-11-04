@@ -1,0 +1,70 @@
+import Link from "next/link";
+import { listDigests, listWorkOrders } from "@/lib/guardian";
+import { identity, scopeUid } from "@/lib/who";
+import { NightShiftButton } from "@/components/suite";
+import { Icon } from "@/components/icons";
+import { Badge, EmptyState, PageHead } from "@/components/ui";
+
+export const dynamic = "force-dynamic";
+
+export default async function NightPage() {
+  const digests = await listDigests(scopeUid(await identity()));
+  const orders = await listWorkOrders(scopeUid(await identity()));
+  const eligible = orders.filter((o) => o.status === "approved" || o.status === "scheduled");
+  const latest = digests.at(-1);
+  return (
+    <>
+      <PageHead
+        crumbs={[["/", "Home"], ["/guardian/night", "Night shift"]]}
+        title={<><span className="icon-orb violet" style={{ width: 38, height: 38 }}><Icon name="moon" size={19} /></span> Night shift</>}
+        sub="Approved work orders execute overnight: autonomous re-verifications, security re-scans, evidence packs, and remediation notes. The morning digest lands here and pushes to your phone."
+        actions={<><Link className="btn secondary" href="/reports">All reports</Link><NightShiftButton /></>}
+      />
+      <div className="stats">
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="order" size={20} /></span><div><div className="stat-num">{eligible.length}</div><div className="stat-label">Orders eligible now</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div className="stat-num">{latest ? latest.orders.filter((o) => o.status === "done").length : 0}</div><div className="stat-label">Done last shift</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="shield" size={20} /></span><div><div className="stat-num">{latest?.pentest?.grade ?? "n/a"}</div><div className="stat-label">Last re-scan grade</div></div></div></div>
+        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="layers" size={20} /></span><div><div className="stat-num">{digests.length}</div><div className="stat-label">Shifts completed</div></div></div></div>
+      </div>
+      <div className="card">
+        <div className="card-title">Shift control</div>
+        <p className="small muted">
+          {eligible.length} order(s) eligible right now. Browser re-verifications claim the same
+          single-run lock as portal runs, so the shift never fights a human-driven run.
+        </p>
+      </div>
+      {!latest ? (
+        <div className="card">
+          <EmptyState title="No shifts yet" body="Approve a work order, then run the shift to see the digest." />
+        </div>
+      ) : (
+        <>
+          <div className="card">
+            <div className="card-title">Latest digest <Badge>{latest.at.slice(0, 16).replace("T", " ")}</Badge>{latest.pentest && <> <Link className="small" href={`/reports/pentest/${latest.pentest.id}`}>Re-scan report</Link></>}</div>
+            <pre className="report">{latest.digest}</pre>
+          </div>
+          {digests.length > 1 && (
+            <div className="card">
+              <div className="card-title">Shift history</div>
+              <table>
+                <thead><tr><th>Shift</th><th>Orders</th><th>Done</th><th>Re-scan grade</th><th>Duration</th><th></th></tr></thead>
+                <tbody>
+                  {[...digests].reverse().map((d) => (
+                    <tr key={d.id}>
+                      <td className="small"><code>{d.id}</code></td>
+                      <td>{d.orders.length}</td>
+                      <td>{d.orders.filter((o) => o.status === "done").length}</td>
+                      <td><Badge>{d.pentest?.grade ?? "n/a"}</Badge></td>
+                      <td className="small muted">{Math.round(d.durationMs / 1000)}s</td>
+                      <td className="small">{d.pentest ? <Link href={`/reports/pentest/${d.pentest.id}`}>Report</Link> : <span className="muted">-</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+}

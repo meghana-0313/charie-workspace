@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShopFast - City travel passes</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header>
+  <a href="/">ShopFast</a>
+  <nav><a href="/cart">Cart (<span id="cart-count">0</span>)</a><a href="/checkout">Checkout</a></nav>
+</header>
+<main>
+  <h1>City travel passes</h1>
+  <p class="muted">Same-day passes for metro, rail, ferry and bikes.</p>
+  <div class="grid" id="products"></div>
+</main>
+<script type="module">
+import { loadProducts } from "/app.js";
+const list = document.getElementById("products");
+for (const p of await loadProducts()) {
+  const el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = `<h3>${p.name}</h3><p class="muted">${p.blurb}</p>
+    <div class="price">$${p.price.toFixed(2)}</div>
+    <a class="btn" href="/product?id=${p.id}">View</a>`;
+  list.appendChild(el);
+}
+</script>
+</body>
+</html>
