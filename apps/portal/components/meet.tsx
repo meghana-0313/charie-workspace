@@ -1017,6 +1017,51 @@ export function AskCharie({ roomId, qp, name, onBeforePost }: { roomId: string; 
 
 /** War-room side panel: Transcript | Charie (thinking + consent cards) |
  *  Notes & Actions. Charie only acts after a human approves a card. */
+/**
+ * Movable Charie widget: floats over the call (drag its header anywhere)
+ * and shows her replies as text the moment they are posted - before the
+ * voice finishes - plus her latest visible thought. Replies are the same
+ * transcript lines everyone sees, so the widget can never show words she
+ * did not actually say.
+ */
+function CharieWidget({ lines, thoughts }: { lines: LiveLineView[]; thoughts: Array<{ at: string; text: string }> }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [open, setOpen] = useState(true);
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const replies = lines.filter((l) => l.role === "agent").slice(-3);
+  if (replies.length === 0) return null;
+  const onDown = (e: React.PointerEvent) => {
+    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    const move = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      setPos({ x: Math.max(4, Math.min(window.innerWidth - 120, ev.clientX - dragRef.current.dx)), y: Math.max(4, Math.min(window.innerHeight - 60, ev.clientY - dragRef.current.dy)) });
+    };
+    const up = () => { dragRef.current = null; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  return (
+    <div role="complementary" aria-label="Charie replies" style={{ position: "fixed", zIndex: 80, width: "min(340px, 92vw)", ...(pos ? { left: pos.x, top: pos.y } : { right: 16, bottom: 108 }), background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 16px 40px rgba(0,0,0,.4)", overflow: "hidden" }}>
+      <div onPointerDown={onDown} style={{ cursor: "move", touchAction: "none", padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface-overlay)" }}>
+        <strong className="small">Charie</strong>
+        <span>
+          <button type="button" className="ghost sm" onClick={() => setOpen((v) => !v)} aria-label={open ? "Collapse Charie widget" : "Expand Charie widget"}>{open ? "-" : "+"}</button>
+        </span>
+      </div>
+      {open && (
+        <div style={{ padding: "8px 10px", maxHeight: 260, overflowY: "auto" }}>
+          {replies.map((l, i) => (
+            <p key={i} className="small" style={{ margin: "0 0 6px" }}><span className="muted">{transcriptStamp(l.at)}</span> {l.text}</p>
+          ))}
+          {thoughts.length > 0 && <p className="small muted" style={{ margin: 0 }}>Thinking: {thoughts[thoughts.length - 1].text}</p>}
+          <p className="small muted" style={{ margin: "6px 0 0" }}>Drag the header to move me. My words appear here as I post them, even while the voice is still speaking.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function LiveNotes({ roomId, token = "", canManage, transcribe, localName, onAgentChange, onAgentSpeak, onRequestShare, visionOn = false, onVisionChange, getScreenFrame }: {
   roomId: string; token?: string; canManage: boolean; transcribe: boolean; localName: string;
   onAgentChange?: (on: boolean) => void; onAgentSpeak?: (speaking: boolean) => void; onRequestShare?: () => void;
@@ -1518,6 +1563,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         </>
       )}
       {msg && <p className="small" style={{ color: "var(--accent-ink)", marginTop: 8 }}>{msg}</p>}
+      <CharieWidget lines={lines} thoughts={agent.thoughts} />
     </div>
   );
 }

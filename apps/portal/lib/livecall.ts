@@ -165,7 +165,45 @@ export function updateAction(roomId: string, actionId: string, patch: Partial<Ag
 
 /** Charie speaks into the transcript (role: agent) so every participant,
  *  including guests, sees the same words the room hears. */
+function normSpeech(s: string): string {
+  return s.toLowerCase().replace(/\b(the|your|a|an)\b/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function commonPrefixLen(a: string, b: string): number {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+/**
+ * Would this line repeat something Charie already said in this call?
+ * Watch descriptions, question answers, and confirmations arrive via
+ * different paths and used to re-say the same screen description two or
+ * three times. Exact repeats, near-verbatim repeats, and same-lead
+ * re-descriptions (vision lines share their opening) inside the window
+ * all count as repeats and never reach the transcript or the voice.
+ */
+export function isRepeatSpeech(prior: LiveLine[], text: string, windowMs = 180000, now = Date.now()): boolean {
+  const n = normSpeech(text);
+  if (n.length < 12) return false;
+  for (const l of [...prior].reverse()) {
+    if (l.role !== "agent") continue;
+    if (now - new Date(l.at).getTime() > windowMs) continue;
+    const p = normSpeech(l.text);
+    if (p === n) return true;
+    if (Math.min(p.length, n.length) > 50 && commonPrefixLen(p, n) >= 30) return true;
+    if (Math.min(p.length, n.length) > 40 && (p.includes(n) || n.includes(p))) return true;
+  }
+  return false;
+}
+
 export function speak(roomId: string, text: string): LiveLine {
+  const r = get(roomId);
+  if (isRepeatSpeech(r.lines, text)) {
+    addThought(roomId, `Skipped a repeat: "${text.slice(0, 80)}" was already said in this call.`);
+    const last = [...r.lines].reverse().find((l) => l.role === "agent");
+    if (last) return last;
+  }
   return postLine(roomId, { speaker: "Charie", role: "agent", text });
 }
 

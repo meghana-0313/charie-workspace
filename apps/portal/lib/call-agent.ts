@@ -31,10 +31,19 @@ async function engineReply(roomId: string, line: LiveLine): Promise<string | nul
     role: l.role === "agent" ? "assistant" as const : "user" as const,
     content: `${l.speaker}: ${l.text}`,
   }));
+  const vision = getVision(roomId);
+  // Ground-truth anchoring: a captured frame description already in this
+  // history is the one source of truth about the screen. The model used
+  // to both describe a frame and later deny seeing it; now the frame is
+  // restated as an instruction it cannot contradict, and causes the
+  // frame cannot show must be named as unknowable, not guessed.
+  const screenNote = vision
+    ? `Screen ground truth: at ${vision.at} you captured and described this frame: "${vision.text}". It is in this history as your own line. For anything about the screen, use ONLY this: never deny seeing it, never contradict it, never repeat the full description unless asked. If asked WHY something in it happened (for example why usage spiked), say the frame shows the fact but cannot show the cause, and offer the next place to check.`
+    : "Screen truth: no frame has been captured in this call yet. Do not claim to see any screen; ask them to share and press Charie, look.";
   try {
     const ans = await answerMessage({
       history, uid: undefined, surface: "meet-call", effort: "low",
-      extraNotes: ["You are speaking aloud in a live video call as Charie. Be brief like a human in a meeting: ONE short sentence, at most 25 words, unless they explicitly ask for detail. Lead with the answer - no preamble, no restating their question, no filler like 'great question'. If a short answer would mislead, say the key point and offer to expand. Plain words, contractions. No markdown, no lists, no links, no ticket ids or URLs read aloud.", "Screen truth: you do NOT get a live video feed and cannot watch anyone's screen. You only see a single frame when a participant shares, vision is on, and a Charie, look capture succeeds - that description then appears in this history as your own line. Never say you can see a screen, or that you are looking at it, unless such a captured-frame description is already in this history. Otherwise say you cannot see it yet and ask them to share and press Charie, look."],
+      extraNotes: ["You are speaking aloud in a live video call as Charie. Be brief like a human in a meeting: ONE short sentence, at most 25 words, unless they explicitly ask for detail. Lead with the answer - no preamble, no restating their question, no filler like 'great question'. If a short answer would mislead, say the key point and offer to expand. Plain words, contractions. No markdown, no lists, no links, no ticket ids or URLs read aloud.", screenNote],
     });
     if (!ans.text || ans.model === "heuristic" && /engine is unreachable/i.test(ans.text)) return null;
     return ans.text.trim().slice(0, 600) || null;
