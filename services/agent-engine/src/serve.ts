@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 import { loadSecrets, secret } from "./secrets.js";
 import { createApp } from "./server.js";
 
-await loadSecrets();
+const loadedSecrets = await loadSecrets();
+// Names and counts only, never values: Cloud Run logs must be able to
+// answer "did META_API_KEY reach this process" at a glance.
+console.log(`[engine] secrets loaded: ${loadedSecrets.loaded.join(", ") || "none"}; missing: ${loadedSecrets.missing.join(", ") || "none"}`);
 // The engine API drives browsers and reads reports: never serve it
 // unauthenticated. Local dev opts out explicitly with ENGINE_DEV_OPEN=1.
 if (!secret("ENGINE_TOKEN") && process.env.ENGINE_DEV_OPEN !== "1") {
