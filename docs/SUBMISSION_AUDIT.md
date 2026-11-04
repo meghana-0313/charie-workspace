@@ -36,7 +36,7 @@ Credential rotation: not required - the scan found no exposed credential to rota
 | Sample data is populated | Done | 3 projects, 8 tickets, 4 runs with findings fixtures, 2 simulated incidents, simulated GitHub repo, schedules, sample Meet call; counts verified by probe and tests |
 | Meta models perform genuine AI work | Done where keys exist | Chat brain (Baseten Muse Spark Open, then Meta Muse Spark 1.3), vision (Meta first), Spark enrichment, Wonder, Image, SAM, Voice Transcribe, Glimmer - file-traced in [TECHNICAL.md](TECHNICAL.md) section 21. Without keys the product labels heuristic mode and Demo Mode says so plainly instead of faking |
 | Recorded evidence has full provenance | Prepared, recording is the owner's | [DEMO_PROVENANCE.md](DEMO_PROVENANCE.md) defines the pack: per-segment model ids, prompts, raw outputs, traces, live-vs-simulated labels, build/version |
-| Three-minute video demonstrates the actual project | Owner action | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is the beat sheet; record against the live app or a local run with keys, per the provenance doc |
+| Three-minute video demonstrates the actual project | Owner action | The demo script (kept outside this repo) is the beat sheet; record against the live app or a local run with keys, per the provenance doc |
 
 ## Owner approvals still required (nothing below was done by the audit)
 

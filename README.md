@@ -10,9 +10,11 @@
 
 **Vision:** a world where no customer ever has to describe a screen over the phone, no solo developer ever wakes up to an attack that ran for six hours, and no bug is called "fixed" until software itself has proved it.
 
-Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (Google or email sign-in)
+Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (email sign-in, or Explore Charie Demo - no login needed)
 
-Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md). Three-minute demo: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md).
+
+**Built during the hackathon:** everything in this repository - product, engine, demo store, docs, and tests - was designed, built, and shipped during the Meta Global AI Developer Hackathon 2026. Nothing predates it.
 
 ---
 
@@ -252,7 +254,6 @@ Production runs on one Google Cloud project: Cloud Run services `charie-portal`,
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) - every feature, flow, API, model, data store, and limitation
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - system design and agent roles
 - [docs/META_STACK.md](docs/META_STACK.md) - Meta model mapping and secrets
-- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) - the three-minute demo, beat by beat
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - collections and records
 - [docs/MOBILE_SDK.md](docs/MOBILE_SDK.md) - production signal contract for mobile apps
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately not in this build, and why
