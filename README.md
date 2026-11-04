@@ -131,6 +131,7 @@ On the login page, press **Explore Charie Demo - no login needed**. No account, 
 - **The chat footer tells the truth live:** switch the model picker to Baseten or Meta and the label changes immediately, with the model that actually served the last answer shown separately.
 - **Your progress is saved** in the same store as real data (local files on your machine, Firestore on the hosted demo) under the demo account only. **Reset Demo Workspace** in the banner restores the seed and removes only demo changes - never real user data.
 - **Simulated vs live is labelled:** sample builds and incidents say "simulated"; seeded findings say SAMPLE DEMO DATA. Nothing simulated is presented as a live result.
+- **The demo video is the primary artifact; this live link is a bonus.** Everything in the 3-minute video is reproducible here, but if the hosted instance is slow, cold, or out of model quota on the day, the video is the canonical demo. Hosted AI answers spend the host's configured keys, which is exactly why the video carries the full story on its own.
 
 **About AI in Demo Mode - the honest version.** Demo Mode never fakes AI. Live AI actions (Chat answers, investigation analysis, test plans, call vision) call the real models: Baseten Muse Spark Open first for chat, Meta Muse Spark 1.3 direct, the lanes in the model table below. Those calls need a key on the host that runs the engine:
 
@@ -191,7 +192,7 @@ Customer / teammate / production signal
         ticket closed with evidence
 ```
 
-The portal (`apps/portal`, Next.js) owns identity, rooms, approvals, and reports. The engine (`services/agent-engine`, Playwright plus Meta models) does the driving, seeing, and reasoning. The demo target (`apps/demo-target`) is the intentionally buggy store the loop is proven against. Modal hosts the warm Kokoro voice. Firestore or local JSON files store everything per account. The complete component, API, data, and model reference is [docs/TECHNICAL.md](docs/TECHNICAL.md).
+The portal (`apps/portal`, Next.js) owns identity, rooms, approvals, and reports. The engine (`services/agent-engine`, Playwright plus Meta models) does the driving, seeing, and reasoning. The demo target (`apps/demo-target`) is the intentionally buggy store the loop is proven against. Calls speak through Cartesia Sonic when its key is configured, with Modal Kokoro and the browser voice as fallbacks. Firestore or local JSON files store everything per account. The complete component, API, data, and model reference is [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
 ## Meta models, honestly
 
@@ -211,7 +212,7 @@ A model counts as used only when a real request succeeds. Every surface degrades
 
 **Which model actually answers you in Chat and Meet (read this carefully):**
 
-- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten, Meta, or Heuristic with the model pill; every reply labels which lane answered.
+- Thinking and replying (the brain): Chat and Meet share one agent loop. In Auto (the default, and the only mode inside a Meet call) it calls **Baseten first: Muse Spark Open `meta-models/muse-spark-open-1026`**. That is an open-weight model served by Baseten - it is **not** `muse-spark-1.3`. If Baseten is missing or fails, it falls back to **Meta Model API directly: Muse Spark `muse-spark-1.3`**, then to the built-in heuristic (labelled). In Chat you can force Baseten or Meta with the model picker; forcing one never falls back silently - with no live model it says so. Auto alone keeps the labelled heuristic as a last resort. Every reply labels which lane answered, and the footer updates the moment you switch.
 - Seeing the screen (vision): the order flips. **Meta Muse Spark `muse-spark-1.3` direct first**, Baseten Muse Spark Open second.
 - Speaking (voice out): **not a Meta model and not Baseten.** Charie's voice is Kokoro-82M hosted on **Modal** (`CHARIE_TTS_URL`), falling back to the browser voice.
 - Hearing (voice in): the browser Web Speech API in calls. **Muse Voice Transcribe `muse-voice-transcribe-1.0`** is used only for voice bug-report tickets, not live-call listening.
