@@ -53,6 +53,78 @@ function modelLabel(model?: string): string {
   return m ? m[0] : model.slice(0, 32);
 }
 
+/** Steps Charie visibly walks through for one request, from its wording. */
+function activitySteps(request: string, modelText: string): string[] {
+  const low = request.toLowerCase();
+  if (low.startsWith("running the approved action")) {
+    return [
+      request,
+      "Executing it now - a browser scan can take a minute; deterministic checks run one at a time",
+      "Collecting the graded result and its evidence",
+      "Composing the answer from what was actually found",
+    ];
+  }
+  const steps = [
+    "Reading your request",
+    "Checking the workspace snapshot: tickets, schedules, repos, and this week's calls",
+  ];
+  if (/(scan|accessib|a11y|first.?run|security|pentest|\bux\b|redesign|sample test|demo test)/.test(low)) {
+    steps.push("Picking the scan kind and confirming its target");
+    steps.push(`Planning the next step with ${modelText}`);
+    steps.push("Waiting for the reply: a proposed scan still needs your approval card before it runs");
+  } else if (/(ticket|status|finding|report|bug|issue)/.test(low)) {
+    steps.push("Finding the ticket, its runs, and its evidence");
+    steps.push(`Planning the next step with ${modelText}`);
+    steps.push("Waiting for the reply");
+  } else if (/^(try|retry)/.test(low)) {
+    steps.push("Re-issuing the exact action that was proposed before, same kind and target");
+    steps.push("Waiting for the reply: it still needs your approval card before it runs");
+  } else {
+    steps.push(`Planning the reply with ${modelText}`);
+    steps.push("Waiting for the reply");
+  }
+  steps.push("Composing the answer from what was actually found");
+  return steps;
+}
+
+/**
+ * Live activity panel shown while Charie works: what she is doing right
+ * now, step by step, instead of a flat "working". This is real activity
+ * (request, snapshot, tool planning, waiting), never a transcript of the
+ * model's private reasoning, which stays private by design.
+ */
+function WorkingPanel({ request, modelText, onStop }: { request: string; modelText: string; onStop: () => void }) {
+  const steps = activitySteps(request || "your request", modelText);
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => clearInterval(t);
+  }, []);
+  const active = Math.min(steps.length - 1, Math.floor(elapsed / 3));
+  return (
+    <div className="chat-row assistant" aria-live="polite">
+      <span className="chat-avatar" aria-hidden>C</span>
+      <div className="chat-body">
+        <div className="chat-bubble2" style={{ minWidth: 260 }}>
+          <p className="small" style={{ margin: "0 0 6px" }}><strong>What Charie is doing</strong> <span className="muted">({elapsed}s)</span></p>
+          <ul className="small" style={{ margin: 0, paddingLeft: 16 }}>
+            {steps.map((s, i) => (
+              <li key={s} style={{ opacity: i > active ? 0.45 : 1, margin: "2px 0" }}>
+                {i < active ? "Done: " : i === active ? "Now: " : ""}{s}{i === active ? "..." : ""}
+              </li>
+            ))}
+          </ul>
+          <p className="small muted" style={{ margin: "6px 0 0" }}>
+            Live activity only. Her private reasoning is never shown; the answer will cite what she actually found.
+            <button type="button" className="ghost sm" onClick={onStop} style={{ marginLeft: 8 }}>Stop</button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function clock(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -100,6 +172,7 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
   const servedText = modelChoice === "auto"
     ? (servedModel ? `Served by ${modelLabel(servedModel)}` : "Auto: Baseten first, then Meta")
     : `Selected: ${selectedModel?.label ?? modelChoice} (${selectedModel?.provider ?? ""})${servedModel ? ` · last answer served by ${modelLabel(servedModel)}` : " · no answer yet"}`;
+  const [activity, setActivity] = useState("");
   const abort = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -159,6 +232,7 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
     const clean = text.trim();
     if ((!clean && pending.length === 0) || busy || uploading > 0) return;
     const atts = pending;
+    setActivity(clean || "the attachment you sent");
     setBusy(true);
     setInput("");
     setPending([]);
@@ -191,11 +265,14 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
       }
     }
     abort.current = null;
+    setActivity("");
     setBusy(false);
   }
 
   async function decideConsent(consentId: string, decision: "approved" | "denied") {
     if (!tid || busy) return;
+    const card = msgs.find((m) => m.consent?.id === consentId)?.consent;
+    setActivity(decision === "approved" ? `Running the approved action: ${card?.detail ?? card?.title ?? "scan"}` : "Recording your decision");
     setBusy(true);
     const res = await fetch("/api/chat/consent", {
       method: "POST", headers: { "content-type": "application/json" },
@@ -208,6 +285,7 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
     } else {
       setError(j.error ?? "That decision did not go through.");
     }
+    setActivity("");
     setBusy(false);
   }
 
@@ -276,10 +354,11 @@ export function ChatPanel({ threadId, initial, initialInput = "" }: { threadId: 
           </div>
         ))}
         {busy && (
-          <p className="small muted row">
-            Charie is working…
-            <button type="button" className="ghost sm" onClick={() => abort.current?.abort()}>Stop</button>
-          </p>
+          <WorkingPanel
+            request={activity}
+            modelText={modelChoice === "auto" ? "the selected model (Baseten first, then Meta)" : (selectedModel?.label ?? modelChoice)}
+            onStop={() => abort.current?.abort()}
+          />
         )}
         <div ref={bottom} />
       </div>
