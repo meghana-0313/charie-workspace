@@ -67,7 +67,7 @@ export default async function UxPage() {
           <div className="card-title"><span className="icon-orb violet"><Icon name="play" /></span> Start a UX review</div>
           <p className="small muted">Charie walks the live page like a new user, flags friction, and drafts redesign directions with generated alternatives.</p>
           {isDemoAccount(myUid) && <p className="small muted">Demo: prefilled with the {DEMO_TARGET_NAME} at {DEMO_TARGET_URL}.</p>}
-          <UxReviewButton defaultTarget={isDemoAccount(myUid) ? DEMO_TARGET_URL : ""} />
+          <UxReviewButton defaultTarget={isDemoAccount(myUid) ? DEMO_TARGET_URL : (await store.getSetting("defaultTargetUrl").catch(() => null)) ?? ""} />
         </div>
       </div>
     </>

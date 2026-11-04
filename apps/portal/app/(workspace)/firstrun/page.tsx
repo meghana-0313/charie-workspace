@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listFirstRunReports } from "@/lib/guardian";
 import { DEMO_TARGET_NAME, DEMO_TARGET_URL, isDemoAccount } from "@/lib/demo-samples";
 import { identity, scopeUid } from "@/lib/who";
+import { store } from "@/lib/store";
 import { ExecutorTip, FirstRunForm } from "@/components/scans";
 import { Icon } from "@/components/icons";
 import { EmptyState, PageHead } from "@/components/ui";
@@ -83,7 +84,7 @@ export default async function FirstRunPage() {
         <div className="card">
           <div className="card-title"><span className="icon-orb violet"><Icon name="play" /></span> New test</div>
           <p className="small muted">Opens the page like a first time visitor and grades the first sixty seconds.</p>
-          <FirstRunForm defaultTarget={demo ? DEMO_TARGET_URL : ""} />
+          <FirstRunForm defaultTarget={demo ? DEMO_TARGET_URL : (await store.getSetting("defaultTargetUrl").catch(() => null)) ?? ""} />
         </div>
       </div>
     </>
