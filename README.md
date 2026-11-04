@@ -133,6 +133,36 @@ On the login page, press **Explore Charie Demo - no login needed**. No account, 
 - **Your own machine:** set `META_API_KEY` and/or `BASETEN_API_KEY` as environment variables, or sign in with `gcloud auth application-default login` plus `GCP_PROJECT_ID` and the engine reads your Secret Manager secrets itself (env wins first, then Secret Manager - there is no `.env` file).
 - **A judge's machine with no keys:** the sample workspace still opens and browses fully, but AI answers say plainly that no live model is configured instead of inventing one. We will not ship the owner's private API keys inside a public repo - that would leak them - and we will not pretend a heuristic is a Meta model.
 
+## Judges: two ways to evaluate (pick either)
+
+**Path A - hosted demo, zero setup.** Open https://charie-portal-ehfuotlisq-uc.a.run.app, press **Explore Charie Demo - no login needed** on the login page. Sample projects, runs, reports, and simulated integrations load immediately, and AI answers are powered by the host's configured Meta models. No account, no key, nothing to install.
+
+**Path B - run it yourself, with your own Meta key.** This is the reproducible path:
+
+1. Clone this repo and install: `npm install` (Node.js 20+). Install the browser once: `npm exec --workspace services/agent-engine -- playwright install chromium`.
+2. Get your own Meta Model API key at https://dev.meta.ai (Model API). It is free to create; usage is billed to *your* key. Never use anyone else's key, and never commit yours - this repo intentionally has no `.env` loader, and `.env` is gitignored.
+3. Set the key in your shell before starting the engine. Windows PowerShell:
+
+```powershell
+$env:META_API_KEY="your key"
+$env:ENGINE_DEV_OPEN="1"
+```
+
+Linux / macOS:
+
+```bash
+export META_API_KEY="your key"
+export ENGINE_DEV_OPEN=1
+```
+
+Optional: `BASETEN_API_KEY` (Muse Spark Open brain), `CHARIE_TTS_URL` (Modal voice). Full list with placeholders: [.env.example](.env.example).
+
+4. There is no database to initialize locally: the portal creates its JSON file store on first run, and Demo Mode seeds itself the first time you enter it. (Hosted mode uses Firestore - see [docs/TECHNICAL.md](docs/TECHNICAL.md).)
+5. Start the three processes and follow the Five-minute judge tour below: `npm run demo:target`, `npm run serve --workspace services/agent-engine`, `npm run portal:dev`, then http://localhost:3102.
+6. Tests any time: `npm test` (offline-safe, no keys needed).
+
+Submission readiness evidence (secret scan results, checklist): [docs/SUBMISSION_AUDIT.md](docs/SUBMISSION_AUDIT.md). Recorded-demo provenance pack: [docs/DEMO_PROVENANCE.md](docs/DEMO_PROVENANCE.md).
+
 ## How it works, in one picture
 
 ```text
@@ -220,5 +250,8 @@ Production runs on one Google Cloud project: Cloud Run services `charie-portal`,
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - collections and records
 - [docs/MOBILE_SDK.md](docs/MOBILE_SDK.md) - production signal contract for mobile apps
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately not in this build, and why
+- [docs/SUBMISSION_AUDIT.md](docs/SUBMISSION_AUDIT.md) - secret scan results and the final submission checklist
+- [docs/DEMO_PROVENANCE.md](docs/DEMO_PROVENANCE.md) - provenance pack for the recorded demo
+- [.env.example](.env.example) - every configuration variable, placeholders only
 
 *Every line of this repo was written with Muse Code by Meta.*
