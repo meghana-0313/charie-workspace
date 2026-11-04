@@ -81,9 +81,17 @@ export const firestoreStore = {
     await firestore().collection("tickets").doc(id).update({ status, updatedAt: now() });
   },
 
+  /** Upsert a full ticket record (demo seeding). */
+  async saveTicket(t: Ticket): Promise<void> {
+    await firestore().collection("tickets").doc(t.id).set(clean({ ...t }));
+  },
   async getRoom(id: string): Promise<Room | null> {
     const d = await firestore().collection("rooms").doc(id).get();
     return d.exists ? (d.data() as Room) : null;
+  },
+  /** Upsert a full room record (demo seeding). */
+  async saveRoom(r: Room): Promise<void> {
+    await firestore().collection("rooms").doc(r.id).set(clean({ ...r }));
   },
   async getRoomByTicket(ticketId: string): Promise<Room | null> {
     const snap = await firestore().collection("rooms").where("ticketId", "==", ticketId).limit(1).get();
@@ -384,6 +392,37 @@ export const firestoreStore = {
   },
   async deleteContextDoc(id: string): Promise<void> {
     await firestore().collection("context_docs").doc(id).delete().catch(() => {});
+  },
+
+  /** Delete every record owned by one uid (demo workspace reset only). */
+  async clearDemoData(demoUid: string): Promise<void> {
+    const fs = firestore();
+    const byUid = async (col: string): Promise<string[]> => {
+      const snap = await fs.collection(col).where("uid", "==", demoUid).get();
+      return snap.docs.map((d) => d.id);
+    };
+    const ticketIds = await byUid("tickets");
+    const roomSnap = ticketIds.length > 0 ? await fs.collection("rooms").where("ticketId", "in", ticketIds.slice(0, 30)).get() : null;
+    const roomIds = roomSnap ? roomSnap.docs.map((d) => d.id) : [];
+    const repoIds = await byUid("repos");
+    const kill = async (col: string, ids: string[]) => {
+      for (const id of ids) await fs.collection(col).doc(id).delete().catch(() => {});
+    };
+    await kill("tickets", ticketIds);
+    await kill("rooms", roomIds);
+    for (const col of ["runs", "incidents", "repos", "schedules", "meet_rooms", "chat_threads", "connectors", "sync_rules", "context_docs"]) {
+      await kill(col, await byUid(col));
+    }
+    if (repoIds.length > 0) {
+      const b = await fs.collection("builds").where("repoId", "in", repoIds.slice(0, 30)).get();
+      await kill("builds", b.docs.map((d) => d.id));
+    }
+    for (const rid of roomIds) {
+      for (const sub of ["messages", "approvals"]) {
+        const docs = await fs.collection("rooms").doc(rid).collection(sub).get().catch(() => null);
+        if (docs) for (const d of docs.docs) await d.ref.delete().catch(() => {});
+      }
+    }
   },
 
   async getSetting(key: string): Promise<string | null> {

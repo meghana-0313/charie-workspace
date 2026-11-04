@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { listA11yReports } from "@/lib/guardian";
+import { DEMO_TARGET_NAME, DEMO_TARGET_URL, isDemoAccount } from "@/lib/demo-samples";
 import { identity, scopeUid } from "@/lib/who";
-import { A11yRunForm } from "@/components/scans";
+import { A11yRunForm, ExecutorTip } from "@/components/scans";
 import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function A11yPage() {
-  const reports = await listA11yReports(scopeUid(await identity()));
+  const uid = scopeUid(await identity());
+  const demo = isDemoAccount(uid);
+  const reports = await listA11yReports(uid);
   const latest = reports.at(-1);
   const failed = latest?.checks.filter((c) => !c.pass) ?? [];
   return (
@@ -19,6 +22,13 @@ export default async function A11yPage() {
         sub="Eight checks against your live page in a real browser: alt text, form labels, button names, headings, language, keyboard reach, text contrast."
         actions={<Link className="btn secondary" href="/reports">All reports</Link>}
       />
+      {demo && (
+        <div className="card" style={{ marginBottom: "var(--space-4)" }}>
+          <div className="card-title">Sample target ready</div>
+          <p className="small muted" style={{ margin: 0 }}>Scans in this demo run against the <strong>{DEMO_TARGET_NAME}</strong> at <code>{DEMO_TARGET_URL}</code> (start it with <code>npm run demo:target</code>). The form on the right is prefilled with it - press run and the scan executes live against those intentional bugs.</p>
+        </div>
+      )}
+      {latest && <ExecutorTip executor={latest.executor} target={latest.targetUrl} />}
       {latest && (
         <div className="stats">
           <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="access" size={20} /></span><div><div className="stat-num">{latest.grade}</div><div className="stat-label">Latest grade</div></div></div></div>
@@ -73,7 +83,7 @@ export default async function A11yPage() {
         <div className="card">
           <div className="card-title"><span className="icon-orb violet"><Icon name="play" /></span> New scan</div>
           <p className="small muted">Runs in a real browser against the live page. Results save to your account.</p>
-          <A11yRunForm />
+          <A11yRunForm defaultTarget={demo ? DEMO_TARGET_URL : ""} />
         </div>
       </div>
     </>

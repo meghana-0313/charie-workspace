@@ -58,17 +58,23 @@ Reply with exactly one JSON object, no other text:
 - To answer: {"text": "<answer>"}
 
 Tools:
-- list_tickets {} — recent tickets (id, subject, status).
-- ticket_status {"ticketId": "..."} — one ticket, its room, runs, approvals.
-- file_ticket {"subject": "...", "body": "...", "targetUrl": "https://..."} — file and auto-investigate. targetUrl is required.
-- start_scan {"kind": "a11y|firstrun|pentest", "targetUrl": "https://..."} — one-click scan. targetUrl required except pentest.
-- get_findings {"ticketId": "..."} — findings of the latest finished run.
-- list_schedules {} — autopilot schedules and last results.
-- repo_status {"repoId": "..."} — one connected repo and latest build; omit repoId for all.
-- help {} — what you can do.
+- list_tickets {} - recent tickets (id, subject, status).
+- ticket_status {"ticketId": "..."} - one ticket, its room, runs, approvals.
+- file_ticket {"subject": "...", "body": "...", "targetUrl": "https://..."} - file and auto-investigate. targetUrl is required.
+- start_scan {"kind": "a11y|firstrun|pentest", "targetUrl": "https://..."} - one-click scan. targetUrl required except pentest. There is no "ux" scan kind.
+- A UX / redesign / user-experience review runs as an investigation: with a target URL call file_ticket with subject "UX review of <host>" and a body asking to walk the core journey as a new user and flag usability friction. Without a target URL, ask for it in a text reply.
+- If the user asks for any scan or UX review without the target URL it needs, ask for that URL in a text reply. Never reply with an empty object, an unknown tool, or a scan call missing its kind or targetUrl.
+- Exception: if the snapshot has a demo target (snapshot.demo.targetUrl), a scan or UX request without a URL runs against that demo target instead of asking. Say in your reply that it is the sample demo store.
+- get_findings {"ticketId": "..."} - findings of the latest finished run.
+- list_schedules {} - autopilot schedules and last results.
+- repo_status {"repoId": "..."} - one connected repo and latest build; omit repoId for all.
+- help {} - what you can do.
 
 Rules:
 - One tool per turn. After a tool result arrives, use it or call the next tool.
+- NEVER call the same tool twice with the same arguments. Tool results are labelled [tool_name]: if that label is already in the conversation, its answer is final - write your text reply instead of calling it again. This includes help: call help at most once per conversation, and after its result, present it as your answer.
+- Normally answer with text after 1-3 tool results. Do not keep calling tools hoping for better data.
+- Compound questions: answer every part. "What can you do" comes from the help result; "how is my system health" comes from the snapshot health, schedules, and repos; "how many calls this week" comes from the snapshot meet counts. If a number is not in the snapshot or a tool result, say you do not have it - never call random tools hunting for it.
 - Only cite ids, URLs, statuses, and numbers that appeared in tool results or the snapshot. Never invent them.
 - If the request needs a target URL you do not have, ask for it in a text reply.
 - Approvals, dispatches, verifies, pushes, and external writes happen on the ticket page by a human: link there, never claim you did them.
@@ -136,10 +142,13 @@ const URL_RE = /https?:\/\/[^\s)>"']+/i;
 const TICKET_RE = /\btkt_[a-z0-9]+\b/i;
 
 /** Offline router: keyword intents with the same tool contract. */
-export function heuristicTurn(history: ChatTurn[]): ChatTurnResult {
+export function heuristicTurn(history: ChatTurn[], demoTargetUrl?: string): ChatTurnResult {
   const last = [...history].reverse().find((t) => t.role === "user")?.content ?? "";
   const low = last.toLowerCase();
   const url = last.match(URL_RE)?.[0];
+  // In Demo Mode a scan/UX ask without a URL runs against the sample
+  // demo store, so a first-time user can just say "run a sample test".
+  const scanUrl = url ?? demoTargetUrl;
   const ticketId = last.match(TICKET_RE)?.[0];
 
   if (/\b(help|what can you)\b/.test(low) && low.length < 60) {
@@ -154,11 +163,39 @@ export function heuristicTurn(history: ChatTurn[]): ChatTurnResult {
   if (ticketId) {
     return { kind: "tool", tool: "ticket_status", args: { ticketId }, model: "heuristic" };
   }
-  if (/(a11y|accessibility)/.test(low) && url) {
-    return { kind: "tool", tool: "start_scan", args: { kind: "a11y", targetUrl: url }, model: "heuristic" };
+  // UX / redesign is an investigation ticket (the /ux flow), never a scan kind.
+  const uxIntent = /(\bux\b|user experience|redesign)/.test(low);
+  if (uxIntent && scanUrl) {
+    let host = scanUrl;
+    try { host = new URL(scanUrl).host; } catch { /* keep raw url */ }
+    return {
+      kind: "tool", tool: "file_ticket",
+      args: {
+        subject: `UX review of ${host}`,
+        body: `Review the user experience of ${scanUrl}: walk the core journey as a new user and flag every usability issue with evidence. Draft redesign directions for the findings.`,
+        targetUrl: scanUrl,
+      },
+      model: "heuristic",
+    };
   }
-  if (/(first.?run|new user|onboarding)/.test(low) && url) {
-    return { kind: "tool", tool: "start_scan", args: { kind: "firstrun", targetUrl: url }, model: "heuristic" };
+  // Scan or UX intent with no target URL: ask for it, naming the real options.
+  // Falling through here used to land on help or a parse dead-end.
+  const scanIntent = /(a11y|accessibility|first.?run|new user|onboarding|pentest|security scan|\bscan\b|\brun\b|\btest\b|\baudit\b)/.test(low);
+  if ((uxIntent || scanIntent) && !scanUrl && /(a11y|accessibility|first.?run|pentest|security|\bux\b|user experience|redesign|scan|audit)/.test(low)) {
+    return {
+      kind: "text",
+      text: "Yes - I can run a first-run scan, an accessibility scan, a security scan, and a UX & redesign review (that one files an investigation ticket). Share the app URL and say which you want, or name more than one and I will line them up one at a time.",
+      model: "heuristic",
+    };
+  }
+  if (/(a11y|accessibility)/.test(low) && scanUrl) {
+    return { kind: "tool", tool: "start_scan", args: { kind: "a11y", targetUrl: scanUrl }, model: "heuristic" };
+  }
+  if (/(first.?run|new user|onboarding)/.test(low) && scanUrl) {
+    return { kind: "tool", tool: "start_scan", args: { kind: "firstrun", targetUrl: scanUrl }, model: "heuristic" };
+  }
+  if (/(sample|demo).*(scan|test|run)/.test(low) && scanUrl) {
+    return { kind: "tool", tool: "start_scan", args: { kind: "firstrun", targetUrl: scanUrl }, model: "heuristic" };
   }
   if (/(pentest|security scan|vulnerab)/.test(low)) {
     return { kind: "tool", tool: "start_scan", args: url ? { kind: "pentest", targetUrl: url } : { kind: "pentest" }, model: "heuristic" };
@@ -218,9 +255,16 @@ export function effortBudget(provider: "baseten" | "meta", effort: ChatEffort = 
   return effort === "low" ? 400 : effort === "high" ? 2000 : 800;
 }
 
+function demoTargetOf(snapshot: unknown): string | undefined {
+  if (typeof snapshot !== "object" || snapshot === null) return undefined;
+  const demo = (snapshot as { demo?: { targetUrl?: unknown } }).demo;
+  return typeof demo?.targetUrl === "string" && /^https?:\/\//.test(demo.targetUrl) ? demo.targetUrl : undefined;
+}
+
 export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
-  if (input.model === "heuristic") return heuristicTurn(input.history);
-  if (!hasBasetenKey() && !hasMetaKey()) return heuristicTurn(input.history);
+  const demoTarget = demoTargetOf(input.snapshot);
+  if (input.model === "heuristic") return heuristicTurn(input.history, demoTarget);
+  if (!hasBasetenKey() && !hasMetaKey()) return heuristicTurn(input.history, demoTarget);
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: `${SYSTEM}\n\n${snapshotBlock(input.snapshot)}${contextBlock(input.contextNotes)}` },
   ];
@@ -235,19 +279,24 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
       const meetCall = typeof input.snapshot === "object" && input.snapshot !== null && (input.snapshot as { surface?: string }).surface === "meet-call";
       const out = await sparkOpenChat(messages, { maxTokens: meetCall ? 1200 : effortBudget("baseten", input.effort), temperature: 0.4, fetchImpl: input.fetchImpl });
       const parsed = parseTurnReply(out);
+      // An unparseable model reply is a provider failure, not an answer:
+      // route the actual user message through the heuristic instead of
+      // surfacing the parse dead-end.
+      if (parsed.model === "heuristic") return heuristicTurn(input.history, demoTarget);
       const label = `${sparkOpenModelId()} (baseten)`;
       return { ...parsed, model: parsed.model === "spark" ? label : parsed.model };
     } catch (e) {
       console.warn(`[chat-agent] Baseten Muse Spark Open unavailable, trying Meta: ${(e as Error).message}`);
     }
   }
-  if (!hasMetaKey()) return heuristicTurn(input.history);
+  if (!hasMetaKey()) return heuristicTurn(input.history, demoTarget);
   try {
     const out = await chat(messages, { model: modelId("spark"), maxTokens: effortBudget("meta", input.effort), fetchImpl: input.fetchImpl });
     const parsed = parseTurnReply(out);
+    if (parsed.model === "heuristic") return heuristicTurn(input.history, demoTarget);
     return { ...parsed, model: parsed.model === "spark" ? modelId("spark") : parsed.model };
   } catch (e) {
     console.warn(`[chat-agent] spark unavailable, heuristic fallback: ${(e as Error).message}`);
-    return heuristicTurn(input.history);
+    return heuristicTurn(input.history, demoTarget);
   }
 }

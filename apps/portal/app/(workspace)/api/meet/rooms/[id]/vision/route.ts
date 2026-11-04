@@ -39,7 +39,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       signal: AbortSignal.timeout(45000),
     });
     const j = (await res.json().catch(() => ({}))) as { text?: string; model?: string; error?: string; ms?: number };
-    if (!res.ok || !j.text) return NextResponse.json({ error: j.error ?? "vision unavailable" }, { status: 503 });
+    if (!res.ok || !j.text) {
+      // Raw provider diagnostics (finish_reason=length, answered empty)
+      // are engine internals: log-worthy, never something to render on a
+      // video tile or speak aloud in a call.
+      const raw = j.error ?? "vision unavailable";
+      const friendly = /finish_reason|answered empty|leaked|upstream/i.test(raw)
+        ? "Charie could not get a clear look at that frame. Try again."
+        : raw;
+      return NextResponse.json({ error: friendly }, { status: 503 });
+    }
     recordVision(roomId, j.text, j.model, typeof capturedAt === "string" ? capturedAt : undefined);
     // Watch mode: remember silently; only speak up when the frame shows a
     // problem, so near-continuous watching never floods the transcript.

@@ -1,4 +1,4 @@
-// ShopFast demo store - zero-dependency static server + buggy checkout API.
+// demo site - zero-dependency static server + buggy checkout API.
 //
 // Seeded defects (ground truth lives in README.md):
 //   BUG-1 (functional, blocker): POST /api/checkout returns 500 when the cart has
@@ -107,5 +107,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`ShopFast (${FIXED ? "FIXED" : "BUGGY"} build) at http://localhost:${PORT}`);
+  console.log(`Demo Site (${FIXED ? "FIXED" : "BUGGY"} build) at http://localhost:${PORT}`);
 });

@@ -19,10 +19,10 @@ export default async function SettingsPage() {
   } catch {
     engineOk = false;
   }
-  const zoom = await zoomStatus();
   const subs = await store.listPushSubscriptions().catch(() => []);
   const me = await identity();
   const myUid = scopeUid(me);
+  const zoom = await zoomStatus(myUid);
   const repos = await store.listRepos(myUid).catch(() => []);
   const env = process.env.PORTAL_STORE === "firestore" ? "Production" : "Development";
   const canEdit = await isAdmin(store).catch(() => false);

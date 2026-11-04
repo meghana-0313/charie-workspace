@@ -3,6 +3,7 @@ import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
 import { readFindings } from "@/lib/engine";
 import { readBriefs } from "@/lib/guardian";
+import { DEMO_TARGET_NAME, DEMO_TARGET_URL, isDemoAccount } from "@/lib/demo-samples";
 import { RedesignBriefs } from "@/components/evidence";
 import { UxReviewButton } from "@/components/scans";
 import { Icon } from "@/components/icons";
@@ -65,7 +66,8 @@ export default async function UxPage() {
         <div className="card">
           <div className="card-title"><span className="icon-orb violet"><Icon name="play" /></span> Start a UX review</div>
           <p className="small muted">Charie walks the live page like a new user, flags friction, and drafts redesign directions with generated alternatives.</p>
-          <UxReviewButton />
+          {isDemoAccount(myUid) && <p className="small muted">Demo: prefilled with the {DEMO_TARGET_NAME} at {DEMO_TARGET_URL}.</p>}
+          <UxReviewButton defaultTarget={isDemoAccount(myUid) ? DEMO_TARGET_URL : ""} />
         </div>
       </div>
     </>

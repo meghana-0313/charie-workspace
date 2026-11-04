@@ -1,4 +1,6 @@
-# No more screenshots. No more back-and-forth. Charie joins the call, sees the screen, and fixes it live - then guards your product all night.
+# Charie - AI support on the call, autonomous engineering on the loop, on standby all night.
+
+**Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts.**
 
 [![Built with Muse Code](https://img.shields.io/badge/Built%20with-Muse%20Code-0668E1?logo=meta)](https://dev.meta.ai/lp/muse-code)
 
@@ -75,7 +77,7 @@ This is the honest definition used everywhere in the product: **autonomous withi
 
 ## The wow moments
 
-1. **She joins the call and actually sees - so screenshots die here.** Open a Meet room, send the guest link to a customer (no account needed on their side, consent first), share a screen, and ask out loud: "Charie, what is wrong here?" Nobody takes a screenshot, uploads anything, or describes the screen. She captures a fresh frame herself, analyses it, answers in one short spoken sentence, tells the customer what to click or try, then looks again: did it work, what error appeared, what is the next step. That see - guide - see the result - debug loop repeats live until it is fixed in the call, and her timestamped screen memory means "what did it show two minutes ago?" also has a real answer.
+1. **She joins the call and actually sees - so screenshots die here.** Open a Meet room, send the guest link to a customer (no account needed on their side, consent first), share a screen, and ask out loud: "Charie, what is wrong here?" Nobody takes a screenshot, uploads anything, or describes the screen. She captures a fresh frame herself, analyses it, answers in one short spoken sentence, tells the customer what to click or try, then looks again: did it work, what error appeared, what is the next step. That see - guide - see the result - debug loop repeats live until it is fixed in the call, and her timestamped screen memory means "what did it show two minutes ago?" also has a real answer. And when you leave or end the call, the camera and mic are released on the spot - no light left on, no refresh needed.
 2. **She watches like a person, not a poller.** In watch mode the browser samples the shared screen locally, compares pixels, and only sends changed frames. She stays silent unless something real breaks, never repeats the same observation, and stops talking the moment a human starts speaking.
 3. **A bug becomes proof, not opinion.** File a ticket and Charie drives the real app with Playwright like a first-time user, records screenshots, repro steps, console and network evidence, proposes a fix, and after your approval re-runs the exact same journey and diffs before and after.
 4. **The night shift is real work, not a cron label.** Threats from log watch, the drop-in SDK, sweeps, and a security test suite become triaged incidents. Approved fix tasks execute overnight and the morning digest shows what ran, what passed, and what still needs a human.
@@ -111,13 +113,60 @@ Open http://localhost:3102 and press **Continue as local owner**. Then:
 
 1. File the ticket `Checkout button does nothing` against `http://localhost:3101`. An investigation starts; expect 6 seeded findings with screenshots and repro steps (blocker checkout failure, usability, accessibility, security surface).
 2. Approve a fix instruction, restart the demo with `npm run dev:fixed --workspace apps/demo-target`, press **Verify fix**, and read the before/after proof.
-3. Open **UX and redesign**, **Accessibility**, and **First run** for the graded views of the same evidence.
+3. Open **UX and redesign**, **Accessibility**, and **First run** for the graded views of the same evidence. In Demo Mode these forms come prefilled with the demo site, and a tooltip after each run names who executed it.
 4. Open **Threats**, press **Simulate attack**, then **Analyze now**, approve a response, and run **Night shift** to see autonomous execution with a digest.
 5. Open **Meet**, start a room, join from a second browser tab as a guest, share a screen, turn on **Charie can look**, and ask what she sees.
 6. Open any report and press **Ask Charie about this report** to continue in Chat with the report attached.
 7. Open **Reports** to see every run, scan, pentest, and digest in one place with working timeframe filters.
 
 Zero keys changes only polish, and the UI says so: finding prose is labelled `heuristic`, chat uses the heuristic router, call voice uses the browser voice, and screen vision, image redesigns, and voice transcription wait for keys. Nothing hard-fails. Full detail in [docs/TECHNICAL.md](docs/TECHNICAL.md).
+
+## Demo Mode (no login, sample data, real AI)
+
+On the login page, press **Explore Charie Demo - no login needed**. No account, no email, no OAuth, no keys to configure. You land in a seeded Demo Workspace (a banner says so on every page) with three sample projects - Demo Site, TravelMate, WorkBoard - 8 tickets, 4 investigation runs whose reports open with findings, 2 labelled simulated Guard incidents, a simulated GitHub repo (`circle-back/demo-site`, builds labelled simulated), 4 autopilot schedules, sample Jira and GitHub connectors with a sync rule, context docs including an uploaded sample brief, a sample chat thread, and a sample Meet call Charie assisted. Everything is internally consistent: the runs belong to the tickets, the reports belong to the runs, and another account cannot see any of it.
+
+- **Try everything:** file tickets, approve, chat, open reports, explore Guard, start a Meet room. Against the local demo site (http://localhost:3101) investigations run for real with Playwright.
+- **No empty pages:** the demo seed now tops up on every entry (older demo workspaces gain new sample data without losing edits), and the engine-backed pages - Accessibility, First run, Security, Night shift, Signals, Fix tasks, UX, Reports - fall back to labelled sample reports scoped to the demo account only. The Night Shift digest reads as real overnight work: a verified checkout fix, a scheduled accessibility fix, and a grade B security re-scan.
+- **Sample scans run live by default:** in Demo Mode the Accessibility, First run, and UX forms are prefilled with the intentionally buggy demo site, and asking Charie to "run a sample test" in Chat executes against it. After every scan an on-screen tooltip names who executed it - the Meta model for AI work, or the deterministic Charie engine for browser and security checks, never relabelled.
+- **The chat footer tells the truth live:** switch the model picker to Baseten or Meta and the label changes immediately, with the model that actually served the last answer shown separately.
+- **Your progress is saved** in the same store as real data (local files on your machine, Firestore on the hosted demo) under the demo account only. **Reset Demo Workspace** in the banner restores the seed and removes only demo changes - never real user data.
+- **Simulated vs live is labelled:** sample builds and incidents say "simulated"; seeded findings say SAMPLE DEMO DATA. Nothing simulated is presented as a live result.
+
+**About AI in Demo Mode - the honest version.** Demo Mode never fakes AI. Live AI actions (Chat answers, investigation analysis, test plans, call vision) call the real models: Baseten Muse Spark Open first for chat, Meta Muse Spark 1.3 direct, the lanes in the model table below. Those calls need a key on the host that runs the engine:
+
+- **Hosted demo (the live URL above):** the engine runs with the owner's Secret Manager keys mounted, so judges get real Meta model answers without configuring anything.
+- **Your own machine:** set `META_API_KEY` and/or `BASETEN_API_KEY` as environment variables, or sign in with `gcloud auth application-default login` plus `GCP_PROJECT_ID` and the engine reads your Secret Manager secrets itself (env wins first, then Secret Manager - there is no `.env` file).
+- **A judge's machine with no keys:** the sample workspace still opens and browses fully, but AI answers say plainly that no live model is configured instead of inventing one. We will not ship the owner's private API keys inside a public repo - that would leak them - and we will not pretend a heuristic is a Meta model.
+
+## Judges: two ways to evaluate (pick either)
+
+**Path A - hosted demo, zero setup.** Open https://charie-portal-ehfuotlisq-uc.a.run.app, press **Explore Charie Demo - no login needed** on the login page. Sample projects, runs, reports, and simulated integrations load immediately, and AI answers are powered by the host's configured Meta models. No account, no key, nothing to install.
+
+**Path B - run it yourself, with your own Meta key.** This is the reproducible path:
+
+1. Clone this repo and install: `npm install` (Node.js 20+). Install the browser once: `npm exec --workspace services/agent-engine -- playwright install chromium`.
+2. Get your own Meta Model API key at https://dev.meta.ai (Model API). It is free to create; usage is billed to *your* key. Never use anyone else's key, and never commit yours - this repo intentionally has no `.env` loader, and `.env` is gitignored.
+3. Set the key in your shell before starting the engine. Windows PowerShell:
+
+```powershell
+$env:META_API_KEY="your key"
+$env:ENGINE_DEV_OPEN="1"
+```
+
+Linux / macOS:
+
+```bash
+export META_API_KEY="your key"
+export ENGINE_DEV_OPEN=1
+```
+
+Optional: `BASETEN_API_KEY` (Muse Spark Open brain), `CHARIE_TTS_URL` (Modal voice). Full list with placeholders: [.env.example](.env.example).
+
+4. There is no database to initialize locally: the portal creates its JSON file store on first run, and Demo Mode seeds itself the first time you enter it. (Hosted mode uses Firestore - see [docs/TECHNICAL.md](docs/TECHNICAL.md).)
+5. Start the three processes and follow the Five-minute judge tour below: `npm run demo:target`, `npm run serve --workspace services/agent-engine`, `npm run portal:dev`, then http://localhost:3102.
+6. Tests any time: `npm test` (offline-safe, no keys needed).
+
+Submission readiness evidence (secret scan results, checklist): [docs/SUBMISSION_AUDIT.md](docs/SUBMISSION_AUDIT.md). Recorded-demo provenance pack: [docs/DEMO_PROVENANCE.md](docs/DEMO_PROVENANCE.md).
 
 ## How it works, in one picture
 
@@ -206,5 +255,8 @@ Production runs on one Google Cloud project: Cloud Run services `charie-portal`,
 - [docs/FIRESTORE_SCHEMA.md](docs/FIRESTORE_SCHEMA.md) - collections and records
 - [docs/MOBILE_SDK.md](docs/MOBILE_SDK.md) - production signal contract for mobile apps
 - [docs/ROADMAP.md](docs/ROADMAP.md) - what is deliberately not in this build, and why
+- [docs/SUBMISSION_AUDIT.md](docs/SUBMISSION_AUDIT.md) - secret scan results and the final submission checklist
+- [docs/DEMO_PROVENANCE.md](docs/DEMO_PROVENANCE.md) - provenance pack for the recorded demo
+- [.env.example](.env.example) - every configuration variable, placeholders only
 
 *Every line of this repo was written with Muse Code by Meta.*

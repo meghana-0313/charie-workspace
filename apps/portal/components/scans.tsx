@@ -27,8 +27,28 @@ function urlError(raw: string): string {
   }
 }
 
-function useScan<T>(path: string) {
-  const [url, setUrl] = useState("");
+/**
+ * Auto-appearing executor tooltip (DAP style): after every finished scan,
+ * it names who actually executed the run, what was scanned, and dismisses
+ * only when the user closes it. For investigations the same pattern shows
+ * the Meta model from the report; scans name the engine honestly, since
+ * they are deterministic browser checks, not AI grading.
+ */
+export function ExecutorTip({ executor, target, model }: { executor?: string; target?: string; model?: string }) {
+  const [open, setOpen] = useState(true);
+  if (!open) return null;
+  const who = model ? `Meta model: ${model}` : (executor ?? "Charie engine (deterministic checks, no AI grading)");
+  return (
+    <div role="status" aria-live="polite" className="card" style={{ borderColor: "var(--accent, #6ee7d8)", background: "rgba(110,231,216,.08)", padding: "10px 12px", marginTop: 10, position: "relative" }}>
+      <button type="button" className="ghost sm" aria-label="Dismiss executor tip" onClick={() => setOpen(false)} style={{ position: "absolute", right: 6, top: 6 }}>x</button>
+      <p className="small" style={{ margin: 0 }}><strong>Run finished.</strong> Executed by {who}{target ? <> against <code>{target}</code></> : ""}.</p>
+      <p className="small muted" style={{ margin: "4px 0 0" }}>Findings investigated by Charie name their Meta model in the report. Deterministic scans are never relabelled as AI runs.</p>
+    </div>
+  );
+}
+
+function useScan<T>(path: string, defaultUrl = "") {
+  const [url, setUrl] = useState(defaultUrl);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [report, setReport] = useState<T | null>(null);
@@ -69,8 +89,8 @@ function UrlRow({ url, setUrl, busy, label }: { url: string; setUrl: (v: string)
   );
 }
 
-export function UxReviewButton() {
-  const [url, setUrl] = useState("");
+export function UxReviewButton({ defaultTarget = "" }: { defaultTarget?: string }) {
+  const [url, setUrl] = useState(defaultTarget);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function run(e: React.FormEvent) {
@@ -135,8 +155,8 @@ export function UxReviewButton() {
   );
 }
 
-export function A11yRunForm() {
-  const { url, setUrl, busy, error, report, run } = useScan<A11yView>("/api/guardian/a11y");
+export function A11yRunForm({ defaultTarget = "" }: { defaultTarget?: string }) {
+  const { url, setUrl, busy, error, report, run } = useScan<A11yView>("/api/guardian/a11y", defaultTarget);
   return (
     <div>
       <p className="muted small">Checks the page in a real browser: labels, contrast, keyboard order, landmarks, and more, each graded with evidence.</p>
@@ -147,6 +167,7 @@ export function A11yRunForm() {
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       {report && (
         <div style={{ marginTop: 10 }}>
+          <ExecutorTip key={report.id} executor={report.executor} target={report.targetUrl} />
           <p><Badge tone={`grade-${report.grade}`}>{report.grade}</Badge> <span className="small muted">{report.passed}/{report.checks.length} checks passed · <code>{report.targetUrl}</code></span></p>
           <table>
             <thead><tr><th>Check</th><th>Severity</th><th>Result</th><th>Evidence</th></tr></thead>
@@ -167,8 +188,8 @@ export function A11yRunForm() {
   );
 }
 
-export function FirstRunForm() {
-  const { url, setUrl, busy, error, report, run } = useScan<FirstRunView>("/api/guardian/firstrun");
+export function FirstRunForm({ defaultTarget = "" }: { defaultTarget?: string }) {
+  const { url, setUrl, busy, error, report, run } = useScan<FirstRunView>("/api/guardian/firstrun", defaultTarget);
   return (
     <div>
       <p className="muted small">Loads the site as a brand new visitor on desktop and mobile: speed, first paint, tap targets, and whether the first screen explains itself.</p>
@@ -179,6 +200,7 @@ export function FirstRunForm() {
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
       {report && (
         <div style={{ marginTop: 10 }}>
+          <ExecutorTip key={report.id} executor={report.executor} target={report.targetUrl} />
           <p><strong style={{ fontSize: "var(--text-xl)" }}>{report.score}/100</strong> <span className="small muted">{report.passed}/{report.steps.length} steps passed · <code>{report.targetUrl}</code></span></p>
           <table>
             <thead><tr><th>Step</th><th>Result</th><th>Evidence</th></tr></thead>
