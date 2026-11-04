@@ -44,6 +44,11 @@ export async function isAdmin(
   const id = await identity(req);
   if (!id) return false;
   if (id.uid === "local-owner" || id.uid === "automation") return true;
+  // Demo Mode is a public sandbox: every button must work there. The demo
+  // uid (DEMO_UID in lib/demo.ts) is admin over demo-scoped data only -
+  // surfaces that read global records (Team seats) filter to sample rows
+  // for the demo account, and API keys mint scoped to the demo uid.
+  if (id.uid === "demo-workspace") return true;
   const seat = await store.getSeatByEmail(id.email).catch(() => null);
   return seat?.owner === true || seat?.role === "admin";
 }

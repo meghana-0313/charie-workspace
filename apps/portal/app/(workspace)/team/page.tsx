@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function TeamPage() {
   const admin = await isAdmin(store);
   const myUid = scopeUid(await identity());
-  const seats = admin ? await store.listSeats() : [];
+  const allSeats = admin ? await store.listSeats() : [];
+  // Demo visitors get the full Team surface over sample seats only -
+  // the real workspace seat list (emails) is never shown in the sandbox.
+  const seats = myUid === "demo-workspace" ? allSeats.filter((s) => s.id.startsWith("demo-")) : allSeats;
   const keys = admin ? await store.listApiKeys(myUid) : [];
   return (
     <>

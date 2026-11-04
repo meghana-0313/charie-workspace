@@ -6,7 +6,7 @@ Paste-ready posts. Swap in the live portal URL and the demo video link.
 
 1/ Your software broke at 3am. Nobody got paged. Charie investigated anyway.
 
-Meet Charie - AI support on the call, autonomous engineering on the loop, on standby all night. Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts. Ticket → evidence → fix → proof. [video]
+Meet Charie - AI support agent on the call, autonomous engineering on the loop, on standby all night. Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts. Ticket → evidence → fix → proof. [video]
 
 2/ A customer complaint becomes a ticket. Charie drives the real app, hits the same wall the customer did, and files screenshots, repro steps, and the failing request as evidence. No vibes, only proof.
 

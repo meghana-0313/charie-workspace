@@ -1,6 +1,6 @@
 # Charie - complete technical reference
 
-Charie - AI support on the call, autonomous engineering on the loop, on standby all night. Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts.
+Charie - AI support agent on the call, autonomous engineering on the loop, on standby all night. Autonomous agent loops for support, QA, and security - on call around the clock, supervised where it counts.
 
 This document explains what Charie is made of, how every feature works end to end, which model does what and where, what happens when a key or service is missing, and what the system deliberately does not do. It is written for hackathon judges, engineers reviewing the code, and businesses evaluating the product.
 

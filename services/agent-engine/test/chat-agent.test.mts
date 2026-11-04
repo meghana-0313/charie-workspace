@@ -53,6 +53,15 @@ const uxWithUrl = heuristicTurn([u("do a ux & redesign run on https://x.test/app
 ok(uxWithUrl.kind === "tool" && uxWithUrl.tool === "file_ticket" && String((uxWithUrl.args as Record<string, unknown>).targetUrl) === "https://x.test/app" && /UX review/i.test(String((uxWithUrl.args as Record<string, unknown>).subject)), "UX run with a URL files a UX review ticket, not a scan kind");
 const seen = heuristicTurn([u("status?"), { role: "tool", content: "2 open tickets" }]);
 ok(seen.kind === "text", "post-tool turn summarizes");
+const seenHelp = heuristicTurn([u("status?"), { role: "tool", content: "[help] I can: list tickets and run scans." }]);
+ok(seenHelp.kind === "text" && !(seenHelp.text ?? "").startsWith("[help]") && (seenHelp.text ?? "").includes("list tickets"), "tool label plumbing never leaks into the user-visible answer");
+const retry = heuristicTurn([
+  u("run an accessibility report on the connected demo site?"),
+  { role: "assistant", content: "I can do that, but I will not run it without your say-so. Run a scan: a11y - http://localhost:3101. Approve the card below and I will run it." },
+  { role: "assistant", content: "Done. Engine unreachable. Try again in a bit." },
+  u("try now"),
+]);
+ok(retry.kind === "tool" && retry.tool === "start_scan" && (retry.args as Record<string, unknown>).kind === "a11y" && String((retry.args as Record<string, unknown>).targetUrl) === "http://localhost:3101", "try now after a failed scan re-issues that scan, never help");
 
 // --- chatTurn: key present uses Spark, missing key falls back ---
 delete process.env.META_API_KEY;
