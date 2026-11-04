@@ -72,7 +72,7 @@ This is the honest definition used everywhere in the product: **autonomous withi
 
 - **Who buys it:** SaaS support and solutions teams drowning in "can you send a screenshot" calls; small product teams with no night coverage; solo builders who are their own on-call. One workspace replaces a meeting bot, a QA runner, a pentest scanner, a monitoring pager, and half the ticket busywork - with proof attached for compliance-minded buyers.
 - **Why they stay:** every call, investigation, incident, and fix becomes account-scoped evidence history. Switching away means losing the audit trail.
-- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, Google sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
+- **How it deploys:** hosted Cloud Run workspace with per-account data isolation, team seats, app keys, email sign-in, GitHub and Jira sync, and a zero-key trial path - the same patterns businesses already buy.
 - **Why it is safe to buy:** autonomy is guardrailed (approvals, consent cards, labelled heuristic fallbacks, no remote control, no call recording), so a business can adopt it without handing an agent the keys.
 
 ## The wow moments
