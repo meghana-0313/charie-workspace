@@ -17,9 +17,9 @@ export function isDemoAccount(account?: string | null): boolean {
 }
 
 const SAMPLE = "Sample demo data - run a live scan to replace this with real results.";
-/** The intentionally buggy ShopFast demo store every sample scan targets. */
+/** The intentionally buggy demo site every sample scan targets. */
 export const DEMO_TARGET_URL = process.env.DEMO_TARGET_URL ?? "http://localhost:3101";
-export const DEMO_TARGET_NAME = "ShopFast demo store (intentional bugs: checkout fails with 3+ items, keyboard and label defects, missing security headers)";
+export const DEMO_TARGET_NAME = "demo site (intentional bugs: checkout fails with 3+ items, keyboard and label defects, missing security headers)";
 const TARGET = DEMO_TARGET_URL;
 
 function at(daysAgo: number): string {
@@ -59,7 +59,7 @@ export function sampleFirstRunReports(): FirstRunView[] {
       id: "demo-firstrun-2", at: at(1), targetUrl: TARGET, score: 82, passed: 5, failed: 1, executor: "Sample demo data (seeded) - a live run is executed by the Charie engine as a first-time visitor",
       steps: [
         { id: "loads", name: "Page loads", pass: true, evidence: `${SAMPLE} First paint in 1.1s on desktop.` },
-        { id: "headline", name: "Headline explains the product", pass: true, evidence: `${SAMPLE} "ShopFlow - groceries in minutes" names the offer.` },
+        { id: "headline", name: "Headline explains the product", pass: true, evidence: `${SAMPLE} "Demo Site - groceries in minutes" names the offer.` },
         { id: "next-step", name: "One clear next step", pass: true, evidence: `${SAMPLE} Single primary "Start shopping" action.` },
         { id: "console", name: "Console health", pass: false, evidence: `${SAMPLE} One console error from the cart widget on first load.` },
         { id: "mobile", name: "Mobile layout", pass: true, evidence: `${SAMPLE} No horizontal scroll at 390px wide.` },
@@ -112,7 +112,7 @@ export function sampleSweeps(): SweepView[] {
 export function sampleWorkOrders(): WorkOrderView[] {
   return [
     {
-      id: "demo-wo-checkout", title: "Verify the ShopFlow checkout total fix", source: "ticket", sourceRef: "demo-tkt-checkout",
+      id: "demo-wo-checkout", title: "Verify the Demo Site checkout total fix", source: "ticket", sourceRef: "demo-tkt-checkout",
       status: "done", risk: "medium",
       plan: [
         { kind: "verify-fix", label: "Re-run the checkout journey", ref: "demo-run-shopflow-checkout", targetUrl: TARGET },
@@ -141,7 +141,7 @@ export function sampleDigests(): DigestView[] {
     orders: orders.map((o) => ({ id: o.id, title: o.title, status: o.status, proofs: o.proofs })),
     pentest: samplePentestReports()[0],
     digest: [
-      "Night shift completed 2 work orders against the ShopFast demo store.",
+      "Night shift completed 2 work orders against the demo site.",
       "1. Checkout verification PASSED: cart and checkout totals matched at 2,499 after the coupon fix, with before/after proof attached to the ticket.",
       "2. Keyboard accessibility fix SCHEDULED for tonight: the checkout button becomes reachable in tab order, then gets a keyboard-only retest.",
       "Security re-scan finished at grade B: 7 of 9 checks passed. Still open: missing Content-Security-Policy header and no throttling after 20 failed logins.",
@@ -163,7 +163,7 @@ export function sampleClusters(): { total: number; clusters: SignalClusterView[]
 
 export function sampleLogWatch(): LogWatchView {
   return {
-    id: "demo-logwatch-1", at: at(1), projectId: "demo-shopflow (sample)", windowMinutes: 60, configured: true, total: 23,
+    id: "demo-logwatch-1", at: at(1), projectId: "demo-site (sample)", windowMinutes: 60, configured: true, total: 23,
     groups: [
       { signature: "TypeError: cart total undefined", service: "checkout (sample)", count: 14, sample: `${SAMPLE} TypeError in totals.ts on /checkout`, firstSeen: at(2), lastSeen: at(1) },
       { signature: "Upload size rejected silently", service: "uploads (sample)", count: 9, sample: `${SAMPLE} 413 swallowed by the client`, firstSeen: at(2), lastSeen: at(1) },
@@ -183,7 +183,7 @@ export function sampleZoom(): ZoomView {
 export function sampleFindings(runId: string): FindingView[] | null {
   if (!runId.startsWith("demo-run-")) return null;
   const base = {
-    reproSteps: ["Open the sample ShopFlow target", "Follow the ticket journey", "Compare expected and actual behaviour"],
+    reproSteps: ["Open the sample Demo Site target", "Follow the ticket journey", "Compare expected and actual behaviour"],
     evidence: { screenshots: [], trace: "", logs: [`${SAMPLE} Seeded finding for the demo report.`] },
     confidence: "high", analysisSource: "heuristic",
   };

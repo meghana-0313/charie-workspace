@@ -1,4 +1,4 @@
-# ShopFlow search investigation (sample demo report)
+# Demo Site search investigation (sample demo report)
 
 SAMPLE DEMO DATA - seeded for judging. Not a live run.
 

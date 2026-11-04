@@ -254,7 +254,7 @@ export async function answerMessage(opts: {
       }
       const args = turn.args && typeof turn.args === "object" ? (turn.args as Record<string, unknown>) : {};
       // Demo Mode: a scan asked without a URL runs against the sample
-      // ShopFast demo store (intentional bugs), so a first-time user can
+      // demo site (intentional bugs), so a first-time user can
       // say "run a sample test" and get a real live scan.
       if (opts.uid === DEMO_UID && turn.tool === "start_scan" && (args.kind === "a11y" || args.kind === "firstrun") && !validUrl(args.targetUrl)) {
         args.targetUrl = DEMO_TARGET_URL;

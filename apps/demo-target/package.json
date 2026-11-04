@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "ShopFast: intentionally buggy demo store that Charie tests.",
+  "description": "Demo Site: intentionally buggy demo store that Charie tests.",
   "scripts": {
     "dev": "node server.js",
     "dev:fixed": "node server.js --fixed"

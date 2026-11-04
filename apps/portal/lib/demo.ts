@@ -46,10 +46,10 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     workboard: "https://demo.charie.local/workboard",
   };
   const defs: Array<{ key: string; project: string; target: string; subject: string; body: string; status: Ticket["status"]; runId?: string; days: number }> = [
-    { key: "checkout", project: "ShopFlow", target: projects.shopflow, subject: "ShopFlow: checkout cart total is wrong and payment fails", body: "Customers report the cart total changes at checkout and valid cards are rejected. Project: ShopFlow (demo target, runs locally at http://localhost:3101).", status: "verified", runId: "demo-run-shopflow-checkout", days: 6 },
-    { key: "registration", project: "ShopFlow", target: projects.shopflow, subject: "ShopFlow: registration form rejects valid email addresses", body: "New users with valid emails see a validation error and cannot register. Project: ShopFlow.", status: "fix-proposed", runId: "demo-run-shopflow-registration", days: 5 },
-    { key: "search", project: "ShopFlow", target: projects.shopflow, subject: "ShopFlow: search filters return unrelated products", body: "Filtering by category shows products from other categories. Project: ShopFlow.", status: "in-room", runId: "demo-run-shopflow-search", days: 4 },
-    { key: "a11y", project: "ShopFlow", target: projects.shopflow, subject: "ShopFlow: checkout button unreachable by keyboard", body: "Keyboard users cannot reach the checkout button. Project: ShopFlow.", status: "verified", days: 3 },
+    { key: "checkout", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout cart total is wrong and payment fails", body: "Customers report the cart total changes at checkout and valid cards are rejected. Project: Demo Site (demo target, runs locally at http://localhost:3101).", status: "verified", runId: "demo-run-shopflow-checkout", days: 6 },
+    { key: "registration", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: registration form rejects valid email addresses", body: "New users with valid emails see a validation error and cannot register. Project: Demo Site.", status: "fix-proposed", runId: "demo-run-shopflow-registration", days: 5 },
+    { key: "search", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: search filters return unrelated products", body: "Filtering by category shows products from other categories. Project: Demo Site.", status: "in-room", runId: "demo-run-shopflow-search", days: 4 },
+    { key: "a11y", project: "Demo Site", target: projects.shopflow, subject: "Demo Site: checkout button unreachable by keyboard", body: "Keyboard users cannot reach the checkout button. Project: Demo Site.", status: "verified", days: 3 },
     { key: "booking", project: "TravelMate", target: projects.travelmate, subject: "TravelMate: booking flow loses the selected hotel", body: "After payment simulation the trip shows a different hotel. Simulated target (demo adapter). Project: TravelMate.", status: "closed", runId: "demo-run-travelmate-booking", days: 8 },
     { key: "session", project: "TravelMate", target: projects.travelmate, subject: "TravelMate: session times out during payment", body: "Users are logged out mid-payment. Simulated target (demo adapter). Project: TravelMate.", status: "verified", days: 7 },
     { key: "notify", project: "WorkBoard", target: projects.workboard, subject: "WorkBoard: task assignment sends no notification", body: "Assignees never learn they got a task. Simulated target (demo adapter). Project: WorkBoard.", status: "new", days: 1 },
@@ -88,7 +88,7 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     },
   ];
   const repos: RepoConnection[] = [{
-    id: "demo-repo-shopflow", uid: DEMO_UID, owner: "circle-back", repo: "demo-shopflow", branch: "main", subdir: "", startCommand: "npm run dev",
+    id: "demo-repo-shopflow", uid: DEMO_UID, owner: "circle-back", repo: "demo-site", branch: "main", subdir: "", startCommand: "npm run dev",
     visibility: "public", hasToken: false, status: "live", lastSha: "demo5eed", appUrl: "http://localhost:3101",
     createdAt: t(9), updatedAt: t(1),
   }];
@@ -110,9 +110,9 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     { id: "demo-rule-jira-shopflow", uid: DEMO_UID, connectorId: "demo-conn-jira", kind: "jira-pull", project: "SHOP", targetUrl: projects.shopflow, preset: "daily", enabled: true, importedKeys: ["SHOP-101 (sample)", "SHOP-102 (sample)"], lastRunAt: t(1), lastStatus: "ok (sample)", createdAt: t(9), updatedAt: t(1) },
   ];
   const contextDocs: ContextDoc[] = [
-    { id: "demo-doc-runbook", uid: DEMO_UID, title: "ShopFlow demo runbook (sample)", source: "note", body: "Sample context doc. Checkout totals must match the cart after coupons; keyboard users must reach checkout; uploads over 5 MB need a clear error. Demo Mode data - edit or delete freely.", createdAt: t(8), updatedAt: t(2) },
-    { id: "demo-doc-release", uid: DEMO_UID, title: "Release notes (sample)", source: "note", body: "Sample context doc. TravelMate and WorkBoard are simulated targets in Demo Mode; ShopFlow runs against the local demo target.", createdAt: t(8), updatedAt: t(3) },
-    { id: "demo-doc-upload", uid: DEMO_UID, title: "ShopFast demo store - uploaded sample brief", source: "note", body: "Sample upload standing in for a user-provided brief or SDK doc. Target under test: the ShopFast demo store at http://localhost:3101 (npm run demo:target), seeded with intentional bugs: checkout returns 500 with 3 or more items, the Place order control is not keyboard reachable, three inputs are placeholder-only, and security headers are missing. Every sample scan and investigation in this workspace runs against that store until you point Charie at your own URL.", createdAt: t(8), updatedAt: t(1) },
+    { id: "demo-doc-runbook", uid: DEMO_UID, title: "Demo site runbook (sample)", source: "note", body: "Sample context doc. Checkout totals must match the cart after coupons; keyboard users must reach checkout; uploads over 5 MB need a clear error. Demo Mode data - edit or delete freely.", createdAt: t(8), updatedAt: t(2) },
+    { id: "demo-doc-release", uid: DEMO_UID, title: "Release notes (sample)", source: "note", body: "Sample context doc. TravelMate and WorkBoard are simulated targets in Demo Mode; Demo Site runs against the local demo target.", createdAt: t(8), updatedAt: t(3) },
+    { id: "demo-doc-upload", uid: DEMO_UID, title: "Demo site - uploaded sample brief", source: "note", body: "Sample upload standing in for a user-provided brief or SDK doc. Target under test: the demo site at http://localhost:3101 (npm run demo:target), seeded with intentional bugs: checkout returns 500 with 3 or more items, the Place order control is not keyboard reachable, three inputs are placeholder-only, and security headers are missing. Every sample scan and investigation in this workspace runs against that site until you point Charie at your own URL.", createdAt: t(8), updatedAt: t(1) },
   ];
   const chatThread: ChatThread = {
     id: "demo-thread-welcome", uid: DEMO_UID, title: "Demo workspace tour (sample)",
@@ -178,7 +178,7 @@ async function applySeed(seed: DemoSeed): Promise<void> {
   if (!have(haveThreads).has(seed.chatThread.id)) await store.saveThread(seed.chatThread).catch(() => {});
   const rooms = await store.listMeetRooms(DEMO_UID).catch(() => []);
   if (rooms.length === 0) {
-    const room = await store.createMeetRoom({ title: "ShopFlow checkout help - sample call", createdBy: DEMO_NAME, uid: DEMO_UID });
+    const room = await store.createMeetRoom({ title: "Demo Site checkout help - sample call", createdBy: DEMO_NAME, uid: DEMO_UID });
     await store.updateMeetRoom(room.id, {
       endedAt: new Date(Date.now() - DAY).toISOString(),
       transcript: [
