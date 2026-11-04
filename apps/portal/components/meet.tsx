@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import type { MeetSignal } from "@/lib/types";
 import { stalePeerIds, touchPeer } from "@/lib/presence";
 import { Icon } from "./icons";
-import { charieAskLine, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks } from "@/lib/room-status";
+import { CHARIE_SPEECH_RATE, charieAskLine, isScreenHistoryQuestion, isScreenSeeQuestion, speakableText, splitSpeakChunks, transcriptStamp } from "@/lib/room-status";
 
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -570,7 +570,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
             <div className="card-title">Transcript ({savedTranscript.length})</div>
             <div className="live-lines" style={{ maxHeight: 380 }}>
               {savedTranscript.map((l, i) => (
-                <p key={i} className="small"><strong>{l.speaker}</strong> <span className="muted">({l.role})</span>: {l.text}</p>
+                <p key={i} className="small"><span className="muted">{transcriptStamp(l.at)}</span> <strong>{l.speaker}</strong> <span className="muted">({l.role})</span>: {l.text}</p>
               ))}
             </div>
           </div>
@@ -580,7 +580,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
             <div className="card-title">Screen memory ({savedScreenLog.length})</div>
             <div className="live-lines" style={{ maxHeight: 300 }}>
               {savedScreenLog.map((e, i) => (
-                <p key={i} className="small"><strong>{e.at.slice(11, 16)}</strong> <span className="muted">Charie saw:</span> {e.text}</p>
+                <p key={i} className="small"><strong>{transcriptStamp(e.at)}</strong> <span className="muted">Charie saw:</span> {e.text}</p>
               ))}
             </div>
           </div>
@@ -609,7 +609,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
             <div className="card-title">Transcript ({savedTranscript.length})</div>
             <div className="live-lines" style={{ maxHeight: 380 }}>
               {savedTranscript.map((l, i) => (
-                <p key={i} className="small"><strong>{l.speaker}</strong> <span className="muted">({l.role})</span>: {l.text}</p>
+                <p key={i} className="small"><span className="muted">{transcriptStamp(l.at)}</span> <strong>{l.speaker}</strong> <span className="muted">({l.role})</span>: {l.text}</p>
               ))}
             </div>
           </div>
@@ -618,7 +618,7 @@ export function MeetRoom({ roomId, roomTitle, token = "", initialName = "", tran
               <div className="card-title">Screen memory ({savedScreenLog.length})</div>
               <div className="live-lines" style={{ maxHeight: 300 }}>
                 {savedScreenLog.map((e, i) => (
-                  <p key={i} className="small"><strong>{e.at.slice(11, 16)}</strong> <span className="muted">Charie saw:</span> {e.text}</p>
+                  <p key={i} className="small"><strong>{transcriptStamp(e.at)}</strong> <span className="muted">Charie saw:</span> {e.text}</p>
                 ))}
               </div>
             </div>
@@ -959,6 +959,7 @@ export function TestVoice({ roomId, qp, onNote }: { roomId: string; qp: string; 
       if (blob.size < 100) { onNote("Voice test failed: the voice service returned an empty audio file."); setBusy(false); return; }
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      audio.playbackRate = CHARIE_SPEECH_RATE;
       // Wait until playback actually finishes: "played" must mean heard.
       const played = await new Promise<boolean>((resolve) => {
         const timer = setTimeout(() => resolve(false), 15000);
@@ -1061,6 +1062,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         try {
           const blob = await fetchTts(roomId, qp, "Looking.");
           const a = new Audio(URL.createObjectURL(blob));
+          a.playbackRate = CHARIE_SPEECH_RATE;
           await a.play().catch(() => {});
         } catch { /* bridge is best-effort */ }
       })();
@@ -1211,7 +1213,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         const voices = window.speechSynthesis.getVoices();
         u.voice = voices.find((v) => /male|david|daniel|george|michael/i.test(v.name) && v.lang.startsWith("en")) ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
         u.pitch = 0.92;
-        u.rate = 1.02;
+        u.rate = CHARIE_SPEECH_RATE;
         u.onend = done;
         u.onerror = () => { lastFailedRef.current = text; setVoiceNote("Browser voice failed too. Use Test voice below to see the exact error."); done(); };
         window.speechSynthesis.speak(u);
@@ -1238,6 +1240,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
         }
         setVoiceNote("");
         const audio = new Audio(URL.createObjectURL(blob));
+        audio.playbackRate = CHARIE_SPEECH_RATE;
         audioRef.current = audio;
         await new Promise<void>((resolve) => {
           audio.onended = () => resolve();
@@ -1361,7 +1364,9 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
       const text = summary || notes.join(". ");
       if (!text) return;
       window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text.slice(0, 1000)));
+      const u = new SpeechSynthesisUtterance(text.slice(0, 1000));
+      u.rate = CHARIE_SPEECH_RATE;
+      window.speechSynthesis.speak(u);
     } catch { /* speech unavailable */ }
   }
 
@@ -1418,7 +1423,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           </p>
           <div className="live-lines">
             {lines.length === 0 ? <p className="small muted">Listening… speak and lines appear here.</p> : lines.slice(-30).map((l, i) => (
-              <p key={i} className="small"><strong>{l.speaker}</strong> <span className="pill">{l.role}</span> {l.text}</p>
+              <p key={i} className="small"><span className="muted">{transcriptStamp(l.at)}</span> <strong>{l.speaker}</strong> <span className="pill">{l.role}</span> {l.text}</p>
             ))}
           </div>
         </>
@@ -1458,7 +1463,7 @@ export function LiveNotes({ roomId, token = "", canManage, transcribe, localName
           )}
           <div className="section-label" style={{ marginTop: 12 }}>Charie is thinking</div>
           {agent.thoughts.length === 0 ? <p className="small muted">No thoughts yet. Bring Charie in and talk through the issue.</p> : agent.thoughts.slice(-14).map((t, i) => (
-            <p key={i} className="thought"><b>{t.at.slice(11, 16)}</b> · {t.text}</p>
+            <p key={i} className="thought"><b>{transcriptStamp(t.at)}</b> · {t.text}</p>
           ))}
           {decided.length > 0 && (
             <>

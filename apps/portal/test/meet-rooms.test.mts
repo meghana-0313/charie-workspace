@@ -1,7 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { charieAskLine, charieShouldReply, meetRoomStatus, speakableText } from "../lib/room-status.ts";
+import { CHARIE_SPEECH_RATE, charieAskLine, charieShouldReply, meetRoomStatus, speakableText, transcriptStamp } from "../lib/room-status.ts";
 import { consentCard, needsConsent } from "../lib/consent.ts";
+
+test("transcript stamp shows full date and time per line", () => {
+  const s = transcriptStamp("2026-11-04T17:22:31.000Z");
+  assert.match(s, /2026/);
+  assert.match(s, /Nov/);
+  assert.match(s, /\d{2}:\d{2}:\d{2}/);
+  assert.equal(transcriptStamp("not-a-date"), "");
+});
+
+test("Charie speaks at a brisk conversational pace on every voice path", () => {
+  assert.ok(CHARIE_SPEECH_RATE >= 1.1 && CHARIE_SPEECH_RATE <= 1.3, "faster than default, still intelligible");
+});
 
 test("room without endedAt is Open", () => {
   assert.equal(meetRoomStatus({}), "Open");

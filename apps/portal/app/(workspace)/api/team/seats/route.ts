@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { store, uid } from "@/lib/store";
-import { isAdmin } from "@/lib/who";
+import { identity, isAdmin, scopeUid } from "@/lib/who";
 
 export async function GET(req: Request) {
   if (!(await isAdmin(store, req))) return NextResponse.json({ error: "admin only" }, { status: 403 });
-  return NextResponse.json({ seats: await store.listSeats() });
+  const seats = await store.listSeats();
+  // Demo callers are admin over the sandbox only: never hand them the
+  // real workspace seat list (emails). Sample seats carry demo- ids.
+  const me = scopeUid(await identity(req));
+  return NextResponse.json({ seats: me === "demo-workspace" ? seats.filter((s) => s.id.startsWith("demo-")) : seats });
 }
 
 export async function POST(req: Request) {

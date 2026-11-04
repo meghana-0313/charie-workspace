@@ -25,6 +25,7 @@ assert.ok(seed.schedules.length >= 4, "autopilot has sample schedules for every 
 assert.ok(seed.connectors.length >= 2 && seed.syncRules.every((r) => seed.connectors.some((c) => c.id === r.connectorId)), "integrations have sample connectors and a rule that points at one");
 assert.ok(seed.contextDocs.length >= 2, "integrations have sample context docs");
 assert.ok(seed.chatThread.messages.length >= 2 && seed.chatThread.uid === DEMO_UID, "chat has a sample thread");
+assert.ok(seed.seats.length >= 3 && seed.seats.every((s) => s.id.startsWith("demo-")), "team page has sample seats scoped to demo ids (demo is admin over samples only)");
 
 // Engine-backed surfaces: every page that reads from the engine must have
 // a labelled demo fallback, so no demo page renders empty.

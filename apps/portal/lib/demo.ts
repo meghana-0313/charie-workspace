@@ -7,7 +7,7 @@
 // restores the seed. Simulated integrations are labelled as simulated.
 
 import { store } from "./store";
-import type { ChatThread, Connector, ContextDoc, Incident, MeetRoom, PortalRun, RepoBuild, RepoConnection, Room, Schedule, SyncRule, Ticket } from "./types";
+import type { ChatThread, Connector, ContextDoc, Incident, MeetRoom, PortalRun, RepoBuild, RepoConnection, Room, Schedule, SyncRule, TeamSeat, Ticket } from "./types";
 
 export const DEMO_UID = "demo-workspace";
 export const DEMO_EMAIL = "demo@charie.local";
@@ -35,6 +35,7 @@ export interface DemoSeed {
   syncRules: SyncRule[];
   contextDocs: ContextDoc[];
   chatThread: ChatThread;
+  seats: TeamSeat[];
 }
 
 /** Pure seed builder (tested): every run points at a real ticket and room. */
@@ -122,7 +123,12 @@ export function buildDemoSeed(nowMs: number = Date.now()): DemoSeed {
     ],
     createdAt: t(1), updatedAt: t(1),
   };
-  return { tickets, rooms, runs, messages, incidents, repos, builds, schedules, connectors, syncRules, contextDocs, chatThread };
+  const seats: TeamSeat[] = [
+    { id: "demo-seat-owner", email: DEMO_EMAIL, name: "Demo Guest (sample)", role: "admin", owner: true, uid: DEMO_UID, createdAt: t(9), lastLoginAt: t(0) },
+    { id: "demo-seat-aisha", email: "aisha@demo.charie.local", name: "Aisha (sample teammate)", role: "member", createdAt: t(9), lastLoginAt: t(2) },
+    { id: "demo-seat-marco", email: "marco@demo.charie.local", name: "Marco (sample teammate)", role: "member", createdAt: t(9) },
+  ];
+  return { tickets, rooms, runs, messages, incidents, repos, builds, schedules, connectors, syncRules, contextDocs, chatThread, seats };
 }
 
 async function applySeed(seed: DemoSeed): Promise<void> {
@@ -176,6 +182,8 @@ async function applySeed(seed: DemoSeed): Promise<void> {
   const docIds = have(haveDocs);
   for (const d of seed.contextDocs) if (!docIds.has(d.id)) await store.saveContextDoc(d).catch(() => {});
   if (!have(haveThreads).has(seed.chatThread.id)) await store.saveThread(seed.chatThread).catch(() => {});
+  const seatIds = new Set((await store.listSeats().catch(() => [])).map((s) => s.id));
+  for (const seat of seed.seats) if (!seatIds.has(seat.id)) await store.saveSeat(seat).catch(() => {});
   const rooms = await store.listMeetRooms(DEMO_UID).catch(() => []);
   if (rooms.length === 0) {
     const room = await store.createMeetRoom({ title: "Demo Site checkout help - sample call", createdBy: DEMO_NAME, uid: DEMO_UID });

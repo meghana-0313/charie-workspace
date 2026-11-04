@@ -12,6 +12,20 @@ export function meetRoomStatus(room: { endedAt?: string }): MeetRoomStatus {
  * Charie answers spoken lines that are questions or address her by name.
  * Ordinary statements are only tracked for notes, so she never spams a call.
  */
+/**
+ * Full date and time for one transcript line, so anyone reading a saved
+ * or live transcript can tell when something was discussed, not just
+ * what: "04 Nov 2026, 17:22:31". Empty string for an unparseable stamp.
+ */
+export function transcriptStamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  });
+}
+
 /** A typed "Ask Charie" line from the Meet panel always addresses Charie. */
 export function charieAskLine(text: string): string {
   const t = text.trim();
@@ -140,6 +154,14 @@ export function shortVisionConfirm(visionText: string): string {
   const firstSentence = (visionText.split(/(?<=[.!?])\s/)[0] ?? visionText).slice(0, 150).trim();
   return `Yep, I'm looking at that same screen: ${firstSentence}`;
 }
+
+/**
+ * Charie's speaking pace on calls: brisk, like a normal fast conversation
+ * (about 1.18x the default synthesis rate), applied identically to the
+ * Modal TTS audio (via playbackRate, pitch preserved) and to the browser
+ * voice fallback, so she sounds the same on every path.
+ */
+export const CHARIE_SPEECH_RATE = 1.18;
 
 export function charieShouldReply(text: string): boolean {
   const t = text.trim();
