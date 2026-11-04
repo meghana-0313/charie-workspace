@@ -1,7 +1,8 @@
 // Engine service entry. Local: tsx src/serve.ts. Prod: node dist/serve.js.
 
 import { createServer } from "node:http";
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadSecrets, secret } from "./secrets.js";
 import { createApp } from "./server.js";
 
@@ -13,7 +14,12 @@ if (!secret("ENGINE_TOKEN") && process.env.ENGINE_DEV_OPEN !== "1") {
   process.exit(1);
 }
 const port = Number(process.env.PORT ?? 3103);
-const reportsRoot = process.env.CHARIE_REPORTS ?? resolve(process.cwd(), "reports");
+// Reports (scan results, digests, work orders) anchor to the engine
+// package, never to wherever the process happened to be started from:
+// starting the engine from a different directory must not make a user's
+// saved progress vanish on the next refresh.
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const reportsRoot = process.env.CHARIE_REPORTS ?? resolve(packageRoot, "reports");
 createServer(createApp({ reportsRoot })).listen(port, () => {
   console.log(`[engine] listening on :${port} (reports: ${reportsRoot})`);
 });

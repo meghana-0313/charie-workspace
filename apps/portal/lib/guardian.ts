@@ -19,21 +19,36 @@ function headers(account?: string): Record<string, string> {
   return h;
 }
 
+// Short-lived cache for engine list reads. Tab-hopping re-renders every
+// page on the server, and re-asking the engine for the same lists each
+// time made clicks feel ignored. Four seconds is fresh enough for lists
+// and makes repeat navigation near-instant; any write clears it.
+const GET_CACHE = new Map<string, { at: number; value: unknown }>();
+const GET_TTL_MS = 4000;
+
 async function get<T>(path: string, timeout = 30000, account?: string): Promise<T | null> {
+  const key = `${account ?? ""}|${path}`;
+  const hit = GET_CACHE.get(key);
+  if (hit && Date.now() - hit.at < GET_TTL_MS) return hit.value as T;
   try {
     const res = await fetch(`${base()}${path}`, {
       headers: headers(account),
       cache: "no-store",
-      signal: AbortSignal.timeout(timeout),
+      // List reads must never hang a page: cap the wait well below the
+      // old 30s, which is what made tabs look unclickable.
+      signal: AbortSignal.timeout(Math.min(timeout, 12000)),
     });
     if (!res.ok) return null;
-    return (await res.json()) as T;
+    const value = (await res.json()) as T;
+    GET_CACHE.set(key, { at: Date.now(), value });
+    return value;
   } catch {
     return null;
   }
 }
 
 async function post<T>(path: string, body: unknown, timeout = 120000, account?: string): Promise<T | null> {
+  GET_CACHE.clear();
   try {
     const res = await fetch(`${base()}${path}`, {
       method: "POST",
@@ -59,10 +74,34 @@ export async function readBriefs(runId: string): Promise<BriefView[]> {
   }
 }
 
+/**
+ * Targets for pentest and night-shift runs. Locally the engine has no
+ * PORTAL_URL/ENGINE_PUBLIC_URL configured, so runs failed with "targets
+ * required" and buttons appeared to do nothing. When the engine is a
+ * local one, the portal supplies its own well-known local addresses;
+ * hosted engines keep using their configured environment targets.
+ */
+export function localRunTargets(engineBaseUrl: string): { portalUrl: string; engineUrl: string } | Record<string, never> {
+  return /localhost|127\.0\.0\.1/.test(engineBaseUrl)
+    ? { portalUrl: process.env.PORTAL_PUBLIC_URL ?? "http://localhost:3102", engineUrl: engineBaseUrl }
+    : {};
+}
+
 export async function listWorkOrders(account?: string): Promise<WorkOrderView[]> {
   const r = await get<{ workorders: WorkOrderView[] }>("/workorders", 30000, account);
   const orders = r?.workorders ?? [];
-  return orders.length === 0 && isDemoAccount(account) ? sampleWorkOrders() : orders;
+  if (orders.length > 0 || !isDemoAccount(account)) return orders;
+  // Demo Mode: turn the sample orders into real engine records the first
+  // time they are needed, so approving, scheduling, and running the night
+  // shift actually persist across refreshes instead of acting on
+  // read-only portal fallbacks that evaporate. Engine unreachable keeps
+  // the labelled samples for browsing.
+  for (const s of sampleWorkOrders()) {
+    const created = await createWorkOrder({ title: s.title, source: "manual", sourceRef: s.sourceRef, plan: s.plan }, account).catch(() => null);
+    if (created && s.status === "scheduled") await scheduleWorkOrder(created.id, account).catch(() => null);
+  }
+  const seeded = await get<{ workorders: WorkOrderView[] }>("/workorders", 30000, account).catch(() => null);
+  return seeded?.workorders?.length ? seeded.workorders : sampleWorkOrders();
 }
 
 export async function getWorkOrder(id: string, account?: string): Promise<WorkOrderView | null> {
@@ -86,7 +125,7 @@ export async function scheduleWorkOrder(id: string, account?: string): Promise<W
 }
 
 export async function runNightShift(orderIds?: string[], account?: string): Promise<DigestView | null> {
-  return post<DigestView>("/nightshift/run", orderIds ? { orderIds } : {}, 600000, account);
+  return post<DigestView>("/nightshift/run", { ...(orderIds ? { orderIds } : {}), ...localRunTargets(base()) }, 600000, account);
 }
 
 export async function listDigests(account?: string): Promise<DigestView[]> {
@@ -117,7 +156,7 @@ export async function runPentestDetailed(account?: string): Promise<{ report: Pe
     const res = await fetch(`${base()}/pentest/run`, {
       method: "POST",
       headers: headers(account),
-      body: JSON.stringify({}),
+      body: JSON.stringify(localRunTargets(base())),
       signal: AbortSignal.timeout(180000),
     });
     if (!res.ok) {
@@ -131,7 +170,7 @@ export async function runPentestDetailed(account?: string): Promise<{ report: Pe
 }
 
 export async function runPentest(account?: string): Promise<PentestView | null> {
-  return post<PentestView>("/pentest/run", {}, 180000, account);
+  return post<PentestView>("/pentest/run", localRunTargets(base()), 180000, account);
 }
 
 export async function listPentestReports(account?: string): Promise<PentestView[]> {

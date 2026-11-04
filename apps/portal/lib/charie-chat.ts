@@ -234,7 +234,10 @@ export async function answerMessage(opts: {
     const seenCalls = new Set<string>();
     const collected: ToolResultEntry[] = [];
     let repeatWarned = false;
-    for (let i = 0; i < 5; i++) {
+    // In a live call, latency is the product: cap the tool loop so a
+    // spoken reply cannot chain five sequential model calls.
+    const maxTurns = opts.surface === "meet-call" ? 3 : 5;
+    for (let i = 0; i < maxTurns; i++) {
       const turn = await engineTurn(convo, snapshot, contextNotes, { model: opts.model, effort: opts.effort });
       if (!turn) {
         return collected.length > 0

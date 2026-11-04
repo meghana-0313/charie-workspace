@@ -3,6 +3,7 @@ import { store } from "@/lib/store";
 import { identity, scopeUid } from "@/lib/who";
 import { listDigests, listSweeps, listWorkOrders } from "@/lib/guardian";
 import { GetStarted } from "@/components/onboard";
+import { AnalyticsOverview } from "@/components/home-analytics";
 import { Icon } from "@/components/icons";
 import { Badge } from "@/components/ui";
 
@@ -59,79 +60,57 @@ export default async function Dashboard() {
       </div>
 
       {(() => {
+        const toItem = (r: (typeof runs)[number]) => ({
+          id: r.id,
+          kindLabel: r.kind === "verify" ? "Verification run" : "Investigation",
+          status: r.status,
+          at: r.createdAt,
+          href: `/reports/agent-run/${r.id}`,
+        });
         const days = Array.from({ length: 7 }, (_, i) => {
           const d = new Date(Date.now() - (6 - i) * 864e5);
           const key = d.toISOString().slice(0, 10);
-          return { label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }), narrow: d.toLocaleDateString("en-US", { weekday: "narrow" }), count: runs.filter((r) => r.createdAt.slice(0, 10) === key).length };
+          const dayRuns = runs.filter((r) => r.createdAt.slice(0, 10) === key);
+          return { label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }), narrow: d.toLocaleDateString("en-US", { weekday: "narrow" }), count: dayRuns.length, runs: dayRuns.map(toItem) };
         });
         const maxDay = Math.max(1, ...days.map((d) => d.count));
-        const sweepPts = sweeps.slice(-10).map((s, i) => `${i * 28},${64 - (s.pass ? 52 : 10)}`).join(" ");
-        const doneRuns = runs.filter((r) => r.status === "done").length;
-        const failedRuns = runs.filter((r) => r.status === "failed").length;
-        const activeRuns = Math.max(0, runs.length - doneRuns - failedRuns);
-        const runPct = runs.length ? Math.round((doneRuns / runs.length) * 100) : 0;
-        const failPct = runs.length ? Math.round((failedRuns / runs.length) * 100) : 0;
-        const activePct = Math.max(0, 100 - runPct - failPct);
+        const doneRuns = runs.filter((r) => r.status === "done");
+        const failedRuns = runs.filter((r) => r.status === "failed");
+        const activeList = runs.filter((r) => r.status !== "done" && r.status !== "failed");
+        const pct = (n: number) => (runs.length ? Math.round((n / runs.length) * 100) : 0);
+        const segments = [
+          { key: "done", label: "Finished", color: "var(--ok)", count: doneRuns.length, pct: pct(doneRuns.length), runs: doneRuns.map(toItem) },
+          { key: "failed", label: "Failed", color: "var(--danger)", count: failedRuns.length, pct: pct(failedRuns.length), runs: failedRuns.map(toItem) },
+          { key: "active", label: "In progress", color: "var(--warn)", count: activeList.length, pct: Math.max(0, 100 - pct(doneRuns.length) - pct(failedRuns.length)), runs: activeList.map(toItem) },
+        ];
         return (
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div className="card-title" style={{ margin: 0 }}>Analytics overview</div>
-              <Link href="/reports" className="small">All reports</Link>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: "var(--space-4)" }} className="home-grid">
-              <div>
-                <div className="section-label">Agent runs, last 7 days</div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 84 }} role="img" aria-label={`Runs per day: ${days.map((d) => d.count).join(", ")}`}>
-                  {days.map((d, i) => (
-                    <div key={i} style={{ flex: 1, textAlign: "center" }} title={`${d.label}: ${d.count} run(s)`}>
-                      <div className="small" style={{ fontWeight: 600 }}>{d.count}</div>
-                      <div style={{ height: 48, display: "flex", alignItems: "flex-end" }}><div style={{ width: "100%", height: `${Math.max(6, (d.count / maxDay) * 100)}%`, background: i === 6 ? "var(--accent)" : "var(--accent)", opacity: i === 6 ? 1 : 0.45, borderRadius: 4, transition: "height .6s ease" }} /></div>
-                      <div className="small muted">{d.narrow}</div>
-                    </div>
-                  ))}
-                </div>
-                <p className="small muted" style={{ margin: "4px 0 0" }}>{runs.length} run(s) on record, {doneRuns} finished.</p>
-              </div>
-              <div>
-                <div className="section-label">Run completion</div>
-                <div className="row" style={{ flexWrap: "nowrap" }}>
-                  <span className="donut" title={runs.length ? `${doneRuns} finished (${runPct}%), ${failedRuns} failed (${failPct}%), ${activeRuns} in progress (${activePct}%)` : "No runs yet"} style={{ background: runs.length === 0 ? "var(--surface-overlay)" : `conic-gradient(var(--ok) 0% ${runPct}%, var(--danger) ${runPct}% ${runPct + failPct}%, var(--warn) ${runPct + failPct}% ${runPct + failPct + activePct}%, var(--surface-overlay) ${runPct + failPct + activePct}%)` }}><span style={{ background: "var(--surface)", borderRadius: "50%", width: 56, height: 56, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><strong>{runs.length ? `${runPct}%` : "-"}</strong></span></span>
-                  <span className="small muted">{runs.length === 0 ? "No runs yet - the chart fills in as Charie works." : <><span style={{ color: "var(--ok)" }}>●</span> {doneRuns} finished ({runPct}%) · <span style={{ color: "var(--danger)" }}>●</span> {failedRuns} failed ({failPct}%) · <span style={{ color: "var(--warn)" }}>●</span> {activeRuns} in progress ({activePct}%)<br />{openTickets.length} ticket(s) still open.</>}</span>
-                </div>
-              </div>
-              <div>
-                <div className="section-label">Sweep health</div>
-                {sweeps.length === 0 ? <p className="small muted">No sweeps yet. Guardian sweeps draw their trend here.</p> : (
-                  <>
-                    <svg viewBox="0 0 260 76" style={{ width: "100%", height: 76 }} role="img" aria-label="Sweep pass trend">
-                      <polyline points={sweepPts || "0,64 252,12"} fill="none" stroke="var(--ok)" strokeWidth="2.5" />
-                      {sweeps.slice(-10).map((s, i) => <circle key={i} cx={i * 28} cy={64 - (s.pass ? 52 : 10)} r="4" fill={s.pass ? "var(--ok)" : "var(--danger)"}><title>{`${s.at.slice(0, 16).replace("T", " ")}: ${s.pass ? "passed" : "failed"}`}</title></circle>)}
-                    </svg>
-                    <p className="small muted" style={{ margin: "4px 0 0" }}>{sweeps.filter((s) => s.pass).length}/{sweeps.length} sweeps passed.</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <AnalyticsOverview
+            days={days}
+            maxDay={maxDay}
+            segments={segments}
+            totalRuns={runs.length}
+            sweeps={sweeps.map((s) => ({ id: s.id, at: s.at, pass: s.pass, checks: s.checks }))}
+          />
         );
       })()}
 
-      <div className="status-banner" style={openIncidents.length > 0 ? { borderColor: "var(--danger)" } : undefined}>
+      <Link href={openIncidents[0] ? `/guardian/${openIncidents[0].id}` : "/guardian"} className="status-banner" style={{ textDecoration: "none", color: "inherit", cursor: "pointer", ...(openIncidents.length > 0 ? { borderColor: "var(--danger)" } : {}) }} aria-label={openIncidents.length > 0 ? "Open the top incident" : "Open Guardian overview"}>
         <span className={`icon-orb ${openIncidents.length > 0 ? "red" : "green"}`}><Icon name={openIncidents.length > 0 ? "alert" : "check"} size={22} /></span>
         <div style={{ flex: 1, minWidth: 220 }}>
           <strong style={{ color: openIncidents.length > 0 ? "var(--danger)" : "var(--ok)", fontSize: "var(--text-lg)" }}>{openIncidents.length === 0 ? "All systems operational" : `${openIncidents.length} incident(s) need attention`}</strong>
-          <div className="small muted">{openIncidents.length === 0 ? "Running smoothly. No critical incidents." : "Charie is investigating. Review the priority queue below."}</div>
+          <div className="small muted">{openIncidents.length === 0 ? "Running smoothly. No critical incidents." : "Charie is investigating. Click to open the top incident."}</div>
         </div>
         <span className="small"><strong>{repos[0] ? `${repos[0].owner}/${repos[0].repo}` : "No repo connected"}</strong><br /><span className="muted">{repos[0]?.branch ?? "no branch"}</span></span>
         <span className="small"><span className="env-dot" style={{ display: "inline-block", marginRight: 6 }} />{process.env.PORTAL_STORE === "firestore" ? "Production" : "Development"}</span>
         <span className="small muted">Last check: {lastSweep ? when(lastSweep.at) : "never"}</span>
-      </div>
+        <span aria-hidden>→</span>
+      </Link>
 
       <div className="stats">
-        <div className="stat"><div className="icon-stat"><span className="icon-orb red"><Icon name="alert" size={20} /></span><div><div className="stat-num">{openIncidents.length}</div><div className="stat-label">Open incidents</div></div><span className="spacer" /><span className="delta-up">{openIncidents.length ? "↑ open" : ""}</span></div></div>
-        <div className="stat"><div className="icon-stat"><span className="icon-orb violet"><Icon name="layers" size={20} /></span><div><div className="stat-num">{activeRuns}</div><div className="stat-label">Active investigations</div></div></div></div>
-        <div className="stat"><div className="icon-stat"><span className="icon-orb amber"><Icon name="clock" size={20} /></span><div><div className="stat-num">{pendingApprovals}</div><div className="stat-label">Pending approvals</div></div></div></div>
-        <div className="stat"><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div className="stat-num">{verified7d}</div><div className="stat-label">Verified fixes (7d)</div></div></div></div>
+        <Link className="stat" href="/guardian" style={{ textDecoration: "none", color: "inherit", display: "block" }}><div className="icon-stat"><span className="icon-orb red"><Icon name="alert" size={20} /></span><div><div className="stat-num">{openIncidents.length}</div><div className="stat-label">Open incidents →</div></div><span className="spacer" /><span className="delta-up">{openIncidents.length ? "↑ open" : ""}</span></div></Link>
+        <Link className="stat" href="/tickets" style={{ textDecoration: "none", color: "inherit", display: "block" }}><div className="icon-stat"><span className="icon-orb violet"><Icon name="layers" size={20} /></span><div><div className="stat-num">{activeRuns}</div><div className="stat-label">Active investigations →</div></div></div></Link>
+        <Link className="stat" href="/tickets" style={{ textDecoration: "none", color: "inherit", display: "block" }}><div className="icon-stat"><span className="icon-orb amber"><Icon name="clock" size={20} /></span><div><div className="stat-num">{pendingApprovals}</div><div className="stat-label">Pending approvals →</div></div></div></Link>
+        <Link className="stat" href="/reports" style={{ textDecoration: "none", color: "inherit", display: "block" }}><div className="icon-stat"><span className="icon-orb green"><Icon name="check" size={20} /></span><div><div className="stat-num">{verified7d}</div><div className="stat-label">Verified fixes (7d) →</div></div></div></Link>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "var(--space-4)", alignItems: "start" }} className="home-grid">

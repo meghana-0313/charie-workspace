@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { buildDemoSeed, DEMO_UID } from "../lib/demo";
 import { isDemoAccount, sampleA11yReports, sampleBriefs, sampleClusters, sampleDigests, sampleFindings, sampleFirstRunReports, sampleLogWatch, samplePentestReports, sampleSweeps, sampleWorkOrders, sampleZoom } from "../lib/demo-samples";
+import { localRunTargets } from "../lib/guardian";
 
 // Demo seed must be internally consistent: judges click through it.
 const seed = buildDemoSeed(Date.parse("2026-11-04T10:00:00.000Z"));
@@ -49,5 +50,9 @@ for (const run of seed.runs) {
   assert.ok((sampleFindings(run.id) ?? []).length >= 1, `demo run ${run.id} has sample findings`);
 }
 assert.ok(sampleBriefs("demo-run-shopflow-checkout").length >= 1, "UX page has a sample redesign brief");
+const localTargets = localRunTargets("http://localhost:3103") as { portalUrl?: string; engineUrl?: string };
+assert.equal(localTargets.engineUrl, "http://localhost:3103", "local pentest/night-shift runs get the engine target they need");
+assert.match(localTargets.portalUrl ?? "", /3102/, "local runs get the portal target they need");
+assert.deepEqual(localRunTargets("https://engine.example.run.app"), {}, "hosted engines keep their configured environment targets");
 
 console.log("demo: all assertions passed");
