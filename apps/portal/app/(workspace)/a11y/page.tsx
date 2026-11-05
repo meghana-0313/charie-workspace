@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listA11yReports } from "@/lib/guardian";
 import { DEMO_TARGET_NAME, DEMO_TARGET_URL, isDemoAccount } from "@/lib/demo-samples";
 import { identity, scopeUid } from "@/lib/who";
+import { store } from "@/lib/store";
 import { A11yRunForm, ExecutorTip } from "@/components/scans";
 import { Icon } from "@/components/icons";
 import { Badge, EmptyState, PageHead } from "@/components/ui";
@@ -83,7 +84,7 @@ export default async function A11yPage() {
         <div className="card">
           <div className="card-title"><span className="icon-orb violet"><Icon name="play" /></span> New scan</div>
           <p className="small muted">Runs in a real browser against the live page. Results save to your account.</p>
-          <A11yRunForm defaultTarget={demo ? DEMO_TARGET_URL : ""} />
+          <A11yRunForm defaultTarget={demo ? DEMO_TARGET_URL : (await store.getSetting("defaultTargetUrl").catch(() => null)) ?? ""} />
         </div>
       </div>
     </>

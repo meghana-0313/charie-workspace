@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { clampCallReply, isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, shortVisionConfirm, splitSpeakChunks } from "../lib/room-status";
+import { clampCallReply, isEchoOfAgent, isScreenHistoryQuestion, isScreenSeeQuestion, screenHistoryReply, screenQuestionTime, screenVisionReply, shortVisionConfirm, splitSpeakChunks } from "../lib/room-status";
 
 // Screen questions are detected so they never reach a free-form model guess.
 assert.equal(isScreenSeeQuestion("Sorry, can you see my screen?"), true);
@@ -56,5 +56,19 @@ assert.equal(clampCallReply("Checkout is failing at payment. The card is being d
 assert.equal(clampCallReply("Just the answer."), "Just the answer.");
 assert.equal(clampCallReply(""), "");
 assert.ok(clampCallReply("One very long explanation ".repeat(30)).length <= 263, "long single-sentence replies are capped for speech");
+
+// Echo: her own voice through the speakers must never become a
+// "teammate" line or trigger her reactions (the self-talk loop).
+const agentSaid = [
+  "Hi, I'm Charie. I'm listening in and will flag anything I can debug. I won't run anything without your approval.",
+  "That sounds like a real failure. I can investigate it live if you approve the card on the right.",
+  "I see the City travel passes page with four products and your cart is empty. There is no error or blocker showing right now.",
+];
+assert.equal(isEchoOfAgent("Hey hi Cherry. Hi I'm Cherry, I'm listening in and will flag anything I can debug.", agentSaid), true);
+assert.equal(isEchoOfAgent("That sounds like a real failure I can investigate it live if you.", agentSaid), true);
+assert.equal(isEchoOfAgent("There is no error or blocker showing right now.", agentSaid), true);
+assert.equal(isEchoOfAgent("Shari, I'm sharing my screen, can you say it?", agentSaid), false);
+assert.equal(isEchoOfAgent("Hello. How are you doing Cherry?", agentSaid), false);
+assert.equal(isEchoOfAgent("Can you run a pentest on the demo site?", agentSaid), false);
 
 console.log("room-status tests passed");

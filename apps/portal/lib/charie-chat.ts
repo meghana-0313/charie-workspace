@@ -197,12 +197,13 @@ export async function answerMessage(opts: {
   const actions: string[] = [];
   let model = "heuristic";
   try {
-    const [tickets, schedules, repos, docs, meetRooms] = await Promise.all([
+    const [tickets, schedules, repos, docs, meetRooms, defaultTargetUrl] = await Promise.all([
       store.listTickets(opts.uid).catch(() => []),
       store.listSchedules(opts.uid).catch(() => []),
       store.listRepos(opts.uid).catch(() => []),
       store.listContextDocs(opts.uid).catch(() => []),
       store.listMeetRooms(opts.uid).catch(() => []),
+      store.getSetting("defaultTargetUrl").catch(() => null),
     ]);
     const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
     const roomsThisWeek = meetRooms.filter((r) => new Date(r.updatedAt).getTime() >= weekAgo);
@@ -228,8 +229,9 @@ export async function answerMessage(opts: {
       // Demo Mode only: the sample scan target, so "run a sample test"
       // executes live against the intentional-bug demo store.
       ...(opts.uid === DEMO_UID ? { demo: { targetUrl: DEMO_TARGET_URL, targetName: DEMO_TARGET_NAME } } : {}),
+      ...(defaultTargetUrl ? { defaultTargetUrl } : {}),
     };
-    const contextNotes = [...docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`), ...(opts.extraNotes ?? [])];
+    const contextNotes = [...docs.slice(0, 5).map((d) => `${d.title}: ${(d.body ?? d.url ?? "").slice(0, 500)}`), ...(defaultTargetUrl ? [`Workspace default product URL: ${defaultTargetUrl}. When the user asks for a scan, review, or investigation without naming a URL, use this URL as the target.`] : []), ...(opts.extraNotes ?? [])];
     const convo: LoopTurn[] = [...opts.history];
     const seenCalls = new Set<string>();
     const collected: ToolResultEntry[] = [];
