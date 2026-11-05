@@ -10,6 +10,8 @@
 
 **Vision:** a world where no customer ever has to describe a screen over the phone, no solo developer ever wakes up to an attack that ran for six hours, and no bug is called "fixed" until software itself has proved it.
 
+Watch the demo (3 minutes): https://youtu.be/NFBvvHV7TBk
+
 Live product: https://charie-portal-ehfuotlisq-uc.a.run.app (email sign-in, or Explore Charie Demo - no login needed)
 
 Full engineering detail: [docs/TECHNICAL.md](docs/TECHNICAL.md). Meta model map: [docs/META_STACK.md](docs/META_STACK.md).
